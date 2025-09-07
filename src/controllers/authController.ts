@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import {
@@ -6,8 +6,8 @@ import {
   findPendingUser,
   removePendingUser,
   createUser,
-} from "../models/db";
-import { generateOtp, sendOtp } from "../services/otpService";
+} from "../models/db.js";
+import { generateOtp, sendOtp } from "../services/otpService.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 
