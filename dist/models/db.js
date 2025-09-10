@@ -1,15 +1,13 @@
-import { v4 as uuidv4 } from "uuid";
 export const pendingUsers = [];
 export const users = [];
-export function createPendingUser(name, email, passwordHash, phone, otp) {
-    const requestId = uuidv4();
+export function createPendingUser(name, phone, email, dob, gender, requestId) {
     pendingUsers.push({
         requestId,
         name,
-        email,
-        passwordHash,
         phone,
-        otp,
+        email,
+        dob,
+        gender,
         expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 min expiry
     });
     return requestId;
@@ -22,13 +20,13 @@ export function removePendingUser(requestId) {
     if (index > -1)
         pendingUsers.splice(index, 1);
 }
-export function createUser(name, email, passwordHash, phone) {
+export function createUser(name, phone, email, dob, gender) {
     const user = {
-        id: uuidv4(),
         name,
-        email,
         phone,
-        passwordHash,
+        email,
+        dob,
+        gender
     };
     users.push(user);
     return user;

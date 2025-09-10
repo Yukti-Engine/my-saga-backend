@@ -1,20 +1,15 @@
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import { createPendingUser, findPendingUser, removePendingUser, createUser, } from "../models/db.js";
-import { generateOtp, sendOtp } from "../services/otpService.js";
-const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
+import { sendOtp, verify } from "../services/otpService.js";
 export const requestOtp = async (req, res) => {
-    const { name, email, password, phone } = req.body;
-    if (!name || !email || !password || !phone) {
+    const { name, phone, email, dob, gender } = req.body;
+    if (!name || !dob || !gender || !phone) {
         return res.status(400).json({ error: "Missing required fields" });
     }
-    const passwordHash = await bcrypt.hash(password, 10);
-    const otp = generateOtp();
-    const requestId = createPendingUser(name, email, passwordHash, phone, otp);
-    sendOtp(phone, otp);
+    const requestId = await sendOtp(phone);
+    createPendingUser(name, phone, email, dob, gender, requestId);
     return res.json({ message: "OTP sent", requestId });
 };
-export const verifyOtp = (req, res) => {
+export const verifyOtp = async (req, res) => {
     const { requestId, otp } = req.body;
     const pendingUser = findPendingUser(requestId);
     if (!pendingUser) {
@@ -23,25 +18,23 @@ export const verifyOtp = (req, res) => {
     if (pendingUser.expiresAt < new Date()) {
         return res.status(400).json({ error: "OTP expired" });
     }
-    if (pendingUser.otp !== otp) {
+    if (!(await verify(pendingUser.phone, otp))) {
         return res.status(400).json({ error: "Invalid OTP" });
     }
     // OTP valid → create real user
-    const user = createUser(pendingUser.name, pendingUser.email, pendingUser.passwordHash, pendingUser.phone);
+    createUser(pendingUser.name, pendingUser.phone, pendingUser.email, pendingUser.dob, pendingUser.gender);
     removePendingUser(requestId);
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "1h" });
-    return res.json({ message: "Signup successful", user, token });
+    return res.json({ message: "Signup successful" });
 };
-export const resendOtp = (req, res) => {
+export const resendOtp = async (req, res) => {
     const { requestId } = req.body;
     const pendingUser = findPendingUser(requestId);
     if (!pendingUser) {
         return res.status(400).json({ error: "Invalid requestId" });
     }
-    const otp = generateOtp();
-    pendingUser.otp = otp;
-    pendingUser.expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-    sendOtp(pendingUser.phone, otp);
-    return res.json({ message: "OTP resent" });
+    const newRequestId = await sendOtp(pendingUser.phone);
+    createPendingUser(pendingUser.name, pendingUser.phone, pendingUser.email, pendingUser.dob, pendingUser.gender, newRequestId);
+    removePendingUser(requestId);
+    return res.json({ message: "OTP resent", newRequestId });
 };
 //# sourceMappingURL=authController.js.map

@@ -1,21 +1,19 @@
-import { v4 as uuidv4 } from "uuid";
-
 interface PendingUser {
   requestId: string;
   name: string;
-  email: string;
-  passwordHash: string;
   phone: string;
-  otp: string;
+  email: string;
+  dob: string;
+  gender: string;
   expiresAt: Date;
 }
 
 interface User {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  passwordHash: string;
+  name: string,
+  phone: string,
+  email: string,
+  dob: string,
+  gender: string
 }
 
 export const pendingUsers: PendingUser[] = [];
@@ -23,19 +21,19 @@ export const users: User[] = [];
 
 export function createPendingUser(
   name: string,
-  email: string,
-  passwordHash: string,
   phone: string,
-  otp: string
+  email: string,
+  dob: string,
+  gender: string,
+  requestId: string
 ): string {
-  const requestId = uuidv4();
   pendingUsers.push({
     requestId,
     name,
-    email,
-    passwordHash,
     phone,
-    otp,
+    email,
+    dob,
+    gender,
     expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 min expiry
   });
   return requestId;
@@ -52,16 +50,17 @@ export function removePendingUser(requestId: string) {
 
 export function createUser(
   name: string,
+  phone: string,
   email: string,
-  passwordHash: string,
-  phone: string
+  dob: string,
+  gender: string
 ) {
   const user: User = {
-    id: uuidv4(),
     name,
-    email,
     phone,
-    passwordHash,
+    email,
+    dob,
+    gender
   };
   users.push(user);
   return user;
