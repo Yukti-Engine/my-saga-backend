@@ -1,10 +1,14 @@
 import express from "express";
-import { requestOtp, verifyOtp, resendOtp } from "../controllers/authController.js";
-
+import { signupRequestOtp, signupVerifyOtp, signupResendOtp, loginRequestOtp,loginVerifyOtp, loginResendOtp } from "../controllers/authController.js";
+//import later login
 const router = express.Router();
 
-router.post("/request-otp", requestOtp);
-router.post("/verify-otp", verifyOtp);
-router.post("/resend-otp", resendOtp);
+router.post("/signup-request-otp", signupRequestOtp);
+router.post("/signup-verify-otp", signupVerifyOtp);
+router.post("/signup-resend-otp", signupResendOtp);
+
+router.post("/login-request-otp", loginRequestOtp);
+router.post("/login-verify-otp", loginVerifyOtp);
+router.post("/login-resend-otp", loginResendOtp);
 
 export default router;
