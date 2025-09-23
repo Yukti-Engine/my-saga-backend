@@ -22,7 +22,7 @@ export function removePendingUser(requestId) {
         pendingUsers.splice(index, 1);
 }
 export function createUser(name, phone, email, dob, gender) {
-    const id = 0;
+    const id = users.length;
     const user = {
         name,
         phone,
@@ -32,6 +32,7 @@ export function createUser(name, phone, email, dob, gender) {
         gender,
         loginOtp: null,
         loginOtpExpiresAt: null,
+        accessToken: ""
     };
     users.push(user);
     return user;

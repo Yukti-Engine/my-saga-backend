@@ -65,6 +65,11 @@ export const loginVerifyOtp = async (req, res) => {
             return res.status(400).json({ error: "Invalid or expired OTP" });
         }
         const accessToken = randomBytes(16).toString('hex');
+        const index = users.findIndex((u) => u.phone === phone);
+        if (users[index])
+            users[index].accessToken = accessToken;
+        else
+            return res.status(500);
         return res.json({ message: "Login successful", accessToken: accessToken, uid: potentialUser.id });
     }
     catch (err) {

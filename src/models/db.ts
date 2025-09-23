@@ -18,6 +18,7 @@ interface User {
   // 🔹 Extra fields for login OTP
   loginOtp: string | null;
   loginOtpExpiresAt: Date | null;
+  accessToken: string
 }
 
 export const pendingUsers: PendingUser[] = [];
@@ -60,7 +61,7 @@ export function createUser(
   dob: string,
   gender: string
 ) {
-  const id = 0;
+  const id = users.length;
   const user: User = {
     name,
     phone,
@@ -70,6 +71,7 @@ export function createUser(
     gender,
     loginOtp: null,
     loginOtpExpiresAt: null,
+    accessToken: ""
   };
   users.push(user);
   return user;

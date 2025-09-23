@@ -16,6 +16,7 @@ interface User {
     gender: string;
     loginOtp: string | null;
     loginOtpExpiresAt: Date | null;
+    accessToken: string;
 }
 export declare const pendingUsers: PendingUser[];
 export declare const users: User[];
