@@ -1,11 +1,4 @@
-// import type { Request, Response } from "express";
-// import {
-//   createPendingUser,
-//   findPendingUser,
-//   removePendingUser,
-//   createUser,
-// } from "../models/db.js";
-// import { sendOtp, verify } from "../services/otpService.js";
+import { randomBytes } from "crypto";
 import { createPendingUser, findPendingUser, removePendingUser, createUser, users, // ⚡ NEW: import users so we can find existing ones
  } from "../models/db.js";
 import { sendOtp, verify } from "../services/otpService.js";
@@ -47,8 +40,6 @@ export const signupResendOtp = async (req, res) => {
     removePendingUser(requestId);
     return res.json({ message: "OTP resent", newRequestId });
 };
-/* ----------------- ⚡ FIXED LOGIN FLOW ----------------- */
-import { setLoginOtp, verifyLoginOtp, clearLoginOtp } from "../models/db.js";
 export const loginRequestOtp = async (req, res) => {
     const { phone } = req.body;
     if (!phone) {
@@ -59,24 +50,27 @@ export const loginRequestOtp = async (req, res) => {
         return res.status(404).json({ error: "User not found" });
     }
     // send OTP
-    const requestId = await sendOtp(phone);
-    setLoginOtp(user, requestId);
-    return res.json({ message: "Login OTP sent" });
+    await sendOtp(phone);
+    return res.json({ phone: phone });
 };
 export const loginVerifyOtp = async (req, res) => {
     const { phone, otp } = req.body;
-    const user = users.find((u) => u.phone === phone);
-    if (!user) {
+    const potentialUser = users.find((u) => u.phone === phone);
+    if (!potentialUser) {
         return res.status(404).json({ error: "User not found" });
     }
-    if (!verifyLoginOtp(user, otp)) {
-        return res.status(400).json({ error: "Invalid or expired OTP" });
+    try {
+        const verified = await verify(phone, otp);
+        if (!verified) {
+            return res.status(400).json({ error: "Invalid or expired OTP" });
+        }
+        const accessToken = randomBytes(16).toString('hex');
+        return res.json({ message: "Login successful", accessToken: accessToken, uid: potentialUser.id });
     }
-    clearLoginOtp(user);
-    return res.json({
-        message: "Login successful",
-        user: { name: user.name, phone: user.phone, email: user.email },
-    });
+    catch (err) {
+        console.error("Error during OTP verification:", err);
+        return res.status(500).json({ error: "OTP verification failed" });
+    }
 };
 export const loginResendOtp = async (req, res) => {
     const { phone } = req.body;
@@ -85,7 +79,6 @@ export const loginResendOtp = async (req, res) => {
         return res.status(404).json({ error: "User not found" });
     }
     const requestId = await sendOtp(user.phone);
-    setLoginOtp(user, requestId);
-    return res.json({ message: "Login OTP resent" });
+    return res.json({ requestId: requestId, phone: phone });
 };
 //# sourceMappingURL=authController.js.map
