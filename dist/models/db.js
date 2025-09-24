@@ -41,4 +41,16 @@ export function createUser(name, phone, email, dob, gender) {
 export function findUserByEmailOrPhone(email, phone) {
     return users.find((u) => (email && u.email === email) || (phone && u.phone === phone));
 }
+export function updateUser(id, updates) {
+    const user = users.find((u) => u.id === id);
+    if (!user)
+        return null;
+    if (updates.username !== undefined)
+        user.username = updates.username;
+    if (updates.bio !== undefined)
+        user.bio = updates.bio;
+    if (updates.email !== undefined)
+        user.email = updates.email;
+    return user;
+}
 //# sourceMappingURL=db.js.map

@@ -1,6 +1,8 @@
+// import type { Request, Response } from "express";
+// import {randomBytes} from "crypto";
+// import { updateUser } from "../models/db.js";
 import { randomBytes } from "crypto";
-import { createPendingUser, findPendingUser, removePendingUser, createUser, users, // ⚡ NEW: import users so we can find existing ones
- } from "../models/db.js";
+import { createPendingUser, findPendingUser, removePendingUser, createUser, users } from "../models/db.js";
 import { sendOtp, verify } from "../services/otpService.js";
 /* ----------------- SIGNUP FLOW ----------------- */
 export const signupRequestOtp = async (req, res) => {
@@ -40,6 +42,7 @@ export const signupResendOtp = async (req, res) => {
     removePendingUser(requestId);
     return res.json({ message: "OTP resent", newRequestId });
 };
+/* ----------------- LOGIN FLOW ----------------- */
 export const loginRequestOtp = async (req, res) => {
     const { phone } = req.body;
     if (!phone) {
@@ -64,13 +67,17 @@ export const loginVerifyOtp = async (req, res) => {
         if (!verified) {
             return res.status(400).json({ error: "Invalid or expired OTP" });
         }
-        const accessToken = randomBytes(16).toString('hex');
+        const accessToken = randomBytes(16).toString("hex");
         const index = users.findIndex((u) => u.phone === phone);
         if (users[index])
             users[index].accessToken = accessToken;
         else
             return res.status(500);
-        return res.json({ message: "Login successful", accessToken: accessToken, uid: potentialUser.id });
+        return res.json({
+            message: "Login successful",
+            accessToken: accessToken,
+            uid: potentialUser.id,
+        });
     }
     catch (err) {
         console.error("Error during OTP verification:", err);
@@ -85,5 +92,39 @@ export const loginResendOtp = async (req, res) => {
     }
     const requestId = await sendOtp(user.phone);
     return res.json({ requestId: requestId, phone: phone });
+};
+/* ----------------- UPDATE PROFILE ----------------- */
+export const updateUserProfile = (req, res) => {
+    const { accessToken, username, bio, email } = req.body;
+    if (!accessToken) {
+        return res.status(400).json({ error: "Access token required" });
+    }
+    // Find the user by accessToken
+    const user = users.find((u) => u.accessToken === accessToken);
+    if (!user) {
+        return res
+            .status(404)
+            .json({ error: "Invalid access token or user not found" });
+    }
+    // Update only the provided fields
+    if (username !== undefined)
+        user.username = username;
+    if (bio !== undefined)
+        user.bio = bio;
+    if (email !== undefined)
+        user.email = email;
+    return res.json({
+        message: "Profile updated successfully",
+        user: {
+            id: user.id,
+            name: user.name,
+            phone: user.phone,
+            email: user.email,
+            username: user.username,
+            bio: user.bio,
+            dob: user.dob,
+            gender: user.gender,
+        },
+    });
 };
 //# sourceMappingURL=authController.js.map

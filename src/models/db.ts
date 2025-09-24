@@ -15,7 +15,8 @@ interface User {
   email: string;
   dob: string;
   gender: string;
-  // 🔹 Extra fields for login OTP
+  username?: string;  // new
+  bio?: string; 
   loginOtp: string | null;
   loginOtpExpiresAt: Date | null;
   accessToken: string
@@ -83,7 +84,19 @@ export function findUserByEmailOrPhone(email?: string, phone?: string) {
     (u) => (email && u.email === email) || (phone && u.phone === phone)
   );
 }
+export function updateUser(
+  id: number,
+  updates: { username?: string; bio?: string; email?: string }
+) {
+  const user = users.find((u) => u.id === id);
+  if (!user) return null;
 
+  if (updates.username !== undefined) user.username = updates.username;
+  if (updates.bio !== undefined) user.bio = updates.bio;
+  if (updates.email !== undefined) user.email = updates.email;
+
+  return user;
+}
 export interface Adventure {
   id: string;
   name: string;

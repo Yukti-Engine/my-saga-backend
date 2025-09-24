@@ -14,6 +14,8 @@ interface User {
     email: string;
     dob: string;
     gender: string;
+    username?: string;
+    bio?: string;
     loginOtp: string | null;
     loginOtpExpiresAt: Date | null;
     accessToken: string;
@@ -25,6 +27,11 @@ export declare function findPendingUser(requestId: string): PendingUser | undefi
 export declare function removePendingUser(requestId: string): void;
 export declare function createUser(name: string, phone: string, email: string, dob: string, gender: string): User;
 export declare function findUserByEmailOrPhone(email?: string, phone?: string): User | undefined;
+export declare function updateUser(id: number, updates: {
+    username?: string;
+    bio?: string;
+    email?: string;
+}): User | null;
 export interface Adventure {
     id: string;
     name: string;

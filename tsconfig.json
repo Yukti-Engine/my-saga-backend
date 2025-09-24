@@ -21,7 +21,7 @@
     "exactOptionalPropertyTypes": true,
 
     /* Recommended */
-    "verbatimModuleSyntax": true,
+    "verbatimModuleSyntax": false,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
