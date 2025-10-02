@@ -1,5 +1,5 @@
 import express from "express";
-import { signupRequestOtp, signupVerifyOtp, signupResendOtp, loginRequestOtp,loginVerifyOtp, loginResendOtp,  updateUserProfile  } from "../controllers/authController.js";
+import { signupRequestOtp, signupVerifyOtp, signupResendOtp, loginRequestOtp,loginVerifyOtp, loginResendOtp } from "../controllers/authController.js";
 //import later login
 const router = express.Router();
 
@@ -10,7 +10,5 @@ router.post("/signup-resend-otp", signupResendOtp);
 router.post("/login-request-otp", loginRequestOtp);
 router.post("/login-verify-otp", loginVerifyOtp);
 router.post("/login-resend-otp", loginResendOtp);
-router.put("/user/update-profile", updateUserProfile);
-
 
 export default router;

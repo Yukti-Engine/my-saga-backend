@@ -23,8 +23,8 @@ export function generateRandomUsername() {
     return `${adjective} ${noun}`;
 }
 // // Test the function
-console.log("Random username:", generateRandomUsername());
-if (import.meta.url === `file://${process.argv[1]}`) {
-    console.log(generateRandomUsername());
-}
+// console.log("Random username:", generateRandomUsername());
+// if (import.meta.url === `file://${process.argv[1]}`) {
+//   console.log(generateRandomUsername());
+// }
 //# sourceMappingURL=usernameService.js.map
