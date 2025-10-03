@@ -1,4 +1,4 @@
-import { type EntityType, type UserInput, type BossInput, type OrganizerInput, type AdventureInput, type EventInput } from "./types";
+import { type EntityType, type UserInput, type BossInput, type OrganizerInput, type AdventureInput, type EventInput } from "./types.js";
 /**
  * Insert a new record into the specified entity table
  */

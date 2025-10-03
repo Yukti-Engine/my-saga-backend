@@ -1,15 +1,5 @@
-// import type { Request, Response } from "express";
-// import { randomBytes } from "crypto";
-// import { 
-//   createPendingUser,
-//   findPendingUser,
-//   removePendingUser,
-//   createUser,
-//   //users
-//   findUserByEmailOrPhone
-// } from "../../dbms/packages/user-helpers/user-helpers.ts";
-// import { sendOtp, verify } from "../services/otpService.js";
 import { randomBytes } from "crypto";
+import { prisma } from "../dbms/src/client.js"; // Adjust the import path as necessary
 import { createPendingUser, findPendingUser, removePendingUser, createUser, findUserByEmailOrPhone } from "../dbms/src/user-helpers.js"; // relative path from your backend src/controllers/
 /* Adjust the import path if your controller is located elsewhere in the project structure */
 import { sendOtp, verify } from "../services/otpService.js";
@@ -77,9 +67,11 @@ export const loginVerifyOtp = async (req, res) => {
             return res.status(400).json({ error: "Invalid or expired OTP" });
         }
         const accessToken = randomBytes(16).toString("hex");
-        // You may want to update user's accessToken in DB with a helper function
-        // For now, just return as part of response
-        // If you need to persist, implement updateUser in your helpers
+        // Store the access token in the database
+        await prisma.user.update({
+            where: { id: potentialUser.id },
+            data: { accessToken },
+        });
         return res.json({
             message: "Login successful",
             accessToken: accessToken,

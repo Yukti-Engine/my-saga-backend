@@ -17,7 +17,22 @@ export declare function removePendingUser(requestId: string): Promise<void>;
  * so we derive it from email's local part or the name.
  * Note: dob is not stored on User model; it exists on PendingUser only.
  */
-export declare function createUser(name: string, phone: string, email: string, _dob: string, gender: string): Promise<any>;
+export declare function createUser(name: string, phone: string, email: string, _dob: string, gender: string): Promise<{
+    name: string;
+    phone: string | null;
+    email: string;
+    gender: string | null;
+    star_score: number;
+    level: number;
+    gems: number;
+    accessToken: string | null;
+    username: string;
+    bio: string | null;
+    age: number | null;
+    setting_1: boolean;
+    setting_2: boolean;
+    id: number;
+}>;
 /**
  * Find user by email OR phone (first match). If both undefined, returns null.
  */

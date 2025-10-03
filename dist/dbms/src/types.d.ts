@@ -20,7 +20,6 @@ export declare const userSchema: z.ZodObject<{
     username: string;
     phone?: string | undefined;
     gender?: string | undefined;
-    id?: number | undefined;
     star_score?: number | undefined;
     level?: number | undefined;
     gems?: number | undefined;
@@ -29,13 +28,13 @@ export declare const userSchema: z.ZodObject<{
     age?: number | undefined;
     setting_1?: boolean | undefined;
     setting_2?: boolean | undefined;
+    id?: number | undefined;
 }, {
     name: string;
     email: string;
     username: string;
     phone?: string | undefined;
     gender?: string | undefined;
-    id?: number | undefined;
     star_score?: number | undefined;
     level?: number | undefined;
     gems?: number | undefined;
@@ -44,6 +43,7 @@ export declare const userSchema: z.ZodObject<{
     age?: number | undefined;
     setting_1?: boolean | undefined;
     setting_2?: boolean | undefined;
+    id?: number | undefined;
 }>;
 export declare const bossSchema: z.ZodObject<{
     name: z.ZodString;

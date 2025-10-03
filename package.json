@@ -8,19 +8,21 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "nodemon --exec ts-node-esm src/index.ts",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:generate": "prisma generate --schema src/dbms/prisma/schema.prisma",
+    "db:push": "prisma db push --schema src/dbms/prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema src/dbms/prisma/schema.prisma",
+    "db:studio": "prisma studio --schema src/dbms/prisma/schema.prisma"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Vegybin/G1-backend.git"
   },
-  "keywords": ["database",
+  "keywords": [
+    "database",
     "prisma",
     "utilities",
-    "adventure-app"],
+    "adventure-app"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {
@@ -28,6 +30,7 @@
   },
   "homepage": "https://github.com/Vegybin/G1-backend#readme",
   "dependencies": {
+    "@prisma/client": "^5.22.0",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
@@ -36,7 +39,6 @@
     "jsonwebtoken": "^9.0.2",
     "twilio": "^5.9.0",
     "uuid": "^12.0.0",
-    "@prisma/client": "^5.0.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {
@@ -46,9 +48,9 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.3.1",
     "nodemon": "^3.1.10",
+    "prisma": "^5.0.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.2",
-    "prisma": "^5.0.0"
+    "typescript": "^5.9.2"
   },
   "type": "module"
 }

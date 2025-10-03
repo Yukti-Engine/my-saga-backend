@@ -1,4 +1,4 @@
-import { prisma } from "./client";
+import { prisma } from "./client.js";
 import { z } from "zod";
 const entity = (process.argv[2] || "").toLowerCase();
 const payloadRaw = process.argv[3];

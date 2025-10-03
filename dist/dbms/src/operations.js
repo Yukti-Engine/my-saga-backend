@@ -1,5 +1,5 @@
-import { prisma } from "./client";
-import { userSchema, bossSchema, organizerSchema, adventureSchema, eventSchema, updateWhitelists, } from "./types";
+import { prisma } from "./client.js";
+import { userSchema, bossSchema, organizerSchema, adventureSchema, eventSchema, updateWhitelists, } from "./types.js";
 // Schema mapping
 const schemaMap = {
     users: userSchema,

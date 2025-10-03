@@ -1,33 +1,37 @@
-import { prisma } from "./client";
+import { prisma } from "./client.js";
 import { z } from "zod";
+// Helper to remove undefined properties from an object
+function removeUndefined(obj) {
+    return JSON.parse(JSON.stringify(obj));
+}
 // User validation schema
 const UserSchema = z.object({
     name: z.string().min(1, "Name is required"),
     email: z.string().email("Invalid email format"),
-    phone: z.string().optional(),
+    phone: z.string().nullable().optional(),
     star_score: z.number().int().nonnegative().default(0),
     level: z.number().int().positive().default(1),
     gems: z.number().int().nonnegative().default(0),
-    accessToken: z.string().optional(),
+    accessToken: z.string().nullable().optional(),
     username: z.string().min(1, "Username is required"),
-    bio: z.string().optional(),
-    age: z.number().int().nonnegative().optional(),
-    gender: z.string().optional(),
+    bio: z.string().nullable().optional(),
+    age: z.number().int().nonnegative().nullable().optional(),
+    gender: z.string().nullable().optional(),
     setting_1: z.boolean().default(false),
     setting_2: z.boolean().default(false),
 });
 const UserUpdateSchema = z.object({
     name: z.string().min(1).optional(),
     email: z.string().email().optional(),
-    phone: z.string().optional(),
+    phone: z.string().nullable().optional(),
     star_score: z.number().int().nonnegative().optional(),
     level: z.number().int().positive().optional(),
     gems: z.number().int().nonnegative().optional(),
-    accessToken: z.string().optional(),
+    accessToken: z.string().nullable().optional(),
     username: z.string().min(1).optional(),
-    bio: z.string().optional(),
-    age: z.number().int().nonnegative().optional(),
-    gender: z.string().optional(),
+    bio: z.string().nullable().optional(),
+    age: z.number().int().nonnegative().nullable().optional(),
+    gender: z.string().nullable().optional(),
     setting_1: z.boolean().optional(),
     setting_2: z.boolean().optional(),
 });
@@ -35,14 +39,14 @@ const UserUpdateSchema = z.object({
 const BossSchema = z.object({
     name: z.string().min(1, "Name is required"),
     email: z.string().email("Invalid email format"),
-    phone: z.string().optional(),
+    phone: z.string().nullable().optional(),
     credits: z.number().int().nonnegative().default(0),
     username: z.string().min(1, "Username is required"),
 });
 const BossUpdateSchema = z.object({
     name: z.string().min(1).optional(),
     email: z.string().email().optional(),
-    phone: z.string().optional(),
+    phone: z.string().nullable().optional(),
     credits: z.number().int().nonnegative().optional(),
     username: z.string().min(1).optional(),
 });
@@ -50,40 +54,40 @@ const BossUpdateSchema = z.object({
 const OrganizerSchema = z.object({
     name: z.string().min(1, "Name is required"),
     email: z.string().email("Invalid email format"),
-    phone: z.string().optional(),
+    phone: z.string().nullable().optional(),
     credits: z.number().int().nonnegative().default(0),
     username: z.string().min(1, "Username is required"),
 });
 const OrganizerUpdateSchema = z.object({
     name: z.string().min(1).optional(),
     email: z.string().email().optional(),
-    phone: z.string().optional(),
+    phone: z.string().nullable().optional(),
     credits: z.number().int().nonnegative().optional(),
     username: z.string().min(1).optional(),
 });
 // Adventure validation schema
 const AdventureSchema = z.object({
     name: z.string().min(1, "Adventure name is required"),
-    bossId: z.number().int().positive().optional(),
+    bossId: z.number().int().positive().nullable().optional(),
 });
 const AdventureUpdateSchema = z.object({
     name: z.string().min(1).optional(),
-    bossId: z.number().int().positive().optional(),
+    bossId: z.number().int().positive().nullable().optional(),
 });
 // Event validation schema
 const EventSchema = z.object({
     activity: z.string().min(1, "Activity is required"),
     timing: z.date(),
-    venue: z.string().optional(),
-    venue_link: z.string().url().optional(),
-    adventureId: z.number().int().positive().optional(),
+    venue: z.string().nullable().optional(),
+    venue_link: z.string().url().nullable().optional(),
+    adventureId: z.number().int().positive().nullable().optional(),
 });
 const EventUpdateSchema = z.object({
     activity: z.string().min(1).optional(),
     timing: z.date().optional(),
-    venue: z.string().optional(),
-    venue_link: z.string().url().optional(),
-    adventureId: z.number().int().positive().optional(),
+    venue: z.string().nullable().optional(),
+    venue_link: z.string().url().nullable().optional(),
+    adventureId: z.number().int().positive().nullable().optional(),
 });
 // AdventureMember validation schema
 const AdventureMemberSchema = z.object({
@@ -118,7 +122,15 @@ export async function addUser(userData) {
         if (existingUser) {
             throw new Error("User with this email already exists");
         }
-        const newUser = await prisma.user.create({ data: validatedData });
+        const dataForDb = {
+            ...validatedData,
+            phone: validatedData.phone ?? null,
+            accessToken: validatedData.accessToken ?? null,
+            bio: validatedData.bio ?? null,
+            age: validatedData.age ?? null,
+            gender: validatedData.gender ?? null,
+        };
+        const newUser = await prisma.user.create({ data: dataForDb });
         console.log("✅ User created successfully:", newUser);
         return newUser;
     }
@@ -136,7 +148,7 @@ export async function updateUser(userId, updateData) {
         }
         const updatedUser = await prisma.user.update({
             where: { id: userId },
-            data: validatedData,
+            data: removeUndefined(validatedData),
         });
         console.log("✅ User updated successfully:", updatedUser);
         return updatedUser;
@@ -196,7 +208,11 @@ export async function addBoss(bossData) {
         if (existingBoss) {
             throw new Error("Boss with this email already exists");
         }
-        const newBoss = await prisma.boss.create({ data: validatedData });
+        const dataForDb = {
+            ...validatedData,
+            phone: validatedData.phone ?? null,
+        };
+        const newBoss = await prisma.boss.create({ data: dataForDb });
         console.log("✅ Boss created successfully:", newBoss);
         return newBoss;
     }
@@ -214,7 +230,7 @@ export async function updateBoss(bossId, updateData) {
         }
         const updatedBoss = await prisma.boss.update({
             where: { id: bossId },
-            data: validatedData,
+            data: removeUndefined(validatedData),
         });
         console.log("✅ Boss updated successfully:", updatedBoss);
         return updatedBoss;
@@ -274,7 +290,11 @@ export async function addOrganizer(organizerData) {
         if (existingOrganizer) {
             throw new Error("Organizer with this email already exists");
         }
-        const newOrganizer = await prisma.organizer.create({ data: validatedData });
+        const dataForDb = {
+            ...validatedData,
+            phone: validatedData.phone ?? null,
+        };
+        const newOrganizer = await prisma.organizer.create({ data: dataForDb });
         console.log("✅ Organizer created successfully:", newOrganizer);
         return newOrganizer;
     }
@@ -292,7 +312,7 @@ export async function updateOrganizer(organizerId, updateData) {
         }
         const updatedOrganizer = await prisma.organizer.update({
             where: { id: organizerId },
-            data: validatedData,
+            data: removeUndefined(validatedData),
         });
         console.log("✅ Organizer updated successfully:", updatedOrganizer);
         return updatedOrganizer;
@@ -346,7 +366,11 @@ export async function getAllOrganizers() {
 export async function addAdventure(adventureData) {
     try {
         const validatedData = AdventureSchema.parse(adventureData);
-        const newAdventure = await prisma.adventure.create({ data: validatedData });
+        const dataForDb = {
+            ...validatedData,
+            bossId: validatedData.bossId ?? null,
+        };
+        const newAdventure = await prisma.adventure.create({ data: dataForDb });
         console.log("✅ Adventure created successfully:", newAdventure);
         return newAdventure;
     }
@@ -364,7 +388,7 @@ export async function updateAdventure(adventureId, updateData) {
         }
         const updatedAdventure = await prisma.adventure.update({
             where: { id: adventureId },
-            data: validatedData,
+            data: removeUndefined(validatedData),
         });
         console.log("✅ Adventure updated successfully:", updatedAdventure);
         return updatedAdventure;
@@ -423,7 +447,13 @@ export async function getAllAdventures() {
 export async function addEvent(eventData) {
     try {
         const validatedData = EventSchema.parse(eventData);
-        const newEvent = await prisma.event.create({ data: validatedData });
+        const dataForDb = {
+            ...validatedData,
+            venue: validatedData.venue ?? null,
+            venue_link: validatedData.venue_link ?? null,
+            adventureId: validatedData.adventureId ?? null,
+        };
+        const newEvent = await prisma.event.create({ data: dataForDb });
         console.log("✅ Event created successfully:", newEvent);
         return newEvent;
     }
@@ -441,7 +471,7 @@ export async function updateEvent(eventId, updateData) {
         }
         const updatedEvent = await prisma.event.update({
             where: { id: eventId },
-            data: validatedData,
+            data: removeUndefined(validatedData),
         });
         console.log("✅ Event updated successfully:", updatedEvent);
         return updatedEvent;
@@ -591,7 +621,7 @@ export async function updatePendingUser(requestId, updateData) {
         }
         const updatedPendingUser = await prisma.pendingUser.update({
             where: { requestId },
-            data: validatedData,
+            data: removeUndefined(validatedData),
         });
         console.log("✅ Pending user updated successfully:", updatedPendingUser);
         return updatedPendingUser;

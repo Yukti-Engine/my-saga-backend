@@ -1,6 +1,3 @@
-// // controllers/userController.js
-// import type { Request, Response } from "express";
-// import { users } from "../models/db.js";
 import { updateUser } from "../dbms/src/user-helpers.js"; // change path as needed
 import { prisma } from "../dbms/src/client.js"; // or import prisma directly for queries
 export const updateUserProfile = async (req, res) => {

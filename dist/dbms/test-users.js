@@ -14,7 +14,7 @@ addAdventureMember, deleteAdventureMember, getAdventureMembers,
 // Pending User operations
 addPendingUser, updatePendingUser, deletePendingUser, getPendingUser, getAllPendingUsers, 
 // Connection
-closeConnection, } from "./src/database-operations";
+closeConnection, } from "./src/database-operations.js";
 async function testAllDatabaseOperations() {
     console.log("🚀 Starting Comprehensive Database Operations Test\n");
     try {

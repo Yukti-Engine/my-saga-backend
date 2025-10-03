@@ -1,4 +1,4 @@
-import { prisma } from "./client";
+import { prisma } from "./client.js";
 const entity = (process.argv[2] || "").toLowerCase();
 const idRaw = process.argv[3];
 if (!entity || !idRaw) {

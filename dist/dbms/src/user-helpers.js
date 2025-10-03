@@ -1,4 +1,4 @@
-import { prisma } from "./client";
+import { prisma } from "./client.js";
 /* ----------------- SIGNUP HELPERS ----------------- */
 /**
  * Persist a pending user request with a 5 minute expiry.
@@ -51,8 +51,8 @@ export async function createUser(name, phone, email, _dob, gender) {
         data: {
             name,
             email,
-            phone: phone || undefined,
-            gender: gender || undefined,
+            phone: phone || null,
+            gender: gender || null,
             username: base,
         },
     });
@@ -63,14 +63,14 @@ export async function createUser(name, phone, email, _dob, gender) {
  * Find user by email OR phone (first match). If both undefined, returns null.
  */
 export async function findUserByEmailOrPhone(email, phone) {
-    if (!email && !phone)
-        return null;
-    if (email && phone) {
-        return prisma.user.findFirst({ where: { OR: [{ email }, { phone }] } });
-    }
-    if (email)
-        return prisma.user.findUnique({ where: { email } });
-    return prisma.user.findFirst({ where: { phone } });
+    return prisma.user.findFirst({
+        where: {
+            OR: [
+                ...(email ? [{ email }] : []),
+                ...(phone ? [{ phone }] : []),
+            ],
+        },
+    });
 }
 /**
  * Update user by id, allowing username, bio, and/or email.
