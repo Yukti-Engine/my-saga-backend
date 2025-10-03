@@ -39,7 +39,7 @@
 //   });
 // };
 import type { Request, Response } from "express";
-import { updateUser } from "../dbms/packages/user-helpers/user-helpers.js"; // change path as needed
+import { updateUser } from "../dbms/src/user-helpers.js"; // change path as needed
 import { prisma } from "../dbms/src/client.js"; // or import prisma directly for queries
 
 export const updateUserProfile = async (req: Request, res: Response) => {
@@ -65,14 +65,9 @@ export const updateUserProfile = async (req: Request, res: Response) => {
   return res.json({
     message: "Profile updated successfully",
     user: {
-      id: updatedUser.id,
-      name: updatedUser.name,
-      phone: updatedUser.phone,
       email: updatedUser.email,
       username: updatedUser.username,
-      bio: updatedUser.bio,
-      dob: updatedUser.dob,
-      gender: updatedUser.gender,
+      bio: updatedUser.bio
     },
   });
 };

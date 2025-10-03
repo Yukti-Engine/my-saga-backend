@@ -145,7 +145,7 @@ import {
   removePendingUser,
   createUser,
   findUserByEmailOrPhone
-} from "../dbms/packages/user-helpers/user-helpers.js"; // relative path from your backend src/controllers/
+} from "../dbms/src/user-helpers.js"; // relative path from your backend src/controllers/
 /* Adjust the import path if your controller is located elsewhere in the project structure */
 
 import { sendOtp, verify } from "../services/otpService.js";
