@@ -1,5 +1,17 @@
+// import type { Request, Response } from "express";
+// import { randomBytes } from "crypto";
+// import { 
+//   createPendingUser,
+//   findPendingUser,
+//   removePendingUser,
+//   createUser,
+//   //users
+//   findUserByEmailOrPhone
+// } from "../../dbms/packages/user-helpers/user-helpers.ts";
+// import { sendOtp, verify } from "../services/otpService.js";
 import { randomBytes } from "crypto";
-import { createPendingUser, findPendingUser, removePendingUser, createUser, users } from "../models/db.js";
+import { createPendingUser, findPendingUser, removePendingUser, createUser, findUserByEmailOrPhone } from "../dbms/src/user-helpers.js"; // relative path from your backend src/controllers/
+/* Adjust the import path if your controller is located elsewhere in the project structure */
 import { sendOtp, verify } from "../services/otpService.js";
 /* ----------------- SIGNUP FLOW ----------------- */
 export const signupRequestOtp = async (req, res) => {
@@ -8,12 +20,12 @@ export const signupRequestOtp = async (req, res) => {
         return res.status(400).json({ error: "Missing required fields" });
     }
     const requestId = await sendOtp(phone);
-    createPendingUser(name, phone, email, dob, gender, requestId);
+    await createPendingUser(name, phone, email, dob, gender, requestId);
     return res.json({ message: "OTP sent", requestId });
 };
 export const signupVerifyOtp = async (req, res) => {
     const { requestId, otp } = req.body;
-    const pendingUser = findPendingUser(requestId);
+    const pendingUser = await findPendingUser(requestId);
     if (!pendingUser) {
         return res.status(400).json({ error: "Invalid requestId" });
     }
@@ -24,19 +36,19 @@ export const signupVerifyOtp = async (req, res) => {
         return res.status(400).json({ error: "Invalid OTP" });
     }
     // OTP valid → create real user
-    createUser(pendingUser.name, pendingUser.phone, pendingUser.email, pendingUser.dob, pendingUser.gender);
-    removePendingUser(requestId);
+    await createUser(pendingUser.name, pendingUser.phone, pendingUser.email, pendingUser.dob, pendingUser.gender);
+    await removePendingUser(requestId);
     return res.json({ message: "Signup successful" });
 };
 export const signupResendOtp = async (req, res) => {
     const { requestId } = req.body;
-    const pendingUser = findPendingUser(requestId);
+    const pendingUser = await findPendingUser(requestId);
     if (!pendingUser) {
         return res.status(400).json({ error: "Invalid requestId" });
     }
     const newRequestId = await sendOtp(pendingUser.phone);
-    createPendingUser(pendingUser.name, pendingUser.phone, pendingUser.email, pendingUser.dob, pendingUser.gender, newRequestId);
-    removePendingUser(requestId);
+    await createPendingUser(pendingUser.name, pendingUser.phone, pendingUser.email, pendingUser.dob, pendingUser.gender, newRequestId);
+    await removePendingUser(requestId);
     return res.json({ message: "OTP resent", newRequestId });
 };
 /* ----------------- LOGIN FLOW ----------------- */
@@ -45,7 +57,7 @@ export const loginRequestOtp = async (req, res) => {
     if (!phone) {
         return res.status(400).json({ error: "Phone required" });
     }
-    const user = users.find((u) => u.phone === phone);
+    const user = await findUserByEmailOrPhone(undefined, phone);
     if (!user) {
         return res.status(404).json({ error: "User not found" });
     }
@@ -55,7 +67,7 @@ export const loginRequestOtp = async (req, res) => {
 };
 export const loginVerifyOtp = async (req, res) => {
     const { phone, otp } = req.body;
-    const potentialUser = users.find((u) => u.phone === phone);
+    const potentialUser = await findUserByEmailOrPhone(undefined, phone);
     if (!potentialUser) {
         return res.status(404).json({ error: "User not found" });
     }
@@ -65,11 +77,9 @@ export const loginVerifyOtp = async (req, res) => {
             return res.status(400).json({ error: "Invalid or expired OTP" });
         }
         const accessToken = randomBytes(16).toString("hex");
-        const index = users.findIndex((u) => u.phone === phone);
-        if (users[index])
-            users[index].accessToken = accessToken;
-        else
-            return res.status(500);
+        // You may want to update user's accessToken in DB with a helper function
+        // For now, just return as part of response
+        // If you need to persist, implement updateUser in your helpers
         return res.json({
             message: "Login successful",
             accessToken: accessToken,
@@ -83,42 +93,11 @@ export const loginVerifyOtp = async (req, res) => {
 };
 export const loginResendOtp = async (req, res) => {
     const { phone } = req.body;
-    const user = users.find((u) => u.phone === phone);
+    const user = await findUserByEmailOrPhone(undefined, phone);
     if (!user) {
         return res.status(404).json({ error: "User not found" });
     }
-    const requestId = await sendOtp(user.phone);
+    const requestId = await sendOtp(phone);
     return res.json({ requestId: requestId, phone: phone });
 };
-/* ----------------- UPDATE PROFILE ----------------- */
-// export const updateUserProfile = (req: Request, res: Response) => {
-//   const { accessToken, username, bio, email } = req.body;
-//   if (!accessToken) {
-//     return res.status(400).json({ error: "Access token required" });
-//   }
-//   // Find the user by accessToken
-//   const user = users.find((u) => u.accessToken === accessToken);
-//   if (!user) {
-//     return res
-//       .status(404)
-//       .json({ error: "Invalid access token or user not found" });
-//   }
-//   // Update only the provided fields
-//   if (username !== undefined) user.username = username;
-//   if (bio !== undefined) user.bio = bio;
-//   if (email !== undefined) user.email = email;
-//   return res.json({
-//     message: "Profile updated successfully",
-//     user: {
-//       id: user.id,
-//       name: user.name,
-//       phone: user.phone,
-//       email: user.email,
-//       username: user.username,
-//       bio: user.bio,
-//       dob: user.dob,
-//       gender: user.gender,
-//     },
-//   });
-// };
 //# sourceMappingURL=authController.js.map
