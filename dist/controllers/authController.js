@@ -1,7 +1,6 @@
 import { randomBytes } from "crypto";
-import { prisma } from "../dbms/src/client.js"; // Adjust the import path as necessary
-import { createPendingUser, findPendingUser, removePendingUser, createUser, findUserByEmailOrPhone } from "../dbms/src/user-helpers.js"; // relative path from your backend src/controllers/
-/* Adjust the import path if your controller is located elsewhere in the project structure */
+import db from "../dbms/db.js"; // ✅ use db everywhere
+import { createPendingUser, findPendingUser, removePendingUser, createUser, findUserByPhone } from "../dbms/user-helpers.js";
 import { sendOtp, verify } from "../services/otpService.js";
 /* ----------------- SIGNUP FLOW ----------------- */
 export const signupRequestOtp = async (req, res) => {
@@ -9,37 +8,55 @@ export const signupRequestOtp = async (req, res) => {
     if (!name || !dob || !gender || !phone) {
         return res.status(400).json({ error: "Missing required fields" });
     }
-    const requestId = await sendOtp(phone);
-    await createPendingUser(name, phone, email, dob, gender, requestId);
-    return res.json({ message: "OTP sent", requestId });
+    try {
+        const requestId = await sendOtp(phone);
+        await createPendingUser(name, phone, email, dob, gender, requestId, db); // use db
+        return res.json({ message: "OTP sent", requestId });
+    }
+    catch (err) {
+        console.error("Error in signupRequestOtp:", err);
+        return res.status(500).json({ error: "Failed to send OTP" });
+    }
 };
 export const signupVerifyOtp = async (req, res) => {
     const { requestId, otp } = req.body;
-    const pendingUser = await findPendingUser(requestId);
-    if (!pendingUser) {
-        return res.status(400).json({ error: "Invalid requestId" });
+    try {
+        const pendingUser = await findPendingUser(requestId, db);
+        if (!pendingUser) {
+            return res.status(400).json({ error: "Invalid requestId" });
+        }
+        if (pendingUser.expires_at < new Date()) {
+            return res.status(400).json({ error: "OTP expired" });
+        }
+        const verified = await verify(pendingUser.phone, otp);
+        if (!verified) {
+            return res.status(400).json({ error: "Invalid OTP" });
+        }
+        await createUser(pendingUser.name, pendingUser.phone, pendingUser.email, pendingUser.dob, pendingUser.gender, db);
+        await removePendingUser(requestId, db);
+        return res.json({ message: "Signup successful" });
     }
-    if (pendingUser.expiresAt < new Date()) {
-        return res.status(400).json({ error: "OTP expired" });
+    catch (err) {
+        console.error("Error in signupVerifyOtp:", err);
+        return res.status(500).json({ error: "Verification failed" });
     }
-    if (!(await verify(pendingUser.phone, otp))) {
-        return res.status(400).json({ error: "Invalid OTP" });
-    }
-    // OTP valid → create real user
-    await createUser(pendingUser.name, pendingUser.phone, pendingUser.email, pendingUser.dob, pendingUser.gender);
-    await removePendingUser(requestId);
-    return res.json({ message: "Signup successful" });
 };
 export const signupResendOtp = async (req, res) => {
     const { requestId } = req.body;
-    const pendingUser = await findPendingUser(requestId);
-    if (!pendingUser) {
-        return res.status(400).json({ error: "Invalid requestId" });
+    try {
+        const pendingUser = await findPendingUser(requestId, db);
+        if (!pendingUser) {
+            return res.status(400).json({ error: "Invalid requestId" });
+        }
+        const newRequestId = await sendOtp(pendingUser.phone);
+        await createPendingUser(pendingUser.name, pendingUser.phone, pendingUser.email, pendingUser.dob, pendingUser.gender, newRequestId, db);
+        await removePendingUser(requestId, db);
+        return res.json({ message: "OTP resent", newRequestId });
     }
-    const newRequestId = await sendOtp(pendingUser.phone);
-    await createPendingUser(pendingUser.name, pendingUser.phone, pendingUser.email, pendingUser.dob, pendingUser.gender, newRequestId);
-    await removePendingUser(requestId);
-    return res.json({ message: "OTP resent", newRequestId });
+    catch (err) {
+        console.error("Error in signupResendOtp:", err);
+        return res.status(500).json({ error: "Failed to resend OTP" });
+    }
 };
 /* ----------------- LOGIN FLOW ----------------- */
 export const loginRequestOtp = async (req, res) => {
@@ -47,49 +64,64 @@ export const loginRequestOtp = async (req, res) => {
     if (!phone) {
         return res.status(400).json({ error: "Phone required" });
     }
-    const user = await findUserByEmailOrPhone(undefined, phone);
-    if (!user) {
-        return res.status(404).json({ error: "User not found" });
+    try {
+        const user = await findUserByPhone(phone, db);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+        await sendOtp(phone);
+        return res.json({ message: "OTP sent", phone });
     }
-    // send OTP
-    await sendOtp(phone);
-    return res.json({ phone: phone });
+    catch (err) {
+        console.error("Error in loginRequestOtp:", err);
+        return res.status(500).json({ error: "Failed to send OTP" });
+    }
 };
 export const loginVerifyOtp = async (req, res) => {
     const { phone, otp } = req.body;
-    const potentialUser = await findUserByEmailOrPhone(undefined, phone);
-    if (!potentialUser) {
-        return res.status(404).json({ error: "User not found" });
-    }
     try {
+        const potentialUser = await findUserByPhone(phone, db);
+        if (!potentialUser) {
+            return res.status(404).json({ error: "User not found" });
+        }
         const verified = await verify(phone, otp);
         if (!verified) {
             return res.status(400).json({ error: "Invalid or expired OTP" });
         }
         const accessToken = randomBytes(16).toString("hex");
-        // Store the access token in the database
-        await prisma.user.update({
-            where: { id: potentialUser.id },
-            data: { accessToken },
-        });
+        // Store access token in DB
+        const updateQuery = `
+      UPDATE users
+      SET access_token = $1
+      WHERE id = $2
+      RETURNING *;
+    `;
+        const result = await db.query(updateQuery, [accessToken, potentialUser.id]);
+        const updatedUser = result.rows[0];
         return res.json({
             message: "Login successful",
             accessToken: accessToken,
-            uid: potentialUser.id,
+            uid: updatedUser.id,
         });
     }
     catch (err) {
-        console.error("Error during OTP verification:", err);
+        console.error("Error in loginVerifyOtp:", err);
         return res.status(500).json({ error: "OTP verification failed" });
     }
 };
 export const loginResendOtp = async (req, res) => {
     const { phone } = req.body;
-    const user = await findUserByEmailOrPhone(undefined, phone);
-    if (!user) {
-        return res.status(404).json({ error: "User not found" });
+    try {
+        const user = await findUserByPhone(phone, db);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+        const requestId = await sendOtp(phone);
+        return res.json({ message: "OTP resent", requestId, phone });
     }
-    const requestId = await sendOtp(phone);
-    return res.json({ requestId: requestId, phone: phone });
+    catch (err) {
+        console.error("Error in loginResendOtp:", err);
+        return res.status(500).json({ error: "Failed to resend OTP" });
+    }
 };
 //# sourceMappingURL=authController.js.map

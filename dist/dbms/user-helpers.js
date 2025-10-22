@@ -1,0 +1,146 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createPendingUser = createPendingUser;
+exports.findPendingUser = findPendingUser;
+exports.removePendingUser = removePendingUser;
+exports.createUser = createUser;
+exports.getUser = getUser;
+exports.getAllUsers = getAllUsers;
+exports.deleteUser = deleteUser;
+exports.findUserByPhone = findUserByPhone;
+exports.updateUser = updateUser;
+/* ----------------- SIGNUP HELPERS ----------------- */
+/**
+ * Persist a pending user request with a 5 minute expiry.
+ * Returns the requestId (unchanged), mirroring the in-memory helper.
+ */
+async function createPendingUser(name, phone, email, dob, gender, requestId, pool) {
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    const query = `
+    INSERT INTO pending_users (request_id, name, phone, email, dob, gender, expires_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ON CONFLICT (request_id) DO UPDATE
+    SET name = EXCLUDED.name, phone = EXCLUDED.phone, email = EXCLUDED.email,
+        dob = EXCLUDED.dob, gender = EXCLUDED.gender, expires_at = EXCLUDED.expires_at;
+  `;
+    await pool.query(query, [requestId, name, phone, email, dob, gender, expiresAt]);
+    return requestId;
+}
+/**
+ * Find a pending user by requestId.
+ */
+async function findPendingUser(requestId, pool) {
+    const query = 'SELECT * FROM pending_users WHERE request_id = $1';
+    const result = await pool.query(query, [requestId]);
+    return result.rows[0] || null;
+}
+/**
+ * Remove a pending user by requestId. No-op if not found.
+ */
+async function removePendingUser(requestId, pool) {
+    const query = 'DELETE FROM pending_users WHERE request_id = $1';
+    await pool.query(query, [requestId]);
+}
+/**
+ * Create a persisted user. Schema requires a unique username,
+ * so we derive it from email's local part or the name.
+ * Note: dob is not stored on User model; it exists on PendingUser only.
+ */
+async function createUser(name, phone, email, _dob, gender, pool) {
+    // derive a base username without uniqueness checks
+    const emailLocal = email.split("@")[0] || "";
+    let baseUsername = (emailLocal || name || "user")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 24) || "user";
+    // Ensure username is unique
+    let username = baseUsername;
+    let counter = 1;
+    while (true) {
+        const checkQuery = 'SELECT id FROM users WHERE username = $1';
+        const checkResult = await pool.query(checkQuery, [username]);
+        if (checkResult.rows.length === 0) {
+            break;
+        }
+        username = `${baseUsername}${counter++}`;
+    }
+    const query = `
+    INSERT INTO users (name, email, phone, gender, username)
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING *;
+  `;
+    const result = await pool.query(query, [name, email, phone || null, gender || null, username]);
+    return result.rows[0];
+}
+//User helpers
+async function getUser(id, pool) {
+    const query = 'SELECT * FROM users WHERE id = $1';
+    const result = await pool.query(query, [id]);
+    console.log("Fetched User:", result.rows[0]);
+    return result.rows[0];
+}
+async function getAllUsers(pool) {
+    const query = 'SELECT * FROM users';
+    const result = await pool.query(query);
+    console.log("All Users:", result.rows);
+    return result.rows;
+}
+async function deleteUser(id, pool) {
+    const query = 'DELETE FROM users WHERE id = $1 RETURNING *';
+    const result = await pool.query(query, [id]);
+    console.log("Deleted User:", result.rows[0]);
+    return result.rows[0];
+}
+/* ----------------- LOGIN HELPERS ----------------- */
+/**
+ * Find user by email OR phone (first match). If both undefined, returns null.
+ */
+async function findUserByPhone(phone, pool) {
+    const query = 'SELECT * FROM users WHERE phone= $1';
+    const result = await pool.query(query, [phone]);
+    console.log("Fetched User:", result.rows[0]);
+    return result.rows[0];
+}
+/**
+ * Update user by id, allowing username, bio, and/or email.
+ * Returns the updated user or null if not found.
+ */
+async function updateUser(id, updates, pool) {
+    const setClauses = [];
+    const params = [];
+    let paramIndex = 1;
+    if (typeof updates.username !== "undefined") {
+        setClauses.push(`username = $${paramIndex++}`);
+        params.push(updates.username);
+    }
+    if (typeof updates.bio !== "undefined") {
+        setClauses.push(`bio = $${paramIndex++}`);
+        params.push(updates.bio);
+    }
+    if (typeof updates.email !== "undefined") {
+        setClauses.push(`email = $${paramIndex++}`);
+        params.push(updates.email);
+    }
+    if (setClauses.length === 0) {
+        const currentQuery = 'SELECT * FROM users WHERE id = $1';
+        const currentResult = await pool.query(currentQuery, [id]);
+        return currentResult.rows[0] || null;
+    }
+    const query = `
+    UPDATE users
+    SET ${setClauses.join(', ')}
+    WHERE id = $${paramIndex}
+    RETURNING *;
+  `;
+    params.push(id);
+    try {
+        const result = await pool.query(query, params);
+        return result.rows[0] || null;
+    }
+    catch (error) {
+        console.error("Error updating user:", error);
+        return null;
+    }
+}
+//# sourceMappingURL=user-helpers.js.map

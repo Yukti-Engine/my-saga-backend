@@ -1,10 +1,18 @@
-// routes/userRoutes.js
+// // routes/userRoutes.js
+// import express from "express";
+// import { updateUserProfile } from "../controllers/userController.js"; 
+// // or better: move this controller to userController.js
+
+// const router = express.Router();
+
+// router.put("/update-profile", updateUserProfile);
+
+// export default router;
 import express from "express";
-import { updateUserProfile } from "../controllers/userController.js"; 
-// or better: move this controller to userController.js
+import { updateUserProfile } from "../controllers/userController.js";
 
 const router = express.Router();
 
-router.put("/update-profile", updateUserProfile);
+router.post("/update-profile", updateUserProfile);
 
 export default router;
