@@ -5,9 +5,9 @@
     "outDir": "./dist",
 
     /* Environment Settings */
-    "module": "nodenext",
-    "target": "esnext",
-    "moduleResolution": "nodenext",
+    "module": "esnext",
+    "target": "es2020",
+    "moduleResolution": "node",
     "types": ["node"],
 
     /* Output */

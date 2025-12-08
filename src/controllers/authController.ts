@@ -7,6 +7,7 @@ import {
   removePendingUser,
   createUser,
   findUserByPhone,
+  updateAccessToken
 } from "../dbms/user-helpers.js";
 import { sendOtp, verify } from "../services/otpService.js";
 
@@ -91,14 +92,7 @@ export const loginVerifyOtp = async (req: Request, res: Response) => {
 
     const accessToken = randomBytes(16).toString("hex");
 
-    const updateQuery = `
-      UPDATE users
-      SET access_token = $1
-      WHERE id = $2
-      RETURNING *;
-    `;
-    const result = await pool.query(updateQuery, [accessToken, potentialUser.id]);
-    const updatedUser = result.rows[0];
+    const updatedUser = await updateAccessToken(potentialUser.id, accessToken, pool);
 
     return res.json({
       message: "Login successful",

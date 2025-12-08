@@ -1,14 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.createPendingOrganiser = createPendingOrganiser;
-exports.findPendingOrganiser = findPendingOrganiser;
-exports.removePendingOrganiser = removePendingOrganiser;
-exports.addOrganizer = addOrganizer;
-exports.updateOrganizer = updateOrganizer;
-exports.deleteOrganizer = deleteOrganizer;
-exports.getOrganizer = getOrganizer;
-exports.getAllOrganizers = getAllOrganizers;
-async function createPendingOrganiser(email, phone, reason, requestId, pool) {
+export async function createPendingOrganiser(email, phone, reason, requestId, pool) {
     const query = `
     INSERT INTO pending_organisers (request_id, email, phone, reason)
     VALUES ($1, $2, $3, $4)
@@ -18,16 +8,16 @@ async function createPendingOrganiser(email, phone, reason, requestId, pool) {
     await pool.query(query, [requestId, email, phone, reason]);
     return requestId;
 }
-async function findPendingOrganiser(requestId, pool) {
+export async function findPendingOrganiser(requestId, pool) {
     const query = 'SELECT * FROM pending_organisers WHERE request_id = $1';
     const result = await pool.query(query, [requestId]);
     return result.rows[0] || null;
 }
-async function removePendingOrganiser(requestId, pool) {
+export async function removePendingOrganiser(requestId, pool) {
     const query = 'DELETE FROM pending_organisers WHERE request_id = $1';
     await pool.query(query, [requestId]);
 }
-async function addOrganizer(data, pool) {
+export async function addOrganizer(data, pool) {
     const query = `
     INSERT INTO organizers (name, email, username, phone, credits)
     VALUES ($1, $2, $3, $4, $5)
@@ -39,7 +29,7 @@ async function addOrganizer(data, pool) {
     console.log("Added Organizer:", result.rows[0]);
     return result.rows[0];
 }
-async function updateOrganizer(id, updates, pool) {
+export async function updateOrganizer(id, updates, pool) {
     const setClauses = [];
     const params = [];
     let paramIndex = 1;
@@ -80,19 +70,19 @@ async function updateOrganizer(id, updates, pool) {
     console.log("Updated Organizer:", result.rows[0]);
     return result.rows[0];
 }
-async function deleteOrganizer(id, pool) {
+export async function deleteOrganizer(id, pool) {
     const query = 'DELETE FROM organizers WHERE id = $1 RETURNING *';
     const result = await pool.query(query, [id]);
     console.log("Deleted Organizer:", result.rows[0]);
     return result.rows[0];
 }
-async function getOrganizer(id, pool) {
+export async function getOrganizer(id, pool) {
     const query = 'SELECT * FROM organizers WHERE id = $1';
     const result = await pool.query(query, [id]);
     console.log("Fetched Organizer:", result.rows[0]);
     return result.rows[0];
 }
-async function getAllOrganizers(pool) {
+export async function getAllOrganizers(pool) {
     const query = 'SELECT * FROM organizers';
     const result = await pool.query(query);
     console.log("All Organizers:", result.rows);

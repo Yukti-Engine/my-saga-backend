@@ -1,14 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.createPendingBoss = createPendingBoss;
-exports.findPendingBoss = findPendingBoss;
-exports.removePendingBoss = removePendingBoss;
-exports.addBoss = addBoss;
-exports.updateBoss = updateBoss;
-exports.deleteBoss = deleteBoss;
-exports.getBoss = getBoss;
-exports.getAllBosses = getAllBosses;
-async function createPendingBoss(email, phone, reason, requestId, pool) {
+export async function createPendingBoss(email, phone, reason, requestId, pool) {
     const query = `
     INSERT INTO pending_bosses (request_id, email, phone, reason)
     VALUES ($1, $2, $3, $4)
@@ -18,16 +8,16 @@ async function createPendingBoss(email, phone, reason, requestId, pool) {
     await pool.query(query, [requestId, email, phone, reason]);
     return requestId;
 }
-async function findPendingBoss(requestId, pool) {
+export async function findPendingBoss(requestId, pool) {
     const query = 'SELECT * FROM pending_bosses WHERE request_id = $1';
     const result = await pool.query(query, [requestId]);
     return result.rows[0] || null;
 }
-async function removePendingBoss(requestId, pool) {
+export async function removePendingBoss(requestId, pool) {
     const query = 'DELETE FROM pending_bosses WHERE request_id = $1';
     await pool.query(query, [requestId]);
 }
-async function addBoss(data, pool) {
+export async function addBoss(data, pool) {
     const query = `
     INSERT INTO bosses (name, email, username, phone, credits)
     VALUES ($1, $2, $3, $4, $5)
@@ -39,7 +29,7 @@ async function addBoss(data, pool) {
     console.log("Added Boss:", result.rows[0]);
     return result.rows[0];
 }
-async function updateBoss(id, updates, pool) {
+export async function updateBoss(id, updates, pool) {
     const setClauses = [];
     const params = [];
     let paramIndex = 1;
@@ -80,19 +70,19 @@ async function updateBoss(id, updates, pool) {
     console.log("Updated Boss:", result.rows[0]);
     return result.rows[0];
 }
-async function deleteBoss(id, pool) {
+export async function deleteBoss(id, pool) {
     const query = 'DELETE FROM bosses WHERE id = $1 RETURNING *';
     const result = await pool.query(query, [id]);
     console.log("Deleted Boss:", result.rows[0]);
     return result.rows[0];
 }
-async function getBoss(id, pool) {
+export async function getBoss(id, pool) {
     const query = 'SELECT * FROM bosses WHERE id = $1';
     const result = await pool.query(query, [id]);
     console.log("Fetched Boss:", result.rows[0]);
     return result.rows[0];
 }
-async function getAllBosses(pool) {
+export async function getAllBosses(pool) {
     const query = 'SELECT * FROM bosses';
     const result = await pool.query(query);
     console.log("All Bosses:", result.rows);

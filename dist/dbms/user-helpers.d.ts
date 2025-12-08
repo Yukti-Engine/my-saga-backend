@@ -1,4 +1,3 @@
-import { Pool } from 'pg';
 interface PendingUser {
     request_id: string;
     name: string;
@@ -28,7 +27,7 @@ interface User {
  * Persist a pending user request with a 5 minute expiry.
  * Returns the requestId (unchanged), mirroring the in-memory helper.
  */
-export declare function createPendingUser(name: string, phone: string, email: string, dob: string, gender: string, requestId: string, pool: Pool): Promise<string>;
+export declare function createPendingUser(name: string, phone: string, email: string, dob: string, gender: string, requestId: string, pool: any): Promise<string>;
 /**
  * Find a pending user by requestId.
  */
@@ -59,5 +58,6 @@ export declare function updateUser(id: number, updates: {
     bio?: string;
     email?: string;
 }, pool: any): Promise<User | null>;
+export declare function updateAccessToken(id: number, accessToken: string | null, pool: any): Promise<any>;
 export {};
 //# sourceMappingURL=user-helpers.d.ts.map

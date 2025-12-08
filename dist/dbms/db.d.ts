@@ -1,4 +1,4 @@
-import { Pool } from "pg";
-declare const db: Pool;
-export default db;
+import { Pool } from 'pg';
+declare const pool: Pool;
+export default pool;
 //# sourceMappingURL=db.d.ts.map
