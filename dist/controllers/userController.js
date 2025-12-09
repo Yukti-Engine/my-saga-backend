@@ -1,7 +1,17 @@
 import pool from "../dbms/db.js";
-import { getUser } from "../dbms/user-helpers.js"; // Ensure this file exports updateUser correctly
+import { updateUser, getUser } from "../dbms/user-helpers.js"; // Ensure this file exports updateUser correctly
 export const updateUserProfile = async (req, res) => {
-    const { accessToken, username, bio, email } = req.body;
+    const { uid, accessToken, updates } = req.body;
+    const user = await getUser(uid, pool);
+    if (user)
+        if (user.access_token == accessToken) {
+            const updatedUser = await updateUser(uid, updates, pool);
+            return res.json(updatedUser);
+        }
+        else
+            return res.status(500).json({ "error": "Access token does not match" });
+    else
+        return res.status(500).json({ "error": "No such user" });
 };
 export const getUserDashboard = async (req, res) => {
     const { uid, accessToken } = req.body;
