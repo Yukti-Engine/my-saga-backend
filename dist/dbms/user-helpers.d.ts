@@ -32,6 +32,8 @@ export declare function updateUser(id: number, updates: {
     username?: string;
     bio?: string;
     email?: string;
+    setting_1?: boolean;
+    setting_2?: boolean;
 }, pool: any): Promise<any>;
 export declare function updateAccessToken(id: number, accessToken: string | null, pool: any): Promise<any>;
 //# sourceMappingURL=user-helpers.d.ts.map

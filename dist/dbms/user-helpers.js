@@ -111,6 +111,14 @@ export async function updateUser(id, updates, pool) {
         setClauses.push(`email = $${paramIndex++}`);
         params.push(updates.email);
     }
+    if (typeof updates.setting_1 !== "undefined") {
+        setClauses.push(`setting_1 = $${paramIndex++}`);
+        params.push(updates.setting_1);
+    }
+    if (typeof updates.setting_2 !== "undefined") {
+        setClauses.push(`setting_2 = $${paramIndex++}`);
+        params.push(updates.setting_2);
+    }
     if (setClauses.length === 0) {
         const currentQuery = 'SELECT * FROM users WHERE id = $1';
         const currentResult = await pool.query(currentQuery, [id]);

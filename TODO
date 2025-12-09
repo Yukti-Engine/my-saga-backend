@@ -1,4 +1,3 @@
 Solve the deprecation  warningthat appears for npm run dev
 Dashboard should also have number of messages(notifications) recieved
 there has to be user.adventures route which will all the current adventures' names and current adventures' number of people and out of those how many are online.
-upgrade the updateUserProfile route.
