@@ -47,19 +47,27 @@ export async function createUser(name, phone, email, _dob, gender, pool) {
     let username = baseUsername;
     let counter = 1;
     while (true) {
-        const checkQuery = 'SELECT id FROM users WHERE username = $1';
+        const checkQuery = "SELECT id FROM users WHERE username = $1";
         const checkResult = await pool.query(checkQuery, [username]);
         if (checkResult.rows.length === 0) {
             break;
         }
         username = `${baseUsername}${counter++}`;
     }
+    // Insert user including DOB
     const query = `
-    INSERT INTO users (name, email, phone, gender, username)
-    VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO users (name, email, phone, gender, dob, username)
+    VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *;
   `;
-    const result = await pool.query(query, [name, email, phone || null, gender || null, username]);
+    const result = await pool.query(query, [
+        name,
+        email,
+        phone || null,
+        gender || null,
+        _dob,
+        username,
+    ]);
     return result.rows[0];
 }
 //User helpers

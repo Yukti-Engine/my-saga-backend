@@ -48,7 +48,7 @@ export const signupVerifyOtp = async (req: Request, res: Response) => {
       pendingUser.name,
       pendingUser.phone,
       pendingUser.email,
-      pendingUser.dob,
+      new Date(pendingUser.dob),
       pendingUser.gender,
       pool
     );

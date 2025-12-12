@@ -1,63 +1,54 @@
-export async function createPendingOrganiser(email, phone, reason, requestId, pool) {
-    const query = `
-    INSERT INTO pending_organisers (request_id, email, phone, reason)
-    VALUES ($1, $2, $3, $4)
-    ON CONFLICT (request_id) DO UPDATE
-    SET email = EXCLUDED.email, phone = EXCLUDED.phone, reason = EXCLUDED.reason;
-  `;
-    await pool.query(query, [requestId, email, phone, reason]);
-    return requestId;
-}
-export async function findPendingOrganiser(requestId, pool) {
-    const query = 'SELECT * FROM pending_organisers WHERE request_id = $1';
-    const result = await pool.query(query, [requestId]);
-    return result.rows[0] || null;
-}
-export async function removePendingOrganiser(requestId, pool) {
-    const query = 'DELETE FROM pending_organisers WHERE request_id = $1';
-    await pool.query(query, [requestId]);
-}
-export async function addOrganizer(data, pool) {
-    const query = `
-    INSERT INTO organizers (name, email, username, phone, credits)
-    VALUES ($1, $2, $3, $4, $5)
-    RETURNING *;
-  `;
-    const result = await pool.query(query, [
-        data.name, data.email, data.username, data.phone || null, data.credits || 0
-    ]);
-    console.log("Added Organizer:", result.rows[0]);
+/* ----------------- SIGNUP HELPERS ----------------- */
+/**
+ * Persist a pending user request with a 5 minute expiry.
+ * Returns the requestId (unchanged), mirroring the in-memory helper.
+ */
+/**
+ * Find a pending user by requestId.
+ */
+/**
+ * Remove a pending user by requestId. No-op if not found.
+ */
+/**
+ * Create a persisted user. Schema requires a unique username,
+ * so we derive it from email's local part or the name.
+ * Note: dob is not stored on User model; it exists on PendingUser only.
+ */
+//User helpers
+export async function getOrganizer(id, pool) {
+    const query = 'SELECT * FROM organizers WHERE id = $1';
+    const result = await pool.query(query, [id]);
+    console.log("Fetched organizers:", result.rows[0]);
     return result.rows[0];
 }
+/* ----------------- LOGIN HELPERS ----------------- */
+/**
+ * Find user by email OR phone (first match). If both undefined, returns null.
+ */
+/**
+ * Update user by id, allowing username, bio, and/or email.
+ * Returns the updated user or null if not found.
+ */
 export async function updateOrganizer(id, updates, pool) {
     const setClauses = [];
     const params = [];
     let paramIndex = 1;
-    if (typeof updates.name !== "undefined") {
-        setClauses.push(`name = $${paramIndex++}`);
-        params.push(updates.name);
-    }
-    if (typeof updates.email !== "undefined") {
-        setClauses.push(`email = $${paramIndex++}`);
-        params.push(updates.email);
-    }
     if (typeof updates.username !== "undefined") {
         setClauses.push(`username = $${paramIndex++}`);
         params.push(updates.username);
     }
-    if (typeof updates.phone !== "undefined") {
-        setClauses.push(`phone = $${paramIndex++}`);
-        params.push(updates.phone);
+    if (typeof updates.setting_1 !== "undefined") {
+        setClauses.push(`setting_1 = $${paramIndex++}`);
+        params.push(updates.setting_1);
     }
-    if (typeof updates.credits !== "undefined") {
-        setClauses.push(`credits = $${paramIndex++}`);
-        params.push(updates.credits);
+    if (typeof updates.setting_2 !== "undefined") {
+        setClauses.push(`setting_2 = $${paramIndex++}`);
+        params.push(updates.setting_2);
     }
     if (setClauses.length === 0) {
         const currentQuery = 'SELECT * FROM organizers WHERE id = $1';
         const currentResult = await pool.query(currentQuery, [id]);
-        console.log("No updates for Organizer. Current Organizer:", currentResult.rows[0]);
-        return currentResult.rows[0];
+        return currentResult.rows[0] || null;
     }
     const query = `
     UPDATE organizers
@@ -66,26 +57,18 @@ export async function updateOrganizer(id, updates, pool) {
     RETURNING *;
   `;
     params.push(id);
-    const result = await pool.query(query, params);
-    console.log("Updated Organizer:", result.rows[0]);
-    return result.rows[0];
+    try {
+        const result = await pool.query(query, params);
+        return result.rows[0] || null;
+    }
+    catch (error) {
+        console.error("Error updating Organizers:", error);
+        return null;
+    }
 }
-export async function deleteOrganizer(id, pool) {
-    const query = 'DELETE FROM organizers WHERE id = $1 RETURNING *';
-    const result = await pool.query(query, [id]);
-    console.log("Deleted Organizer:", result.rows[0]);
+export async function updateAccessToken(id, accessToken, pool) {
+    const query = `UPDATE organizers SET access_token = $1 WHERE id = $2 returning *`;
+    const result = await pool.query(query, [accessToken, id]);
     return result.rows[0];
-}
-export async function getOrganizer(id, pool) {
-    const query = 'SELECT * FROM organizers WHERE id = $1';
-    const result = await pool.query(query, [id]);
-    console.log("Fetched Organizer:", result.rows[0]);
-    return result.rows[0];
-}
-export async function getAllOrganizers(pool) {
-    const query = 'SELECT * FROM organizers';
-    const result = await pool.query(query);
-    console.log("All Organizers:", result.rows);
-    return result.rows;
 }
 //# sourceMappingURL=organizer-helpers.js.map

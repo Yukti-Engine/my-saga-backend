@@ -1,30 +1,30 @@
-interface PendingOrganiser {
-    request_id: string;
-    email: string;
-    phone: string;
-    reason: string;
-}
-export interface CreateOrganizerData {
-    name: string;
-    email: string;
-    username: string;
-    phone?: string;
-    credits?: number;
-}
-export interface UpdateOrganizerData {
-    name?: string;
-    email?: string;
-    username?: string;
-    phone?: string;
-    credits?: number;
-}
-export declare function createPendingOrganiser(email: string, phone: string, reason: string, requestId: string, pool: any): Promise<string>;
-export declare function findPendingOrganiser(requestId: string, pool: any): Promise<PendingOrganiser | null>;
-export declare function removePendingOrganiser(requestId: string, pool: any): Promise<void>;
-export declare function addOrganizer(data: CreateOrganizerData, pool: any): Promise<any>;
-export declare function updateOrganizer(id: number, updates: UpdateOrganizerData, pool: any): Promise<any>;
-export declare function deleteOrganizer(id: number, pool: any): Promise<any>;
+/**
+ * Persist a pending user request with a 5 minute expiry.
+ * Returns the requestId (unchanged), mirroring the in-memory helper.
+ */
+/**
+ * Find a pending user by requestId.
+ */
+/**
+ * Remove a pending user by requestId. No-op if not found.
+ */
+/**
+ * Create a persisted user. Schema requires a unique username,
+ * so we derive it from email's local part or the name.
+ * Note: dob is not stored on User model; it exists on PendingUser only.
+ */
 export declare function getOrganizer(id: number, pool: any): Promise<any>;
-export declare function getAllOrganizers(pool: any): Promise<any>;
-export {};
+/**
+ * Find user by email OR phone (first match). If both undefined, returns null.
+ */
+/**
+ * Update user by id, allowing username, bio, and/or email.
+ * Returns the updated user or null if not found.
+ */
+export declare function updateOrganizer(id: number, updates: {
+    username?: string;
+    setting_1: boolean;
+    setting_2: boolean;
+}, pool: any): Promise<any>;
+export declare function updateAccessToken(id: number, accessToken: string | null, pool: any): Promise<any>;
 //# sourceMappingURL=organizer-helpers.d.ts.map
