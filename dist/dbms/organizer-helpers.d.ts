@@ -26,5 +26,6 @@ export declare function updateOrganizer(id: number, updates: {
     setting_1: boolean;
     setting_2: boolean;
 }, pool: any): Promise<any>;
+export declare function getOrganizerByEmail(email: string, pool: any): Promise<any>;
 export declare function updateAccessToken(id: number, accessToken: string | null, pool: any): Promise<any>;
 //# sourceMappingURL=organizer-helpers.d.ts.map

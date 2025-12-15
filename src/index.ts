@@ -5,6 +5,8 @@ import cors from "cors"; // <-- import cors
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import shopRoutes from "./routes/shopRoutes.js";
+import organizerRoutes from "./routes/organizerRoutes.js"
+import bossRoutes from "./routes/bossRoutes.js"
 dotenv.config();
 
 const app = express();
@@ -16,6 +18,8 @@ app.use(bodyParser.json());
 app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
 app.use("/shop", shopRoutes);
+app.use("/organizer", organizerRoutes);
+app.use("/boss", bossRoutes);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

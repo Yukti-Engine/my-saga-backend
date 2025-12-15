@@ -1,63 +1,54 @@
-export async function createPendingBoss(email, phone, reason, requestId, pool) {
-    const query = `
-    INSERT INTO pending_bosses (request_id, email, phone, reason)
-    VALUES ($1, $2, $3, $4)
-    ON CONFLICT (request_id) DO UPDATE
-    SET email = EXCLUDED.email, phone = EXCLUDED.phone, reason = EXCLUDED.reason;
-  `;
-    await pool.query(query, [requestId, email, phone, reason]);
-    return requestId;
-}
-export async function findPendingBoss(requestId, pool) {
-    const query = 'SELECT * FROM pending_bosses WHERE request_id = $1';
-    const result = await pool.query(query, [requestId]);
-    return result.rows[0] || null;
-}
-export async function removePendingBoss(requestId, pool) {
-    const query = 'DELETE FROM pending_bosses WHERE request_id = $1';
-    await pool.query(query, [requestId]);
-}
-export async function addBoss(data, pool) {
-    const query = `
-    INSERT INTO bosses (name, email, username, phone, credits)
-    VALUES ($1, $2, $3, $4, $5)
-    RETURNING *;
-  `;
-    const result = await pool.query(query, [
-        data.name, data.email, data.username, data.phone || null, data.credits || 0
-    ]);
-    console.log("Added Boss:", result.rows[0]);
+/* ----------------- SIGNUP HELPERS ----------------- */
+/**
+ * Persist a pending user request with a 5 minute expiry.
+ * Returns the requestId (unchanged), mirroring the in-memory helper.
+ */
+/**
+ * Find a pending user by requestId.
+ */
+/**
+ * Remove a pending user by requestId. No-op if not found.
+ */
+/**
+ * Create a persisted user. Schema requires a unique username,
+ * so we derive it from email's local part or the name.
+ * Note: dob is not stored on User model; it exists on PendingUser only.
+ */
+//User helpers
+export async function getBoss(id, pool) {
+    const query = 'SELECT * FROM bosses WHERE id = $1';
+    const result = await pool.query(query, [id]);
+    console.log("Fetched bosses:", result.rows[0]);
     return result.rows[0];
 }
+/* ----------------- LOGIN HELPERS ----------------- */
+/**
+ * Find user by email OR phone (first match). If both undefined, returns null.
+ */
+/**
+ * Update user by id, allowing username, bio, and/or email.
+ * Returns the updated user or null if not found.
+ */
 export async function updateBoss(id, updates, pool) {
     const setClauses = [];
     const params = [];
     let paramIndex = 1;
-    if (typeof updates.name !== "undefined") {
-        setClauses.push(`name = $${paramIndex++}`);
-        params.push(updates.name);
-    }
-    if (typeof updates.email !== "undefined") {
-        setClauses.push(`email = $${paramIndex++}`);
-        params.push(updates.email);
-    }
     if (typeof updates.username !== "undefined") {
         setClauses.push(`username = $${paramIndex++}`);
         params.push(updates.username);
     }
-    if (typeof updates.phone !== "undefined") {
-        setClauses.push(`phone = $${paramIndex++}`);
-        params.push(updates.phone);
+    if (typeof updates.setting_1 !== "undefined") {
+        setClauses.push(`setting_1 = $${paramIndex++}`);
+        params.push(updates.setting_1);
     }
-    if (typeof updates.credits !== "undefined") {
-        setClauses.push(`credits = $${paramIndex++}`);
-        params.push(updates.credits);
+    if (typeof updates.setting_2 !== "undefined") {
+        setClauses.push(`setting_2 = $${paramIndex++}`);
+        params.push(updates.setting_2);
     }
     if (setClauses.length === 0) {
         const currentQuery = 'SELECT * FROM bosses WHERE id = $1';
         const currentResult = await pool.query(currentQuery, [id]);
-        console.log("No updates for Boss. Current Boss:", currentResult.rows[0]);
-        return currentResult.rows[0];
+        return currentResult.rows[0] || null;
     }
     const query = `
     UPDATE bosses
@@ -66,26 +57,24 @@ export async function updateBoss(id, updates, pool) {
     RETURNING *;
   `;
     params.push(id);
-    const result = await pool.query(query, params);
-    console.log("Updated Boss:", result.rows[0]);
+    try {
+        const result = await pool.query(query, params);
+        return result.rows[0] || null;
+    }
+    catch (error) {
+        console.error("Error updating bosses:", error);
+        return null;
+    }
+}
+export async function getBossByEmail(email, pool) {
+    const query = 'SELECT * FROM bosses WHERE email = $1';
+    const result = await pool.query(query, [email]);
+    console.log("Fetched bosses by email:", result.rows[0]);
     return result.rows[0];
 }
-export async function deleteBoss(id, pool) {
-    const query = 'DELETE FROM bosses WHERE id = $1 RETURNING *';
-    const result = await pool.query(query, [id]);
-    console.log("Deleted Boss:", result.rows[0]);
+export async function updateAccessToken(id, accessToken, pool) {
+    const query = `UPDATE bosses SET access_token = $1 WHERE id = $2 returning *`;
+    const result = await pool.query(query, [accessToken, id]);
     return result.rows[0];
-}
-export async function getBoss(id, pool) {
-    const query = 'SELECT * FROM bosses WHERE id = $1';
-    const result = await pool.query(query, [id]);
-    console.log("Fetched Boss:", result.rows[0]);
-    return result.rows[0];
-}
-export async function getAllBosses(pool) {
-    const query = 'SELECT * FROM bosses';
-    const result = await pool.query(query);
-    console.log("All Bosses:", result.rows);
-    return result.rows;
 }
 //# sourceMappingURL=boss-helpers.js.map

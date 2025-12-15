@@ -66,6 +66,12 @@ export async function updateOrganizer(id, updates, pool) {
         return null;
     }
 }
+export async function getOrganizerByEmail(email, pool) {
+    const query = 'SELECT * FROM organizers WHERE email = $1';
+    const result = await pool.query(query, [email]);
+    console.log("Fetched organizers by email:", result.rows[0]);
+    return result.rows[0];
+}
 export async function updateAccessToken(id, accessToken, pool) {
     const query = `UPDATE organizers SET access_token = $1 WHERE id = $2 returning *`;
     const result = await pool.query(query, [accessToken, id]);
