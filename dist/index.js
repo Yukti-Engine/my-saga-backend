@@ -7,6 +7,7 @@ import userRoutes from "./routes/userRoutes.js";
 import shopRoutes from "./routes/shopRoutes.js";
 import organizerRoutes from "./routes/organizerRoutes.js";
 import bossRoutes from "./routes/bossRoutes.js";
+import categoryRoutes from "./routes/categoryRoutes.js";
 dotenv.config();
 const app = express();
 app.use(cors());
@@ -16,6 +17,7 @@ app.use("/user", userRoutes);
 app.use("/shop", shopRoutes);
 app.use("/organizer", organizerRoutes);
 app.use("/boss", bossRoutes);
+app.use("/domains", categoryRoutes);
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);

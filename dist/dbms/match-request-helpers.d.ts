@@ -1,2 +1,2 @@
-export declare function createRequest(user_id: number | null, boss_id: number | null, org_id: number | null, category_id: number, match_radius: number, min_team_members: number, age_range_min: number, age_range_max: number, pool: any): Promise<any>;
+export declare function createRequest(user_id: number | null, boss_id: number | null, org_id: number | null, category_id: number, match_radius: number, min_team_members: number, age_range_min: number, age_range_max: number, latitude: number, longitude: number, pool: any): Promise<any>;
 //# sourceMappingURL=match-request-helpers.d.ts.map

@@ -35,11 +35,11 @@ export const getOrganizerDashboard = async (req: Request, res: Response) => {
 }
 
 export const requestMatch = async (req: Request, res: Response) => {
-  const { oid, accessToken, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax } = req.body;
+  const { oid, accessToken, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
   const organizer = await getOrganizer(oid, pool);
   if (organizer)
     if (organizer.access_token == accessToken)
-      return res.json(await createRequest(null,null,oid,categoryId,matchRadius,minTeamMembers, ageRangeMin, ageRangeMax, pool))
+      return res.json(await createRequest(null,null,oid,categoryId,matchRadius,minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, pool))
     else
       return res.status(500).json({"error": "Access token does not match"});
   else

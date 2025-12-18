@@ -30,11 +30,11 @@ export const getBossDashboard = async (req, res) => {
         return res.status(500).json({ "error": "No such boss" });
 };
 export const requestMatch = async (req, res) => {
-    const { bid, accessToken, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax } = req.body;
+    const { bid, accessToken, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
     const boss = await getBoss(bid, pool);
     if (boss)
         if (boss.access_token == accessToken)
-            return res.json(await createRequest(null, bid, null, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, pool));
+            return res.json(await createRequest(null, bid, null, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, pool));
         else
             return res.status(500).json({ "error": "Access token does not match" });
     else
