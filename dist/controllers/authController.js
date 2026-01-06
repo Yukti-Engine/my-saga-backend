@@ -39,8 +39,39 @@ export const signupVerifyOtp = async (req, res) => {
         return res.status(500).json({ error: "Verification failed" });
     }
 };
+export const signupResendOtp = async (req, res) => {
+    const { name, phone, email, dob, gender } = req.body;
+    if (!name || !dob || !gender || !phone) {
+        return res.status(400).json({ error: "Missing required fields" });
+    }
+    try {
+        const requestId = await sendOtp(phone);
+        await createPendingUser(name, phone, email, dob, gender, requestId, pool);
+        return res.json({ message: "OTP sent", requestId });
+    }
+    catch (err) {
+        console.error("Error in signupRequestOtp:", err);
+        return res.status(500).json({ error: "Failed to send OTP" });
+    }
+};
 /* ----------------- LOGIN FLOW ----------------- */
 export const loginRequestOtp = async (req, res) => {
+    const { phone } = req.body;
+    if (!phone)
+        return res.status(400).json({ error: "Phone required" });
+    try {
+        const user = await findUserByPhone(phone, pool);
+        if (!user)
+            return res.status(404).json({ error: "User not found" });
+        await sendOtp(phone);
+        return res.json({ message: "OTP sent", phone });
+    }
+    catch (err) {
+        console.error("Error in loginRequestOtp:", err);
+        return res.status(500).json({ error: "Failed to send OTP" });
+    }
+};
+export const loginResendOtp = async (req, res) => {
     const { phone } = req.body;
     if (!phone)
         return res.status(400).json({ error: "Phone required" });
