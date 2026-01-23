@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 import pool from "../dbms/db.js";
 import { getBoss, updateBoss, updateAccessToken, getBossByEmail } from "../dbms/boss-helpers.js"; // Ensure this file exports updateUser correctly
-import { createRequest } from "../dbms/match-request-helpers.js";
+import { getCompatibleRequests } from "../dbms/match-request-helpers.js";
 export const updateBossProfile = async (req, res) => {
     const { bid, accessToken, updates } = req.body;
     const boss = await getBoss(bid, pool);
@@ -29,12 +29,12 @@ export const getBossDashboard = async (req, res) => {
     else
         return res.status(500).json({ "error": "No such boss" });
 };
-export const requestMatch = async (req, res) => {
+export const getMatchRequests = async (req, res) => {
     const { bid, accessToken, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
     const boss = await getBoss(bid, pool);
     if (boss)
         if (boss.access_token == accessToken)
-            return res.json(await createRequest(null, bid, null, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, pool));
+            return res.json(await getCompatibleRequests(categoryId, 8, latitude, longitude, (boss.gender == "M" && boss.setting_1 == true), (boss.gender == "F" && boss.setting_1 == true), (boss.gender == "F" && boss.setting_2 == true), boss.gender, pool));
         else
             return res.status(500).json({ "error": "Access token does not match" });
     else

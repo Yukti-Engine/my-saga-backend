@@ -1,2 +1,5 @@
-export declare function createRequest(user_id: number | null, boss_id: number | null, org_id: number | null, category_id: number, match_radius: number, min_team_members: number, age_range_min: number, age_range_max: number, latitude: number, longitude: number, pool: any): Promise<any>;
+export declare function createRequest(orgId: number, categoryId: number, matchRadius: number, minTeamMembers: number, ageRangeMin: number, ageRangeMax: number, latitude: number, longitude: number, payPerHead: number, allBoys: boolean, allGirls: boolean, halfGirls: boolean, pool: any): Promise<any>;
+export declare function getCompatibleRequests(categoryId: number, age: number, latitude: number, longitude: number, allBoys: boolean, allGirls: boolean, halfGirls: boolean, gender: string, pool: any): Promise<any>;
+export declare function checkReverseCompatibility(matchRequestId: number, latitude: number, longitude: number, matchRadius: number, ageRangeMin: number, ageRangeMax: number, pool: any): Promise<boolean>;
+export declare function match(id: number, isBoss: boolean, matchRequestId: number, pool: any): Promise<false | undefined>;
 //# sourceMappingURL=match-request-helpers.d.ts.map

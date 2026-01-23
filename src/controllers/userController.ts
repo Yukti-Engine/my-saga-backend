@@ -35,7 +35,8 @@ export const requestMatch = async (req: Request, res: Response) => {
   const user = await getUser(uid, pool);
   if (user)
     if (user.access_token == accessToken)
-      return res.json(await createRequest(uid,null,null,categoryId,matchRadius,minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, pool))
+      // return res.json(await createRequest(uid,null,null,categoryId,matchRadius,minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, ))
+      return res.status(200);
     else
       return res.status(500).json({"error": "Access token does not match"});
   else
