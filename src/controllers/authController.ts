@@ -50,6 +50,7 @@ export const signupVerifyOtp = async (req: Request, res: Response) => {
       pendingUser.email,
       new Date(pendingUser.dob),
       pendingUser.gender,
+      pendingUser.is_non_binary,
       pool
     );
     await removePendingUser(requestId, pool);

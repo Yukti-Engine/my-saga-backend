@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
 import pool from "../dbms/db.js";
 import { updateUser, getUser } from "../dbms/user-helpers.js"; // Ensure this file exports updateUser correctly
-import { createRequest } from "../dbms/match-request-helpers.js";
 
 export const updateUserProfile = async (req: Request, res: Response) => {
   const { uid, accessToken, updates } = req.body;
@@ -21,6 +20,8 @@ export const updateUserProfile = async (req: Request, res: Response) => {
 export const getUserDashboard = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
   const user = await getUser(uid, pool);
+  if (user.is_non_binary== true)
+    user.gender = "NB"
   if (user)
     if (user.access_token == accessToken)
       return res.json(user);
