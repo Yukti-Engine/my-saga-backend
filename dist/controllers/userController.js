@@ -16,6 +16,8 @@ export const updateUserProfile = async (req, res) => {
 export const getUserDashboard = async (req, res) => {
     const { uid, accessToken } = req.body;
     const user = await getUser(uid, pool);
+    if (user.is_non_binary == true)
+        user.gender = "NB";
     if (user)
         if (user.access_token == accessToken)
             return res.json(user);

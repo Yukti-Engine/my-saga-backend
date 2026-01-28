@@ -53,7 +53,7 @@ export async function createRequest(orgId, categoryId, matchRadius, minTeamMembe
 export async function getCompatibleRequests(categoryId, age, latitude, longitude, allBoys, allGirls, halfGirls, gender, pool) {
     const query = `
     SELECT
-      id AS match_request_id
+      *
     FROM match_requests
     WHERE
       all_boys = $1
