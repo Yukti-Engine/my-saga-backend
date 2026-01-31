@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { randomBytes } from "crypto";
 import pool from "../dbms/db.js";
 import { getBoss, updateBoss, updateAccessToken, getBossByEmail } from "../dbms/boss-helpers.js"; // Ensure this file exports updateUser correctly
-import { getCompatibleRequests, checkReverseCompatibility } from "../dbms/match-request-helpers.js";
+import { getCompatibleRequests, checkReverseCompatibility, match } from "../dbms/match-request-helpers.js";
 
 export const updateBossProfile = async (req: Request, res: Response) => {
   const { bid, accessToken, updates } = req.body;
@@ -116,4 +116,11 @@ export const login = async (req: Request, res: Response) => {
       return res.status(500).json({"error": "Password does not match"});
   else
     return res.status(500).json({"error": "No such boss"});
+}
+export const  joinAdventure = async (req: Request, res: Response) => {
+  const {bid, accessToken, matchRequest, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2}  = req.body;
+  const user = await getBoss(bid, pool);
+  if (user)
+    if (user.access_token == accessToken)
+      return match(bid, true, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2, matchRequest, pool);
 }

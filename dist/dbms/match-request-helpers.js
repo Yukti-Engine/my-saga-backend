@@ -6,7 +6,7 @@ export async function createRequest(orgId, categoryId, matchRadius, minTeamMembe
     }
     const { dob, gender } = organizerRes.rows[0];
     // OPTIONAL: convert dob -> age (recommended)
-    const age = new Date().getFullYear() - new Date(dob).getFullYear();
+    const age = calculateAge(dob);
     // 2. Insert match request
     const query = `
     INSERT INTO match_requests (
@@ -115,11 +115,76 @@ export async function checkReverseCompatibility(matchRequestId, latitude, longit
     }
     return false;
 }
-export async function match(id, isBoss, matchRequestId, pool) {
-    const result = await pool.query(`SELECT * FROM match_requests WHERE id = $1`, [matchRequestId]);
-    if (result.rows.length === 0)
-        return false;
-    const matchRequest = result.rows[0];
-    //n  
+function calculateAge(dob) {
+    const birth = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate()))
+        age--;
+    return age;
+}
+export async function match(id, isBoss, minTeamMembers, // only used for USER
+ageRangeMin, // only used for USER
+ageRangeMax, // only used for USER
+payPerHead2, // only used for BOSS
+matchRequestId, updatedAt, pool) {
+    // ================= BOSS JOIN =================
+    if (isBoss) {
+        const bossRes = await pool.query(`SELECT dob, gender FROM bosses WHERE id = $1`, [id]);
+        if (bossRes.rowCount === 0)
+            throw new Error("Boss not found");
+        const { dob, gender } = bossRes.rows[0];
+        const age = calculateAge(dob);
+        const result = await pool.query(`
+      UPDATE match_requests
+      SET 
+        boss_id = $1,
+        genders = array_append(genders, $2),
+        ages = array_append(ages, $3),
+        pay_per_head_2 = $4,
+        updated_at = NOW()
+      WHERE id = $5
+        AND boss_id IS NULL
+        AND updated_at = $6
+      RETURNING *
+      `, [id, gender, age, payPerHead2, matchRequestId, updatedAt]);
+        if (result.rowCount === 0)
+            throw new Error("Boss slot already taken or request expired");
+        return result.rows[0];
+    }
+    const userRes = await pool.query(`SELECT dob, gender FROM users WHERE id = $1`, [id]);
+    if (userRes.rowCount === 0)
+        throw new Error("User not found");
+    const { dob, gender } = userRes.rows[0];
+    const age = calculateAge(dob);
+    const result = await pool.query(`
+    UPDATE match_requests
+    SET 
+      user_ids = array_append(user_ids, $1),
+      genders = array_append(genders, $2),
+      ages = array_append(ages, $3),
+      min_team_members = GREATEST(min_team_members, $4),
+      age_range_min    = GREATEST(age_range_min, $5),
+      age_range_max    = LEAST(age_range_max, $6),
+
+      updated_at = NOW()
+    WHERE id = $7
+      AND updated_at = $8
+      AND NOT ($1 = ANY(user_ids))  
+    RETURNING *
+    `, [
+        id,
+        gender,
+        age,
+        minTeamMembers,
+        ageRangeMin,
+        ageRangeMax,
+        matchRequestId,
+        updatedAt,
+    ]);
+    if (result.rowCount === 0)
+        throw new Error("Slot already filled, duplicate join, or request expired");
+    return result.rows[0];
 }
 //# sourceMappingURL=match-request-helpers.js.map

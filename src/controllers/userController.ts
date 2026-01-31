@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
 import pool from "../dbms/db.js";
 import { updateUser, getUser } from "../dbms/user-helpers.js"; // Ensure this file exports updateUser correctly
-
+import { getCompatibleRequests, checkReverseCompatibility, match } from "../dbms/match-request-helpers.js";
+ 
 export const updateUserProfile = async (req: Request, res: Response) => {
   const { uid, accessToken, updates } = req.body;
   const user = await getUser(uid, pool);
@@ -32,14 +33,65 @@ export const getUserDashboard = async (req: Request, res: Response) => {
 }
 
 export const requestMatch = async (req: Request, res: Response) => {
-  const { uid, accessToken, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
+  const {uid, accessToken, categoryId, matchRadius, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
   const user = await getUser(uid, pool);
+  const age = getAge(user.dob);
   if (user)
-    if (user.access_token == accessToken)
-      // return res.json(await createRequest(uid,null,null,categoryId,matchRadius,minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, ))
-      return res.status(200);
+    if (user.access_token == accessToken){
+      const compatibleRequests = await getCompatibleRequests(categoryId, age, latitude, longitude, (user.gender=="M" && user.setting_1==true), (user.gender=="F" && user.setting_1==true), (user.gender=="F" && user.setting_2==true), user.gender, pool);
+      const potentialAdventures: any = [];
+      
+
+      for (const element of compatibleRequests) {
+        const isCompatible = await checkReverseCompatibility(
+          element.id,
+          latitude,
+          longitude,
+          matchRadius,
+          ageRangeMin,
+          ageRangeMax,
+          pool
+        );
+
+
+        if (isCompatible) {
+          potentialAdventures.push(element);
+        }
+      }
+      return res.json(potentialAdventures);
+    }
     else
       return res.status(500).json({"error": "Access token does not match"});
   else
-    return res.status(500).json({"error": "No such user"});
+    return res.status(500).json({"error": "No such boss"});
+}
+
+export const  joinAdventure = async (req: Request, res: Response) => {
+  const {uid, accessToken, matchRequest, minTeamMembers, ageRangeMin, ageRangeMax}  = req.body;
+  const user = await getUser(uid, pool);
+  if (user)
+    if (user.access_token == accessToken)
+      return match(uid, false, minTeamMembers, ageRangeMin, ageRangeMax, 0, matchRequest, pool);
+}
+
+function getAge(dob: string) {
+  const birthDate = new Date(dob);
+  const today = new Date();
+
+
+  let age = today.getFullYear() - birthDate.getFullYear();
+
+
+  const hasHadBirthdayThisYear =
+  today.getMonth() > birthDate.getMonth() ||
+  (today.getMonth() === birthDate.getMonth() &&
+  today.getDate() >= birthDate.getDate());
+
+
+  if (!hasHadBirthdayThisYear) {
+  age--;
+  }
+
+
+  return age;
 }
