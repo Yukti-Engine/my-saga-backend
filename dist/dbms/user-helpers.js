@@ -159,4 +159,9 @@ export async function updateAccessToken(id, accessToken, pool) {
     const result = await pool.query(query, [accessToken, id]);
     return result.rows[0];
 }
+export async function logout(id, pool) {
+    const query = `UPDATE users SET access_token = null WHERE id = $1 returning *`;
+    const result = await pool.query(query, [id]);
+    return result.rows[0];
+}
 //# sourceMappingURL=user-helpers.js.map

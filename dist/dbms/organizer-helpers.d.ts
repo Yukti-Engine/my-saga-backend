@@ -28,4 +28,5 @@ export declare function updateOrganizer(id: number, updates: {
 }, pool: any): Promise<any>;
 export declare function getOrganizerByEmail(email: string, pool: any): Promise<any>;
 export declare function updateAccessToken(id: number, accessToken: string | null, pool: any): Promise<any>;
+export declare function logout(id: number, pool: any): Promise<any>;
 //# sourceMappingURL=organizer-helpers.d.ts.map

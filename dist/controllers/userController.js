@@ -1,11 +1,11 @@
 import pool from "../dbms/db.js";
-import { updateUser, getUser } from "../dbms/user-helpers.js"; // Ensure this file exports updateUser correctly
-import { getCompatibleRequests, checkReverseCompatibility, match } from "../dbms/match-request-helpers.js";
+import { updateUser, getUser, logout } from "../dbms/user-helpers.js"; // Ensure this file exports updateUser correctly
+import { getCompatibleRequests, checkReverseCompatibility, match, currentMatchRequestUser } from "../dbms/match-request-helpers.js";
 export const updateUserProfile = async (req, res) => {
     const { uid, accessToken, updates } = req.body;
     const user = await getUser(uid, pool);
     if (user)
-        if (user.access_token == accessToken) {
+        if (user.access_token == accessToken && accessToken) {
             const updatedUser = await updateUser(uid, updates, pool);
             return res.json(updatedUser);
         }
@@ -20,7 +20,7 @@ export const getUserDashboard = async (req, res) => {
     if (user.is_non_binary == true)
         user.gender = "NB";
     if (user)
-        if (user.access_token == accessToken)
+        if (user.access_token == accessToken && accessToken)
             return res.json(user);
         else
             return res.status(500).json({ "error": "Access token does not match" });
@@ -30,9 +30,10 @@ export const getUserDashboard = async (req, res) => {
 export const requestMatch = async (req, res) => {
     const { uid, accessToken, categoryId, matchRadius, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
     const user = await getUser(uid, pool);
+    console.log(user);
     const age = getAge(user.dob);
     if (user)
-        if (user.access_token == accessToken) {
+        if (user.access_token == accessToken && accessToken) {
             const compatibleRequests = await getCompatibleRequests(categoryId, age, latitude, longitude, (user.gender == "M" && user.setting_1 == true), (user.gender == "F" && user.setting_1 == true), (user.gender == "F" && user.setting_2 == true), user.gender, pool);
             const potentialAdventures = [];
             for (const element of compatibleRequests) {
@@ -49,11 +50,25 @@ export const requestMatch = async (req, res) => {
         return res.status(500).json({ "error": "No such boss" });
 };
 export const joinAdventure = async (req, res) => {
-    const { uid, accessToken, matchRequestId, minTeamMembers, ageRangeMin, ageRangeMax, updatedAt } = req.body;
+    const { uid, accessToken, matchRequest, minTeamMembers, ageRangeMin, ageRangeMax } = req.body;
     const user = await getUser(uid, pool);
     if (user)
-        if (user.access_token == accessToken)
-            return match(uid, false, minTeamMembers, ageRangeMin, ageRangeMax, 0, matchRequestId, updatedAt, pool);
+        if (user.access_token == accessToken && accessToken)
+            return res.json(await match(uid, false, minTeamMembers, ageRangeMin, ageRangeMax, 0, matchRequest, pool));
+};
+export const logOut = async (req, res) => {
+    const { uid, accessToken } = req.body;
+    const user = await getUser(uid, pool);
+    if (user)
+        if (user.access_token == accessToken && accessToken)
+            return res.json(await logout(uid, pool));
+};
+export const currentMatchRequest = async (req, res) => {
+    const { uid, accessToken } = req.body;
+    const user = await getUser(uid, pool);
+    if (user)
+        if (user.access_token == accessToken && accessToken)
+            return res.json(await currentMatchRequestUser(uid, pool));
 };
 function getAge(dob) {
     const birthDate = new Date(dob);

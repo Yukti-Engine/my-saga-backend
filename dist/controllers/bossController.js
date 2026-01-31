@@ -1,12 +1,12 @@
 import { randomBytes } from "crypto";
 import pool from "../dbms/db.js";
-import { getBoss, updateBoss, updateAccessToken, getBossByEmail } from "../dbms/boss-helpers.js"; // Ensure this file exports updateUser correctly
-import { getCompatibleRequests, checkReverseCompatibility, match } from "../dbms/match-request-helpers.js";
+import { getBoss, updateBoss, updateAccessToken, getBossByEmail, logout } from "../dbms/boss-helpers.js"; // Ensure this file exports updateUser correctly
+import { getCompatibleRequests, checkReverseCompatibility, match, currentMatchRequestBoss } from "../dbms/match-request-helpers.js";
 export const updateBossProfile = async (req, res) => {
     const { bid, accessToken, updates } = req.body;
     const boss = await getBoss(bid, pool);
     if (boss)
-        if (boss.access_token == accessToken) {
+        if (boss.access_token == accessToken && accessToken) {
             const updatedBoss = await updateBoss(bid, updates, pool);
             delete updatedBoss.password;
             return res.json(updatedBoss);
@@ -20,7 +20,7 @@ export const getBossDashboard = async (req, res) => {
     const { bid, accessToken } = req.body;
     const boss = await getBoss(bid, pool);
     if (boss)
-        if (boss.access_token == accessToken) {
+        if (boss.access_token == accessToken && accessToken) {
             delete boss.password;
             return res.json(boss);
         }
@@ -46,7 +46,7 @@ export const findAdventures = async (req, res) => {
     const boss = await getBoss(bid, pool);
     const age = getAge(boss.dob);
     if (boss)
-        if (boss.access_token == accessToken) {
+        if (boss.access_token == accessToken && accessToken) {
             const compatibleRequests = await getCompatibleRequests(categoryId, age, latitude, longitude, (boss.gender == "M" && boss.setting_1 == true), (boss.gender == "F" && boss.setting_1 == true), (boss.gender == "F" && boss.setting_2 == true), boss.gender, pool);
             const potentialAdventures = [];
             for (const element of compatibleRequests) {
@@ -88,10 +88,24 @@ export const login = async (req, res) => {
         return res.status(500).json({ "error": "No such boss" });
 };
 export const joinAdventure = async (req, res) => {
-    const { bid, accessToken, matchRequestId, updatedAt, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2 } = req.body;
+    const { bid, accessToken, matchRequest, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2 } = req.body;
     const user = await getBoss(bid, pool);
     if (user)
-        if (user.access_token == accessToken)
-            return match(bid, true, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2, matchRequestId, updatedAt, pool);
+        if (user.access_token == accessToken && accessToken)
+            return res.json(await match(bid, true, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2, matchRequest, pool));
+};
+export const logOut = async (req, res) => {
+    const { bid, accessToken } = req.body;
+    const boss = await getBoss(bid, pool);
+    if (boss)
+        if (boss.access_token == accessToken && accessToken)
+            return res.json(await logout(bid, pool));
+};
+export const currentMatchRequest = async (req, res) => {
+    const { bid, accessToken } = req.body;
+    const boss = await getBoss(bid, pool);
+    if (boss)
+        if (boss.access_token == accessToken && accessToken)
+            return res.json(await currentMatchRequestBoss(bid, pool));
 };
 //# sourceMappingURL=bossController.js.map

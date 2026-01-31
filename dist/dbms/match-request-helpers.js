@@ -124,11 +124,7 @@ function calculateAge(dob) {
         age--;
     return age;
 }
-export async function match(id, isBoss, minTeamMembers, // only used for USER
-ageRangeMin, // only used for USER
-ageRangeMax, // only used for USER
-payPerHead2, // only used for BOSS
-matchRequestId, updatedAt, pool) {
+export async function match(id, isBoss, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2, snapshot, pool) {
     // ================= BOSS JOIN =================
     if (isBoss) {
         const bossRes = await pool.query(`SELECT dob, gender FROM bosses WHERE id = $1`, [id]);
@@ -142,17 +138,50 @@ matchRequestId, updatedAt, pool) {
         boss_id = $1,
         genders = array_append(genders, $2),
         ages = array_append(ages, $3),
-        pay_per_head_2 = $4,
-        updated_at = NOW()
-      WHERE id = $5
-        AND boss_id IS NULL
-        AND updated_at = $6
+        pay_per_head_2 = $4
+      WHERE
+        id = $5
+        AND boss_id IS NOT DISTINCT FROM $6
+        AND org_id = $7
+        AND category_id = $8
+        AND match_radius = $9
+        AND min_team_members = $10
+        AND age_range_min = $11
+        AND age_range_max = $12
+        AND latitude = $13
+        AND longitude = $14
+        AND pay_per_head = $15
+        AND pay_per_head_2 IS NOT DISTINCT FROM $16
+        AND all_boys = $17
+        AND all_girls = $18
+        AND half_girls = $19
       RETURNING *
-      `, [id, gender, age, payPerHead2, matchRequestId, updatedAt]);
+      `, [
+            id,
+            gender,
+            age,
+            payPerHead2,
+            snapshot.id,
+            snapshot.boss_id,
+            snapshot.org_id,
+            snapshot.category_id,
+            snapshot.match_radius,
+            snapshot.min_team_members,
+            snapshot.age_range_min,
+            snapshot.age_range_max,
+            snapshot.latitude,
+            snapshot.longitude,
+            snapshot.pay_per_head,
+            snapshot.pay_per_head_2,
+            snapshot.all_boys,
+            snapshot.all_girls,
+            snapshot.half_girls
+        ]);
         if (result.rowCount === 0)
-            throw new Error("Boss slot already taken or request expired");
+            throw new Error("Match request changed or boss slot already taken");
         return result.rows[0];
     }
+    // ================= USER JOIN =================
     const userRes = await pool.query(`SELECT dob, gender FROM users WHERE id = $1`, [id]);
     if (userRes.rowCount === 0)
         throw new Error("User not found");
@@ -165,13 +194,24 @@ matchRequestId, updatedAt, pool) {
       genders = array_append(genders, $2),
       ages = array_append(ages, $3),
       min_team_members = GREATEST(min_team_members, $4),
-      age_range_min    = GREATEST(age_range_min, $5),
-      age_range_max    = LEAST(age_range_max, $6),
-
-      updated_at = NOW()
-    WHERE id = $7
-      AND updated_at = $8
-      AND NOT ($1 = ANY(user_ids))  
+      age_range_min    = LEAST(age_range_min, $5),
+      age_range_max    = GREATEST(age_range_max, $6)
+    WHERE
+        id = $7
+        AND boss_id IS NOT DISTINCT FROM $8
+        AND org_id = $9
+        AND category_id = $10
+        AND match_radius = $11
+        AND min_team_members = $12
+        AND age_range_min = $13
+        AND age_range_max = $14
+        AND latitude = $15
+        AND longitude = $16
+        AND pay_per_head = $17
+        AND pay_per_head_2 IS NOT DISTINCT FROM $18
+        AND all_boys = $19
+        AND all_girls = $20
+        AND half_girls = $21
     RETURNING *
     `, [
         id,
@@ -180,11 +220,39 @@ matchRequestId, updatedAt, pool) {
         minTeamMembers,
         ageRangeMin,
         ageRangeMax,
-        matchRequestId,
-        updatedAt,
+        snapshot.id,
+        snapshot.boss_id,
+        snapshot.org_id,
+        snapshot.category_id,
+        snapshot.match_radius,
+        snapshot.min_team_members,
+        snapshot.age_range_min,
+        snapshot.age_range_max,
+        snapshot.latitude,
+        snapshot.longitude,
+        snapshot.pay_per_head,
+        snapshot.pay_per_head_2,
+        snapshot.all_boys,
+        snapshot.all_girls,
+        snapshot.half_girls
     ]);
     if (result.rowCount === 0)
-        throw new Error("Slot already filled, duplicate join, or request expired");
+        throw new Error("Match request changed, duplicate join, or slot unavailable");
+    return result.rows[0];
+}
+export async function currentMatchRequestUser(id, pool) {
+    const query = 'SELECT * from match_requests where user_ids @> ARRAY[$1]::int[]';
+    const result = await pool.query(query, [id]);
+    return result.rows[0];
+}
+export async function currentMatchRequestBoss(id, pool) {
+    const query = 'SELECT * from match_requests where boss_id = $1';
+    const result = await pool.query(query, [id]);
+    return result.rows[0];
+}
+export async function currentMatchRequestOrganizer(id, pool) {
+    const query = 'SELECT * from match_requests where org_id = $1';
+    const result = await pool.query(query, [id]);
     return result.rows[0];
 }
 //# sourceMappingURL=match-request-helpers.js.map
