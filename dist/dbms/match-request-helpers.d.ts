@@ -5,4 +5,5 @@ export declare function match(id: number, isBoss: boolean, minTeamMembers: numbe
 export declare function currentMatchRequestUser(id: number, pool: any): Promise<any>;
 export declare function currentMatchRequestBoss(id: number, pool: any): Promise<any>;
 export declare function currentMatchRequestOrganizer(id: number, pool: any): Promise<any>;
+export declare function completeMatch(name: string, id: number, pool: any): Promise<any>;
 //# sourceMappingURL=match-request-helpers.d.ts.map

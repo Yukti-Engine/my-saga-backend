@@ -29,4 +29,5 @@ export declare function updateBoss(id: number, updates: {
 export declare function getBossByEmail(email: string, pool: any): Promise<any>;
 export declare function updateAccessToken(id: number, accessToken: string | null, pool: any): Promise<any>;
 export declare function logout(id: number, pool: any): Promise<any>;
+export declare function getMessagesRead(id: number, pool: any): Promise<any>;
 //# sourceMappingURL=boss-helpers.d.ts.map

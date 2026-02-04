@@ -37,4 +37,5 @@ export declare function updateUser(id: number, updates: {
 }, pool: any): Promise<any>;
 export declare function updateAccessToken(id: number, accessToken: string | null, pool: any): Promise<any>;
 export declare function logout(id: number, pool: any): Promise<any>;
+export declare function getMessagesRead(id: number, pool: any): Promise<any>;
 //# sourceMappingURL=user-helpers.d.ts.map

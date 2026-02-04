@@ -2,8 +2,8 @@ import type { Request, Response } from "express";
 import { randomBytes } from "crypto";
 import pool from "../dbms/db.js";
 import { getOrganizer, updateOrganizer, updateAccessToken, getOrganizerByEmail, logout } from "../dbms/organizer-helpers.js"; // Ensure this file exports updateUser correctly
-import { createRequest, currentMatchRequestOrganizer } from "../dbms/match-request-helpers.js";
-
+import { createRequest, currentMatchRequestOrganizer, completeMatch } from "../dbms/match-request-helpers.js";
+import {getWord2s} from '../dbms/category-helpers.js'
 export const updateOrganizerProfile = async (req: Request, res: Response) => {
   const { oid, accessToken, updates } = req.body;
   const organizer = await getOrganizer(oid, pool);
@@ -72,6 +72,7 @@ export const  logOut = async (req: Request, res: Response) => {
   if (organizer)
     if (organizer.access_token == accessToken && accessToken)
       return res.json(await logout(oid, pool));
+  return res.status(500).json({"error": "Authentication Failed"});
 }
 export const  currentMatchRequest = async (req: Request, res: Response) => {
   const {oid, accessToken}  = req.body;
@@ -79,6 +80,65 @@ export const  currentMatchRequest = async (req: Request, res: Response) => {
   if (organizer)
     if (organizer.access_token == accessToken && accessToken)
       return res.json(await currentMatchRequestOrganizer(oid, pool));
+  return res.status(500).json({"error": "Authentication Failed"});
 }
 
+export const  startAdventure = async (req: Request, res: Response) => {
+  const {oid, accessToken, name}  = req.body;
+  const organizer = await getOrganizer(oid, pool);
+  const matchRequests = await currentMatchRequestOrganizer(oid, pool);
+  if (organizer)
+    if (organizer.access_token == accessToken && accessToken)
+      if (name)
+        return res.json(await completeMatch(name, matchRequests[0].id, pool));
+      else
+        return res.json(await completeMatch(await generateRandomName(matchRequests[0].category_id), matchRequests[0].id, pool));
+  return res.status(500).json({"error": "Authentication Failed"});
+}
 
+async function generateRandomName(categoryId:number){
+    const word3Options = [
+    "Adventure", "Quest", "Story", "Exam", "Course", "Files", "Case",
+    "Pursuit", "Race", "Problem", "Challenge", "Puzzle", "Battle",
+
+    "Journey", "Mission", "Expedition", "Trial", "Test", "Assignment",
+    "Task", "Campaign", "Investigation", "Operation",
+
+    "Riddle", "Enigma", "Dilemma",  "Scenario",
+     "Assessment", "Evaluation",
+    "Sprint", "Run", "Showdown", "Contest",
+    "Match", "Clash", 
+
+    "Module", "Lesson",
+   "Stage", "Episode", "Chapter", "Dungeon",
+
+    "Conflict", "Encounter", "Struggle", "Siege",
+
+    "Session", "Path", "Phase", "Round"
+    ];
+    const word1Options = ["The", "A", "Brave","Curious","Quirky","Swift","Mighty","Sunny","Witty","Bold","Clever","Cheerful",
+    "Lucky","Sneaky","Fierce","Gentle","Playful","Jolly","Calm","Bright","Zesty","Nimble",
+    "Cosmic","Epic","Happy","Fuzzy","Breezy","Chirpy","Spunky","Goofy","Daring","Dreamy",
+    "Magic","Rusty","Funky","Snappy","Peppy","Jazzy","Chilly","Stormy","Wavy","Glowing",
+    "Radiant","Sparkly","Bubbly","Whimsical","Fearless","Lively","Sunny","Golden","Wild",
+    "Free","Sneaky","Silly","Charming","Crafty","Flashy","Loopy","Bouncy","Cosy","Snug",
+    "Wacky","Feisty","Lucky","Moody","Speedy","Cheeky","Plucky","Shiny","Roaming","Witty",
+    "Curly","Fluffy","Frothy","Crackling","Zippy","Perky","Sunny","Blissful","Jumpy","Dizzy",
+    "Groovy","Spirited","Snazzy","Sparky","Breezy","Rugged","Rowdy","Cheerful","Twisty",
+    "Fabled","Mystic","Electric","Glitchy","Pixelated","Retro","Feral","Cosmic","Nebulous",
+    "Galactic","Playful","Oddball","Scrappy","Heroic","Nifty","Jovial","Kooky","Slinky",
+    "Chipper","Mellow","Bouncy","Fiery","Snappy","Crafty","Curious","Roaring",
+    "Hidden","Secret","Frosty","Dusty","Sunny","Crimson","Azure","Emerald","Golden",
+    "Midnight","Glassy","Echoing","Floating","Drifting","Rolling","Crackling",
+    "Howling","Wandering","Restless","Fearless","Radiant","Sparked","Tilted","Spinning",
+    "Laughing","Skipping","Buzzing","Fluttery","Ticklish","Cheery","Snug","Lofty","Cosy",
+    "Brisk","Chasing","Racing","Roaming","Hopping","Dancing","Smiling","Glorious","Epic",
+    "Legendary","Mythic","Playbound","Starry","Moonlit","Sunlit","Cloudy","Windy","Stormlit"]
+  const word2Options = (await getWord2s(categoryId, pool)).word_2s;
+  let word1 = word1Options[Math.floor(Math.random() * word1Options.length)]
+  const word2 = word2Options[Math.floor(Math.random() * word2Options.length)]
+  const word3 = word3Options[Math.floor(Math.random() * word3Options.length)]
+  if (word1 == "A" && (word2 == "A" || word2 == "E" || word2 == "I" || word2 == "O" || word2 == "U"))
+    word1 = "An";
+  return word1+" "+word2+" "+word3;
+}

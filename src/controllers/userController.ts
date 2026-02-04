@@ -81,6 +81,7 @@ export const  logOut = async (req: Request, res: Response) => {
   if (user)
     if (user.access_token == accessToken && accessToken)
       return res.json(await logout(uid, pool));
+  return res.status(500).json({"error": "Authentication Failed"});
 }
 
 export const  currentMatchRequest = async (req: Request, res: Response) => {
@@ -89,6 +90,7 @@ export const  currentMatchRequest = async (req: Request, res: Response) => {
   if (user)
     if (user.access_token == accessToken && accessToken)
       return res.json(await currentMatchRequestUser(uid, pool));
+  return res.status(500).json({"error": "Authentication Failed"});
 }
 
 

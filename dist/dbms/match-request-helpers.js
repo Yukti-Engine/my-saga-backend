@@ -241,18 +241,25 @@ export async function match(id, isBoss, minTeamMembers, ageRangeMin, ageRangeMax
     return result.rows[0];
 }
 export async function currentMatchRequestUser(id, pool) {
-    const query = 'SELECT * from match_requests where user_ids @> ARRAY[$1]::int[]';
+    const query = 'SELECT * from match_requests where user_ids @> ARRAY[$1]::int[] AND is_active = true';
     const result = await pool.query(query, [id]);
-    return result.rows[0];
+    return result.rows;
 }
 export async function currentMatchRequestBoss(id, pool) {
-    const query = 'SELECT * from match_requests where boss_id = $1';
+    const query = 'SELECT * from match_requests where boss_id = $1 AND is_active = true';
     const result = await pool.query(query, [id]);
-    return result.rows[0];
+    return result.rows;
 }
 export async function currentMatchRequestOrganizer(id, pool) {
-    const query = 'SELECT * from match_requests where org_id = $1';
+    const query = 'SELECT * from match_requests where org_id = $1 AND is_active = true';
     const result = await pool.query(query, [id]);
-    return result.rows[0];
+    return result.rows;
+}
+export async function completeMatch(name, id, pool) {
+    const query = `update match_requests set is_active = false where id = $1 AND is_active = true returning *`;
+    const result = await pool.query(query, [id]);
+    const query2 = `insert into adventures(name, boss_id, category_id, organizer_id, user_ids) values($1, $2, $3, $4, $5) returning *`;
+    const result2 = await pool.query(query2, [name, result.rows[0].boss_id, result.rows[0].category_id, result.rows[0].org_id, result.rows[0].user_ids]);
+    return result2.rows[0];
 }
 //# sourceMappingURL=match-request-helpers.js.map

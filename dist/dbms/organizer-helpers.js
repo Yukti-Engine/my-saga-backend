@@ -82,4 +82,9 @@ export async function logout(id, pool) {
     const result = await pool.query(query, [id]);
     return result.rows[0];
 }
+export async function getMessagesRead(id, pool) {
+    const query = `SELECT messages_read FROM organizers WHERE id = $1`;
+    const result = await pool.query(query, [id]);
+    return result.rows[0];
+}
 //# sourceMappingURL=organizer-helpers.js.map

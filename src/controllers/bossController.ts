@@ -123,6 +123,7 @@ export const  joinAdventure = async (req: Request, res: Response) => {
   if (user)
     if (user.access_token == accessToken && accessToken)
       return res.json(await match(bid, true, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2, matchRequest, pool));
+  return res.status(500).json({"error": "Authentication Failed"});
 }
 
 
@@ -132,6 +133,7 @@ export const  logOut = async (req: Request, res: Response) => {
   if (boss)
     if (boss.access_token == accessToken && accessToken)
       return res.json(await logout(bid, pool));
+  return res.status(500).json({"error": "Authentication Failed"});
 }
 
 export const  currentMatchRequest = async (req: Request, res: Response) => {
@@ -140,4 +142,5 @@ export const  currentMatchRequest = async (req: Request, res: Response) => {
   if (boss)
     if (boss.access_token == accessToken && accessToken)
       return res.json(await currentMatchRequestBoss(bid, pool));
+  return res.status(500).json({"error": "Authentication Failed"});
 }

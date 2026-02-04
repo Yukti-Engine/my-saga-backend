@@ -62,6 +62,7 @@ export const logOut = async (req, res) => {
     if (user)
         if (user.access_token == accessToken && accessToken)
             return res.json(await logout(uid, pool));
+    return res.status(500).json({ "error": "Authentication Failed" });
 };
 export const currentMatchRequest = async (req, res) => {
     const { uid, accessToken } = req.body;
@@ -69,6 +70,7 @@ export const currentMatchRequest = async (req, res) => {
     if (user)
         if (user.access_token == accessToken && accessToken)
             return res.json(await currentMatchRequestUser(uid, pool));
+    return res.status(500).json({ "error": "Authentication Failed" });
 };
 function getAge(dob) {
     const birthDate = new Date(dob);
