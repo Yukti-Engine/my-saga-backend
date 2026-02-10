@@ -169,4 +169,26 @@ export async function getMessagesRead(id, pool) {
     const result = await pool.query(query, [id]);
     return result.rows[0];
 }
+export async function deductGems(id, gemsToDeduct, pool) {
+    if (gemsToDeduct <= 0) {
+        throw new Error("gemsToDeduct must be positive");
+    }
+    const checkQuery = `SELECT gems FROM users WHERE id = $1`;
+    const checkResult = await pool.query(checkQuery, [id]);
+    const currentGems = checkResult.rows[0]?.gems || 0;
+    if (currentGems < gemsToDeduct) {
+        throw new Error("Insufficient gems");
+    }
+    const query = `UPDATE users SET gems = gems - $1 WHERE id = $2 returning *`;
+    const result = await pool.query(query, [gemsToDeduct, id]);
+    return { success: true };
+}
+export async function addGems(id, gemsToAdd, pool) {
+    if (gemsToAdd <= 0) {
+        throw new Error("gemsToAdd must be positive");
+    }
+    const query = `UPDATE users SET gems = gems + $1 WHERE id = $2 returning *`;
+    const result = await pool.query(query, [gemsToAdd, id]);
+    return { success: true };
+}
 //# sourceMappingURL=user-helpers.js.map

@@ -38,4 +38,10 @@ export declare function updateUser(id: number, updates: {
 export declare function updateAccessToken(id: number, accessToken: string | null, pool: any): Promise<any>;
 export declare function logout(id: number, pool: any): Promise<any>;
 export declare function getMessagesRead(id: number, pool: any): Promise<any>;
+export declare function deductGems(id: number, gemsToDeduct: number, pool: any): Promise<{
+    success: boolean;
+}>;
+export declare function addGems(id: number, gemsToAdd: number, pool: any): Promise<{
+    success: boolean;
+}>;
 //# sourceMappingURL=user-helpers.d.ts.map

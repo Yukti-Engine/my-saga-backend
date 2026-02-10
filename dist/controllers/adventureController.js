@@ -152,4 +152,4 @@ async function generateRandomName(categoryId) {
         word1 = "An";
     return word1 + " " + word2 + " " + word3;
 }
-//# sourceMappingURL=organizerController.js.map
+//# sourceMappingURL=adventureController.js.map

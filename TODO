@@ -5,3 +5,5 @@ Put limits for matchRequest
 It should cost gems for privateMessage for users
 It should cost gems for users to join Adventure
 Adventures cannot start if minimum members not reached
+99 private messages at a time
+a-b everywhere should have a guard

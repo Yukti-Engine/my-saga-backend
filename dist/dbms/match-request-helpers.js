@@ -238,7 +238,7 @@ export async function match(id, isBoss, minTeamMembers, ageRangeMin, ageRangeMax
     ]);
     if (result.rowCount === 0)
         throw new Error("Match request changed, duplicate join, or slot unavailable");
-    return result.rows[0];
+    return { success: true, cost: Math.round((snapshot.pay_per_head + snapshot.pay_per_head_2) * 1.25) };
 }
 export async function currentMatchRequestUser(id, pool) {
     const query = 'SELECT * from match_requests where user_ids @> ARRAY[$1]::int[] AND is_active = true';
