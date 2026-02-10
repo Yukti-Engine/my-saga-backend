@@ -56,9 +56,12 @@ export async function getCompatibleRequests(categoryId, age, latitude, longitude
       *
     FROM match_requests
     WHERE
-      all_boys = $1
+      ((all_boys = $1
       AND all_girls = $2
-      AND half_girls = $3
+      AND half_girls = $3) 
+      OR (false = $1
+      AND false = $2
+      AND false = $3))
       AND category_id = $4
       AND age_range_min <= $5
       AND age_range_max >= $5
@@ -72,7 +75,7 @@ export async function getCompatibleRequests(categoryId, age, latitude, longitude
           )
         )
       ) <= match_radius
-      AND ((all_girls = TRUE AND $8 = 'F') OR (all_boys = TRUE AND $8 = 'M') OR (array_length(genders, 1) < FLOOR(min_team_members/2) AND $8 = 'F' AND half_girls = TRUE) OR (half_girls = FALSE AND all_girls=FALSE AND all_boys=FALSE))
+      AND ((all_girls = TRUE AND $8 = 'F') OR (all_boys = TRUE AND $8 = 'M') OR COALESCE(array_length(genders, 1), 0) < FLOOR(min_team_members/2) AND $8 = 'F' AND half_girls = TRUE) OR (half_girls = FALSE AND all_girls=FALSE AND all_boys=FALSE))
   `;
     const result = await pool.query(query, [
         allBoys,
