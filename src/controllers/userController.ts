@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
 import pool from "../dbms/db.js";
-import { updateUser, getUser, logout } from "../dbms/user-helpers.js"; // Ensure this file exports updateUser correctly
+import { updateUser, getUser, logout, deductGems } from "../dbms/user-helpers.js"; // Ensure this file exports updateUser correctly
 import { getCompatibleRequests, checkReverseCompatibility, match, currentMatchRequestUser } from "../dbms/match-request-helpers.js";
+import { getActiveUserAdventures, getInactiveUserAdventures } from "../dbms/adventure-helpers.js";
  
 export const updateUserProfile = async (req: Request, res: Response) => {
   const { uid, accessToken, updates } = req.body;
@@ -67,12 +68,48 @@ export const requestMatch = async (req: Request, res: Response) => {
     return res.status(500).json({"error": "No such boss"});
 }
 
+export const getAdventures = async (req: Request, res: Response) => {
+  const { uid, accessToken} = req.body;
+  const user = await getUser(uid, pool);
+  if (user)
+    if (user.access_token == accessToken && accessToken)
+    {
+      return res.json(await getActiveUserAdventures(uid, pool));
+    }
+    else
+      return res.status(500).json({"error": "Access token does not match"});
+  else
+    return res.status(500).json({"error": "No such user"});
+}
+export const getPastAdventures = async (req: Request, res: Response) => {
+  const { uid, accessToken, a, b} = req.body;
+  const user = await getUser(uid, pool);
+  if (user)
+    if (user.access_token == accessToken && accessToken)
+    {
+      return res.json(await getInactiveUserAdventures(uid, a, b, pool));
+    }
+    else
+      return res.status(500).json({"error": "Access token does not match"});
+  else
+    return res.status(500).json({"error": "No such user"});
+}
 export const  joinAdventure = async (req: Request, res: Response) => {
   const {uid, accessToken, matchRequest, minTeamMembers, ageRangeMin, ageRangeMax}  = req.body;
   const user = await getUser(uid, pool);
   if (user)
-    if (user.access_token == accessToken && accessToken)
-      return res.json(await match(uid, false, minTeamMembers, ageRangeMin, ageRangeMax, 0, matchRequest, pool));
+    if (user.access_token == accessToken && accessToken){
+      const matched = await match(uid, false, minTeamMembers, ageRangeMin, ageRangeMax, 0, matchRequest, pool);
+      if (matched.success){
+        const deducted = await deductGems(uid, matched.cost, pool);
+        if (deducted.success)
+          return res.json({success:true});
+        else
+          return res.json({success:false, message:"Insufficient gems"});
+      }
+      return res.json({success:false, message:"Insufficient gems"});
+    }
+  return res.json({success:false, message: "Authentication Failed"})
 }
 
 export const  logOut = async (req: Request, res: Response) => {

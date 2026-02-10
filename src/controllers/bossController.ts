@@ -3,6 +3,35 @@ import { randomBytes } from "crypto";
 import pool from "../dbms/db.js";
 import { getBoss, updateBoss, updateAccessToken, getBossByEmail, logout } from "../dbms/boss-helpers.js"; // Ensure this file exports updateUser correctly
 import { getCompatibleRequests, checkReverseCompatibility, match, currentMatchRequestBoss } from "../dbms/match-request-helpers.js";
+import { getActiveBossAdventures, getInactiveBossAdventures } from "../dbms/adventure-helpers.js";
+
+export const getAdventures = async (req: Request, res: Response) => {
+  const { bid, accessToken} = req.body;
+  const boss = await getBoss(bid, pool);
+  if (boss)
+    if (boss.access_token == accessToken && accessToken)
+    {
+      return res.json(await getActiveBossAdventures(bid, pool));
+    }
+    else
+      return res.status(500).json({"error": "Access token does not match"});
+  else
+    return res.status(500).json({"error": "No such boss"});
+}
+
+export const getPastAdventures = async (req: Request, res: Response) => {
+  const { bid, accessToken, a, b} = req.body;
+  const boss = await getBoss(bid, pool);
+  if (boss)
+    if (boss.access_token == accessToken && accessToken)
+    {
+      return res.json(await getInactiveBossAdventures(bid, a, b, pool));
+    }
+    else
+      return res.status(500).json({"error": "Access token does not match"});
+  else
+    return res.status(500).json({"error": "No such boss"});
+}
 
 export const updateBossProfile = async (req: Request, res: Response) => {
   const { bid, accessToken, updates } = req.body;

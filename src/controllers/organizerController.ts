@@ -4,6 +4,35 @@ import pool from "../dbms/db.js";
 import { getOrganizer, updateOrganizer, updateAccessToken, getOrganizerByEmail, logout } from "../dbms/organizer-helpers.js"; // Ensure this file exports updateUser correctly
 import { createRequest, currentMatchRequestOrganizer, completeMatch } from "../dbms/match-request-helpers.js";
 import {getWord2s} from '../dbms/category-helpers.js'
+import {getActiveOrganizerAdventures, getInactiveOrganizerAdventures} from '../dbms/adventure-helpers.js';
+
+export const getAdventures = async (req: Request, res: Response) => {
+  const { oid, accessToken} = req.body;
+  const organizer = await getOrganizer(oid, pool);
+  if (organizer)
+    if (organizer.access_token == accessToken && accessToken)
+    {
+      return res.json(await getActiveOrganizerAdventures(oid, pool));
+    }
+    else
+      return res.status(500).json({"error": "Access token does not match"});
+  else
+    return res.status(500).json({"error": "No such organizer"});
+}
+export const getPastAdventures = async (req: Request, res: Response) => {
+  const { oid, accessToken, a, b} = req.body;
+  const organizer = await getOrganizer(oid, pool);
+  if (organizer)
+    if (organizer.access_token == accessToken && accessToken)
+    {
+      return res.json(await getInactiveOrganizerAdventures(oid, a, b, pool));
+    }
+    else
+      return res.status(500).json({"error": "Access token does not match"});
+  else
+    return res.status(500).json({"error": "No such organizer"});
+}
+
 export const updateOrganizerProfile = async (req: Request, res: Response) => {
   const { oid, accessToken, updates } = req.body;
   const organizer = await getOrganizer(oid, pool);

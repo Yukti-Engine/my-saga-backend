@@ -2,3 +2,6 @@ Solve the deprecation  warningthat appears for npm run dev
 Dashboard should also have number of messages(notifications) recieved
 there has to be user.adventures route with all the current adventures' names and current adventures' number of people and out of those how many are online.
 Put limits for matchRequest
+It should cost gems for privateMessage for users
+It should cost gems for users to join Adventure
+Adventures cannot start if minimum members not reached

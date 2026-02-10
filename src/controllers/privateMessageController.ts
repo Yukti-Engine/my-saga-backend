@@ -3,7 +3,7 @@ import pool from "../dbms/db.js";
 import { sendMessage, countNotifications, getNotificationsFromAToB } from "../dbms/private-message-helpers.js";
 import { getOrganizer } from "../dbms/organizer-helpers.js";
 import { getBoss } from "../dbms/boss-helpers.js";
-import { getUser } from "../dbms/user-helpers.js";
+import { getUser, deductGems } from "../dbms/user-helpers.js";
 
 export const send = async (req: Request, res: Response) => {
   const { senderRole, senderId, accessToken, message, receiverRole, receiverId} = req.body;
@@ -16,7 +16,17 @@ export const send = async (req: Request, res: Response) => {
     sender = await getUser(senderId, pool);
   if (sender.access_token == accessToken && accessToken)
   {
-    return res.json(await sendMessage(senderId, senderRole, receiverRole, receiverId, message, pool))
+    const sent = await sendMessage(senderId, senderRole, receiverRole, receiverId, message, pool);
+    if (sent.success)
+    {
+      const deducted = await deductGems(senderId, 1, pool);
+      if (deducted.success)
+        return res.json({success: true})
+      else
+        return res.json({success:false, message:"Insufficient Gems"})
+    }
+    else
+      return res.json({success: false})
   }
   else
     return res.status(500).json({"error": "Authentication Error"});
