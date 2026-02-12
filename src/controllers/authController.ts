@@ -11,6 +11,34 @@ import {
 } from "../dbms/user-helpers.js";
 import { sendOtp, verify } from "../services/otpService.js";
 
+const adjectives = [
+    "anonymous",
+    "brave",
+    "happy",
+    "silly",
+    "fast",
+    "tiny",
+    "cool"
+];
+
+const nouns = [
+    "whale",
+    "kid",
+    "carrot",
+    "lion",
+    "robot",
+    "panda",
+    "gamer"
+];
+
+
+export function generateRandomUsername(): string {
+    const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    return `${adjective} ${noun}`;
+}
+
+
 /* ----------------- SIGNUP FLOW ----------------- */
 export const signupRequestOtp = async (req: Request, res: Response) => {
   const { name, phone, email, dob, gender } = req.body;

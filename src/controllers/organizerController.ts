@@ -4,7 +4,8 @@ import pool from "../dbms/db.js";
 import { getOrganizer, updateOrganizer, updateAccessToken, getOrganizerByEmail, logout } from "../dbms/organizer-helpers.js"; // Ensure this file exports updateUser correctly
 import { createRequest, currentMatchRequestOrganizer, completeMatch } from "../dbms/match-request-helpers.js";
 import {getWord2s} from '../dbms/category-helpers.js'
-import {getActiveOrganizerAdventures, getInactiveOrganizerAdventures} from '../dbms/adventure-helpers.js';
+import {getActiveOrganizerAdventures, getInactiveOrganizerAdventures, isRelatedToAdventure} from '../dbms/adventure-helpers.js';
+import {approveEventByOrganizer, createEvent, getAdventureOf} from "../dbms/event-helpers.js";
 
 export const getAdventures = async (req: Request, res: Response) => {
   const { oid, accessToken} = req.body;
@@ -19,6 +20,53 @@ export const getAdventures = async (req: Request, res: Response) => {
   else
     return res.status(500).json({"error": "No such organizer"});
 }
+
+export const approveEvent = async (req: Request, res: Response) => {
+  const { oid, accessToken, eventId} = req.body;
+  const organizer = await getOrganizer(oid, pool);
+  if (organizer)
+    if (organizer.access_token == accessToken && accessToken)
+    {
+      try{
+        if (await isRelatedToAdventure(oid, "organizer", await getAdventureOf(eventId, pool), pool)){
+          await approveEventByOrganizer(eventId, pool);
+          return res.json({success:!false});
+        }
+        return res.json({success:false});
+      }
+      catch{
+        return res.json({success:false});
+      }
+    }
+    else
+      return res.status(500).json({"error": "Access token does not match"});
+  else
+    return res.status(500).json({"error": "No such organizer"});
+}
+
+export const organizeEvent = async (req: Request, res: Response) => {
+  const { oid, accessToken, activity, timing, venue, venueLink, adventureId, instruction} = req.body;
+  const organizer = await getOrganizer(oid, pool);
+  if (organizer)
+    if (organizer.access_token == accessToken && accessToken)
+    {
+      try{
+        if (await isRelatedToAdventure(oid, "organizer", adventureId, pool)){
+          await createEvent(activity, timing, venue, venueLink, adventureId, instruction, false, pool);
+          return res.json({success:true });
+        }
+        return res.json({success: false});
+      }
+      catch{
+        return res.json({success:false });
+      }
+    }
+    else
+      return res.status(500).json({"error": "Access token does not match"});
+  else
+    return res.status(500).json({"error": "No such organizer"});
+}
+
 export const getPastAdventures = async (req: Request, res: Response) => {
   const { oid, accessToken, a, b} = req.body;
   const organizer = await getOrganizer(oid, pool);
