@@ -2,6 +2,29 @@ import { randomBytes } from "crypto";
 import pool from "../dbms/db.js";
 import { createPendingUser, findPendingUser, removePendingUser, createUser, findUserByPhone, updateAccessToken } from "../dbms/user-helpers.js";
 import { sendOtp, verify } from "../services/otpService.js";
+const adjectives = [
+    "anonymous",
+    "brave",
+    "happy",
+    "silly",
+    "fast",
+    "tiny",
+    "cool"
+];
+const nouns = [
+    "whale",
+    "kid",
+    "carrot",
+    "lion",
+    "robot",
+    "panda",
+    "gamer"
+];
+export function generateRandomUsername() {
+    const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    return `${adjective} ${noun}`;
+}
 /* ----------------- SIGNUP FLOW ----------------- */
 export const signupRequestOtp = async (req, res) => {
     const { name, phone, email, dob, gender } = req.body;

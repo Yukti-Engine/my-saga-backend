@@ -22,4 +22,26 @@ export async function getInactiveOrganizerAdventures(id, a, b, pool) {
     const result = await pool.query(`SELECT * FROM adventures WHERE is_active = false AND organizer_id = $1 order BY created_at DESC LIMIT $3 OFFSET $4`, [id, a, b]);
     return result.rows;
 }
+export async function isRelatedToAdventure(id, role, adventureId, pool) {
+    const result = await pool.query(`SELECT * FROM adventures WHERE is_active = true AND id = $1`, [id]);
+    const adventure = result.rows[0];
+    if (role == "organizer") {
+        if (adventure.organizer_id == id)
+            return true;
+        else
+            return false;
+    }
+    else if (role == "boss") {
+        if (adventure.boss_id == id)
+            return true;
+        else
+            return false;
+    }
+    else {
+        if (adventure.user_ids.includes(id))
+            return true;
+        else
+            return false;
+    }
+}
 //# sourceMappingURL=adventure-helpers.js.map

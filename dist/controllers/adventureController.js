@@ -3,13 +3,56 @@ import pool from "../dbms/db.js";
 import { getOrganizer, updateOrganizer, updateAccessToken, getOrganizerByEmail, logout } from "../dbms/organizer-helpers.js"; // Ensure this file exports updateUser correctly
 import { createRequest, currentMatchRequestOrganizer, completeMatch } from "../dbms/match-request-helpers.js";
 import { getWord2s } from '../dbms/category-helpers.js';
-import { getActiveOrganizerAdventures, getInactiveOrganizerAdventures } from '../dbms/adventure-helpers.js';
+import { getActiveOrganizerAdventures, getInactiveOrganizerAdventures, isRelatedToAdventure } from '../dbms/adventure-helpers.js';
+import { countMessages, getMessagesFromAToB } from '../dbms/message-helpers.js';
+import { getBoss } from '../dbms/boss-helpers.js';
+import { getUser } from '../dbms/user-helpers.js';
 export const getAdventures = async (req, res) => {
     const { oid, accessToken } = req.body;
     const organizer = await getOrganizer(oid, pool);
     if (organizer)
         if (organizer.access_token == accessToken && accessToken) {
             return res.json(await getActiveOrganizerAdventures(oid, pool));
+        }
+        else
+            return res.status(500).json({ "error": "Access token does not match" });
+    else
+        return res.status(500).json({ "error": "No such organizer" });
+};
+export const count = async (req, res) => {
+    const { adventureId, id, role, accessToken } = req.body;
+    let person;
+    if (role == "organizer")
+        person = await getOrganizer(id, pool);
+    else if (role == "boss")
+        person = await getBoss(id, pool);
+    else
+        person = await getUser(id, pool);
+    if (person)
+        if (person.access_token == accessToken && accessToken) {
+            if (await isRelatedToAdventure(id, role, adventureId, pool))
+                return res.json(await countMessages(adventureId, pool));
+            return res.json({ success: false });
+        }
+        else
+            return res.status(500).json({ "error": "Access token does not match" });
+    else
+        return res.status(500).json({ "error": "No such organizer" });
+};
+export const getMessages = async (req, res) => {
+    const { adventureId, id, role, accessToken, a, b } = req.body;
+    let person;
+    if (role == "organizer")
+        person = await getOrganizer(id, pool);
+    else if (role == "boss")
+        person = await getBoss(id, pool);
+    else
+        person = await getUser(id, pool);
+    if (person)
+        if (person.access_token == accessToken && accessToken) {
+            if (await isRelatedToAdventure(id, role, adventureId, pool))
+                return res.json(await getMessagesFromAToB(adventureId, a, b, pool));
+            return res.json({ success: false });
         }
         else
             return res.status(500).json({ "error": "Access token does not match" });
