@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import pool from "../dbms/db.js";
-import { getAllCategories, getAllSubcategories } from "../dbms/category-helpers.js"; // Ensure this file exports updateUser correctly
+import { getAllCategories, getAllSubcategories } from "../dbms/lobby-helpers.js"; // Ensure this file exports updateUser correctly
 
 export const getCategories = async (req: Request, res: Response) => {
   return res.json(await getAllCategories(pool));

@@ -1,10 +1,8 @@
 import type { Request, Response } from "express";
 import { randomBytes } from "crypto";
 import pool from "../dbms/db.js";
-import { getBoss, updateBoss, updateAccessToken, getBossByEmail, logout } from "../dbms/boss-helpers.js"; // Ensure this file exports updateUser correctly
-import { getCompatibleRequests, checkReverseCompatibility, match, currentMatchRequestBoss } from "../dbms/match-request-helpers.js";
-import { getActiveBossAdventures, getInactiveBossAdventures, isRelatedToAdventure } from "../dbms/adventure-helpers.js";
-import {createEvent } from "../dbms/event-helpers.js";
+import { getBoss, updateBoss, updateAccessToken, getBossByEmail, logout, getActiveAdventures, getInactiveAdventures, getCompatibleRequests, checkReverseCompatibility, match, currentMatchRequest  } from "../dbms/boss-helpers.js"; // Ensure this file exports updateUser correctly
+import { isRelatedToAdventure, createEvent } from "../dbms/adventure-helpers.js";
 
 export const getAdventures = async (req: Request, res: Response) => {
   const { bid, accessToken} = req.body;
@@ -12,7 +10,7 @@ export const getAdventures = async (req: Request, res: Response) => {
   if (boss)
     if (boss.access_token == accessToken && accessToken)
     {
-      return res.json(await getActiveBossAdventures(bid, pool));
+      return res.json(await getActiveAdventures(bid, pool));
     }
     else
       return res.status(500).json({"error": "Access token does not match"});
@@ -49,7 +47,7 @@ export const getPastAdventures = async (req: Request, res: Response) => {
   if (boss)
     if (boss.access_token == accessToken && accessToken)
     {
-      return res.json(await getInactiveBossAdventures(bid, a, b, pool));
+      return res.json(await getInactiveAdventures(bid, a, b, pool));
     }
     else
       return res.status(500).json({"error": "Access token does not match"});
@@ -171,11 +169,11 @@ export const login = async (req: Request, res: Response) => {
     return res.status(500).json({"error": "No such boss"});
 }
 export const  joinAdventure = async (req: Request, res: Response) => {
-  const {bid, accessToken, matchRequest, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2}  = req.body;
+  const {bid, accessToken, matchRequest, payPerHead2}  = req.body;
   const user = await getBoss(bid, pool);
   if (user)
     if (user.access_token == accessToken && accessToken)
-      return res.json(await match(bid, true, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2, matchRequest, pool));
+      return res.json(await match(bid, payPerHead2, matchRequest, pool));
   return res.status(500).json({"error": "Authentication Failed"});
 }
 
@@ -189,11 +187,11 @@ export const  logOut = async (req: Request, res: Response) => {
   return res.status(500).json({"error": "Authentication Failed"});
 }
 
-export const  currentMatchRequest = async (req: Request, res: Response) => {
+export const  currentLobby = async (req: Request, res: Response) => {
   const {bid, accessToken}  = req.body;
   const boss = await getBoss(bid, pool);
   if (boss)
     if (boss.access_token == accessToken && accessToken)
-      return res.json(await currentMatchRequestBoss(bid, pool));
+      return res.json(await currentMatchRequest(bid, pool));
   return res.status(500).json({"error": "Authentication Failed"});
 }

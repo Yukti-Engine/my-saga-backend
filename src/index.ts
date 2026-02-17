@@ -7,8 +7,7 @@ import userRoutes from "./routes/userRoutes.js";
 import shopRoutes from "./routes/shopRoutes.js";
 import organizerRoutes from "./routes/organizerRoutes.js"
 import bossRoutes from "./routes/bossRoutes.js"
-import categoryRoutes from "./routes/categoryRoutes.js"
-import notificationRoutes from "./routes/notificationRoutes.js"
+import lobbyRoutes from "./routes/lobbyRoutes.js"
 import adventureRoutes from "./routes/adventureRoutes.js"
 import http from "http";
 import { Server } from "socket.io";
@@ -38,8 +37,7 @@ app.use("/user", userRoutes);
 app.use("/shop", shopRoutes);
 app.use("/organizer", organizerRoutes);
 app.use("/boss", bossRoutes);
-app.use("/domains", categoryRoutes);
-app.use("/notifications", notificationRoutes);
+app.use("/lobby", lobbyRoutes);
 app.use("/adventure", adventureRoutes);
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
