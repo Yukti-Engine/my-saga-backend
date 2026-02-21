@@ -11,6 +11,7 @@ import lobbyRoutes from "./routes/lobbyRoutes.js"
 import adventureRoutes from "./routes/adventureRoutes.js"
 import http from "http";
 import { Server } from "socket.io";
+import roomSocket from "./controllers/adventureController.js";
 dotenv.config();
 
 const app = express();
@@ -18,17 +19,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 app.use(cors());
 io.on("connection", (socket) => {
-  socket.on("join_room", (roomName) => {
-    socket.join(roomName);
-    socket.to(roomName).emit("message", "A user has joined!");
-  });
-  socket.on("send_message", ({ room, message }) => {
-    io.to(room).emit("message", message);
-  });
-  socket.on("leave_room", (roomName) => {
-    socket.leave(roomName);
-    socket.to(roomName).emit("message", "A user has left!");
-  });
+  roomSocket(io, socket);
   socket.on("disconnect", () => {  });
 });
 app.use(bodyParser.json());

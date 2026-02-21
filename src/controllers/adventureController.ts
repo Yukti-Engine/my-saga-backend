@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import pool from "../dbms/db.js";
-import { isRelatedToAdventure, countMessages, getMessagesFromAToB} from '../dbms/adventure-helpers.js';
+import { isRelatedToAdventure, countMessages, getMessagesFromAToB, roomAvailable} from '../dbms/adventure-helpers.js';
 import {getBoss} from '../dbms/boss-helpers.js';
 import {getUser} from '../dbms/user-helpers.js';
 import { getOrganizer } from "../dbms/organizer-helpers.js";
@@ -47,4 +47,25 @@ export const getMessages = async (req: Request, res: Response) => {
       return res.status(500).json({"error": "Access token does not match"});
   else
     return res.status(500).json({"error": "No such organizer"});
+}
+
+export default function roomSocket(io:any, socket:any) {
+  socket.on("join_room", (roomName:string) => {
+    roomAvailable(roomName, pool).then((answer)=>{
+      if (answer){
+        socket.join(roomName);
+        socket.to(roomName).emit("message", "A user has joined!");
+      }
+    });
+    
+  });
+
+  socket.on("send_message", ({ room, message }:any) => {
+    io.to(room).emit("message", message);
+  });
+
+  socket.on("leave_room", (roomName:string) => {
+    socket.leave(roomName);
+    socket.to(roomName).emit("message", "A user has left!");
+  });
 }
