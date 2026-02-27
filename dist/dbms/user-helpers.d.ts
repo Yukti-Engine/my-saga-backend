@@ -1,24 +1,6 @@
-/**
- * Persist a pending user request with a 5 minute expiry.
- * Returns the requestId (unchanged), mirroring the in-memory helper.
- */
-export declare function createPendingUser(name: string, phone: string, email: string, dob: string, gender: string, requestId: string, pool: any): Promise<string>;
-/**
- * Find a pending user by requestId.
- */
 export declare function findPendingUser(requestId: string, pool: any): Promise<any>;
-/**
- * Remove a pending user by requestId. No-op if not found.
- */
 export declare function removePendingUser(requestId: string, pool: any): Promise<void>;
-/**
- * Create a persisted user. Schema requires a unique username,
- * so we derive it from email's local part or the name.
- * Note: dob is not stored on User model; it exists on PendingUser only.
- */
-export declare function createUser(name: string, phone: string, email: string, _dob: Date, gender: string, isNonBinary: boolean, pool: any): Promise<any>;
 export declare function getUser(id: number, pool: any): Promise<any>;
-export declare function getAllUsers(pool: any): Promise<any>;
 export declare function deleteUser(id: number, pool: any): Promise<any>;
 /**
  * Find user by email OR phone (first match). If both undefined, returns null.
@@ -37,11 +19,29 @@ export declare function updateUser(id: number, updates: {
 }, pool: any): Promise<any>;
 export declare function updateAccessToken(id: number, accessToken: string | null, pool: any): Promise<any>;
 export declare function logout(id: number, pool: any): Promise<any>;
-export declare function getMessagesRead(id: number, pool: any): Promise<any>;
 export declare function deductGems(id: number, gemsToDeduct: number, pool: any): Promise<{
     success: boolean;
 }>;
 export declare function addGems(id: number, gemsToAdd: number, pool: any): Promise<{
     success: boolean;
 }>;
+export declare function getActiveAdventures(id: number, pool: any): Promise<any>;
+export declare function sendNotification(senderId: number, receiverRole: string, receiverId: number, message: string, pool: any): Promise<{
+    success: boolean;
+}>;
+export declare function getNotificationsFromAToB(receiver_id: number, a: number, b: number, pool: any): Promise<any>;
+export declare function countNotifications(receiver_id: number, pool: any): Promise<number>;
+export declare function addMessage(message: string, sender_id: number, adventure_id: number, pool: any): Promise<any>;
+export declare function getCompatibleRequests(categoryId: number, age: number, latitude: number, longitude: number, allBoys: boolean, allGirls: boolean, halfGirls: boolean, gender: string, pool: any): Promise<any>;
+export declare function checkReverseCompatibility(matchRequestId: number, latitude: number, longitude: number, matchRadius: number, ageRangeMin: number, ageRangeMax: number, pool: any): Promise<boolean>;
+export declare function match(id: number, minTeamMembers: number, ageRangeMin: number, ageRangeMax: number, snapshot: any, pool: any): Promise<{
+    success: boolean;
+    cost: number;
+}>;
+export declare function currentMatchRequest(id: number, pool: any): Promise<any>;
+export declare function approveEvent(event_id: number, user_id: number, pool: any): Promise<any>;
+export declare function getBadges(id: number, pool: any): Promise<any>;
+export declare function rewardBadge(id: number, badge_id: number, pool: any): Promise<any>;
+export declare function checkBadge(id: number, badge_id: number, pool: any): Promise<any>;
+export declare function getInactiveAdventures(id: number, a: number, b: number, pool: any): Promise<any>;
 //# sourceMappingURL=user-helpers.d.ts.map

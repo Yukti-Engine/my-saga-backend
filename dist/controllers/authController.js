@@ -1,7 +1,8 @@
 import { randomBytes } from "crypto";
 import pool from "../dbms/db.js";
-import { createPendingUser, findPendingUser, removePendingUser, createUser, findUserByPhone, updateAccessToken } from "../dbms/user-helpers.js";
+import { findPendingUser, removePendingUser, findUserByPhone, updateAccessToken } from "../dbms/user-helpers.js";
 import { sendOtp, verify } from "../services/otpService.js";
+import { createPendingUser, createUser } from "../dbms/auth-helpers.js";
 const adjectives = [
     "anonymous",
     "brave",

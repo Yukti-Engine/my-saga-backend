@@ -1,30 +1,29 @@
 import { randomBytes } from "crypto";
 import pool from "../dbms/db.js";
-import { getOrganizer, updateOrganizer, updateAccessToken, getOrganizerByEmail, logout } from "../dbms/organizer-helpers.js"; // Ensure this file exports updateUser correctly
-import { createRequest, currentMatchRequestOrganizer, completeMatch } from "../dbms/match-request-helpers.js";
-import { getWord2s } from '../dbms/category-helpers.js';
-import { getActiveOrganizerAdventures, getInactiveOrganizerAdventures, isRelatedToAdventure } from '../dbms/adventure-helpers.js';
-import { approveEventByOrganizer, createEvent, getAdventureOf } from "../dbms/event-helpers.js";
+import { getOrganizer, updateOrganizer, updateAccessToken, getOrganizerByEmail, logout, createRequest, getNotificationsFromAToB, countNotifications, sendNotification, currentMatchRequest, completeMatch, getActiveAdventures, getInactiveAdventures, approveEvent } from "../dbms/organizer-helpers.js"; // Ensure this file exports updateOrganizer correctly
+import { isRelatedToAdventure, createEvent } from '../dbms/adventure-helpers.js';
+import { getAdventureOf } from "../dbms/event-helpers.js";
+import { getWord2s } from "../dbms/lobby-helpers.js";
 export const getAdventures = async (req, res) => {
     const { oid, accessToken } = req.body;
     const organizer = await getOrganizer(oid, pool);
     if (organizer)
         if (organizer.access_token == accessToken && accessToken) {
-            return res.json(await getActiveOrganizerAdventures(oid, pool));
+            return res.json(await getActiveAdventures(oid, pool));
         }
         else
             return res.status(500).json({ "error": "Access token does not match" });
     else
         return res.status(500).json({ "error": "No such organizer" });
 };
-export const approveEvent = async (req, res) => {
+export const approveAdventureEvent = async (req, res) => {
     const { oid, accessToken, eventId } = req.body;
     const organizer = await getOrganizer(oid, pool);
     if (organizer)
         if (organizer.access_token == accessToken && accessToken) {
             try {
                 if (await isRelatedToAdventure(oid, "organizer", await getAdventureOf(eventId, pool), pool)) {
-                    await approveEventByOrganizer(eventId, pool);
+                    await approveEvent(eventId, pool);
                     return res.json({ success: !false });
                 }
                 return res.json({ success: false });
@@ -64,7 +63,7 @@ export const getPastAdventures = async (req, res) => {
     const organizer = await getOrganizer(oid, pool);
     if (organizer)
         if (organizer.access_token == accessToken && accessToken) {
-            return res.json(await getInactiveOrganizerAdventures(oid, a, b, pool));
+            return res.json(await getInactiveAdventures(oid, a, b, pool));
         }
         else
             return res.status(500).json({ "error": "Access token does not match" });
@@ -134,18 +133,18 @@ export const logOut = async (req, res) => {
             return res.json(await logout(oid, pool));
     return res.status(500).json({ "error": "Authentication Failed" });
 };
-export const currentMatchRequest = async (req, res) => {
+export const currentLobby = async (req, res) => {
     const { oid, accessToken } = req.body;
     const organizer = await getOrganizer(oid, pool);
     if (organizer)
         if (organizer.access_token == accessToken && accessToken)
-            return res.json(await currentMatchRequestOrganizer(oid, pool));
+            return res.json(await currentMatchRequest(oid, pool));
     return res.status(500).json({ "error": "Authentication Failed" });
 };
 export const startAdventure = async (req, res) => {
     const { oid, accessToken, name } = req.body;
     const organizer = await getOrganizer(oid, pool);
-    const matchRequests = await currentMatchRequestOrganizer(oid, pool);
+    const matchRequests = await currentMatchRequest(oid, pool);
     if (organizer)
         if (organizer.access_token == accessToken && accessToken)
             if (name)
@@ -195,4 +194,36 @@ async function generateRandomName(categoryId) {
         word1 = "An";
     return word1 + " " + word2 + " " + word3;
 }
+export const send = async (req, res) => {
+    const { oid, accessToken, message, receiverRole, receiverId } = req.body;
+    const organizer = await getOrganizer(oid, pool);
+    if (organizer.access_token == accessToken && accessToken) {
+        const sent = await sendNotification(oid, receiverRole, receiverId, message, pool);
+        if (sent.success) {
+            return res.json({ success: true });
+        }
+        else
+            return res.json({ success: false });
+    }
+    else
+        return res.status(500).json({ "error": "Authentication Error" });
+};
+export const count = async (req, res) => {
+    const { oid, accessToken } = req.body;
+    const organizer = await getOrganizer(oid, pool);
+    if (organizer.access_token == accessToken && accessToken) {
+        return res.json(await countNotifications(oid, pool));
+    }
+    else
+        return res.status(500).json({ "error": "Authentication Error" });
+};
+export const receive = async (req, res) => {
+    const { oid, accessToken, a, b } = req.body;
+    const organizer = await getOrganizer(oid, pool);
+    if (organizer.access_token == accessToken && accessToken) {
+        return res.json(await getNotificationsFromAToB(oid, a, b, pool));
+    }
+    else
+        return res.status(500).json({ "error": "Authentication Error" });
+};
 //# sourceMappingURL=organizerController.js.map

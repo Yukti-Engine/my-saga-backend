@@ -1,1 +1,1 @@
-{"version":3,"file":"tester.js","sourceRoot":"","sources":["../../src/dbms/tester.ts"],"names":[],"mappings":"AAAA,OAAO,IAAI,MAAM,MAAM,CAAC;AACxB,OAAO,EAAE,iBAAiB,EAAE,MAAM,gBAAgB,CAAC;AAEnD,iBAAiB,CAAC,eAAe,EAAC,YAAY,EAAC,4BAA4B,EAAE,YAAY,EAAE,MAAM,EAAE,SAAS,EAAC,IAAI,CAAC,CAAC"}
+{"version":3,"file":"tester.js","sourceRoot":"","sources":["../../src/dbms/tester.ts"],"names":[],"mappings":""}

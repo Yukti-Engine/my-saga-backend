@@ -1,8 +1,7 @@
 import pool from "../dbms/db.js";
-import { updateUser, getUser, logout, deductGems } from "../dbms/user-helpers.js"; // Ensure this file exports updateUser correctly
-import { getCompatibleRequests, checkReverseCompatibility, match, currentMatchRequestUser } from "../dbms/match-request-helpers.js";
-import { getActiveUserAdventures, getInactiveUserAdventures, isRelatedToAdventure } from "../dbms/adventure-helpers.js";
-import { approveEventByUser, getAdventureOf } from "../dbms/event-helpers.js";
+import { updateUser, getUser, logout, deductGems, getCompatibleRequests, checkReverseCompatibility, match, currentMatchRequest, getActiveAdventures, getInactiveAdventures, approveEvent, sendNotification, countNotifications, getNotificationsFromAToB } from "../dbms/user-helpers.js"; // Ensure this file exports updateUser correctly
+import { isRelatedToAdventure } from "../dbms/adventure-helpers.js";
+import { getAdventureOf } from "../dbms/event-helpers.js";
 export const updateUserProfile = async (req, res) => {
     const { uid, accessToken, updates } = req.body;
     const user = await getUser(uid, pool);
@@ -16,7 +15,7 @@ export const updateUserProfile = async (req, res) => {
     else
         return res.status(500).json({ "error": "No such user" });
 };
-export const approveEvent = async (req, res) => {
+export const approveAdventureEvent = async (req, res) => {
     const { uid, accessToken, eventId } = req.body;
     const user = await getUser(uid, pool);
     if (user)
@@ -24,7 +23,7 @@ export const approveEvent = async (req, res) => {
             try {
                 const adventureId = await getAdventureOf(eventId, pool);
                 if (await isRelatedToAdventure(uid, "user", adventureId, pool)) {
-                    await approveEventByUser(eventId, uid, pool);
+                    await approveEvent(eventId, uid, pool);
                     return res.json({ success: true });
                 }
                 return res.json({ success: false });
@@ -78,7 +77,7 @@ export const getAdventures = async (req, res) => {
     const user = await getUser(uid, pool);
     if (user)
         if (user.access_token == accessToken && accessToken) {
-            return res.json(await getActiveUserAdventures(uid, pool));
+            return res.json(await getActiveAdventures(uid, pool));
         }
         else
             return res.status(500).json({ "error": "Access token does not match" });
@@ -90,7 +89,7 @@ export const getPastAdventures = async (req, res) => {
     const user = await getUser(uid, pool);
     if (user)
         if (user.access_token == accessToken && accessToken) {
-            return res.json(await getInactiveUserAdventures(uid, a, b, pool));
+            return res.json(await getInactiveAdventures(uid, a, b, pool));
         }
         else
             return res.status(500).json({ "error": "Access token does not match" });
@@ -102,7 +101,7 @@ export const joinAdventure = async (req, res) => {
     const user = await getUser(uid, pool);
     if (user)
         if (user.access_token == accessToken && accessToken) {
-            const matched = await match(uid, false, minTeamMembers, ageRangeMin, ageRangeMax, 0, matchRequest, pool);
+            const matched = await match(uid, minTeamMembers, ageRangeMin, ageRangeMax, matchRequest, pool);
             if (matched.success) {
                 const deducted = await deductGems(uid, matched.cost, pool);
                 if (deducted.success)
@@ -122,12 +121,12 @@ export const logOut = async (req, res) => {
             return res.json(await logout(uid, pool));
     return res.status(500).json({ "error": "Authentication Failed" });
 };
-export const currentMatchRequest = async (req, res) => {
+export const currentLobby = async (req, res) => {
     const { uid, accessToken } = req.body;
     const user = await getUser(uid, pool);
     if (user)
         if (user.access_token == accessToken && accessToken)
-            return res.json(await currentMatchRequestUser(uid, pool));
+            return res.json(await currentMatchRequest(uid, pool));
     return res.status(500).json({ "error": "Authentication Failed" });
 };
 function getAge(dob) {
@@ -142,4 +141,40 @@ function getAge(dob) {
     }
     return age;
 }
+export const send = async (req, res) => {
+    const { uid, accessToken, message, receiverRole, receiverId } = req.body;
+    const user = await getUser(uid, pool);
+    if (user.access_token == accessToken && accessToken) {
+        const sent = await sendNotification(uid, receiverRole, receiverId, message, pool);
+        if (sent.success) {
+            const deducted = await deductGems(uid, 1, pool);
+            if (deducted.success)
+                return res.json({ success: true });
+            else
+                return res.json({ success: false, message: "Insufficient Gems" });
+        }
+        else
+            return res.json({ success: false });
+    }
+    else
+        return res.status(500).json({ "error": "Authentication Error" });
+};
+export const count = async (req, res) => {
+    const { uid, accessToken } = req.body;
+    const user = await getUser(uid, pool);
+    if (user.access_token == accessToken && accessToken) {
+        return res.json(await countNotifications(uid, pool));
+    }
+    else
+        return res.status(500).json({ "error": "Authentication Error" });
+};
+export const receive = async (req, res) => {
+    const { uid, accessToken, a, b } = req.body;
+    const user = await getUser(uid, pool);
+    if (user.access_token == accessToken && accessToken) {
+        return res.json(await getNotificationsFromAToB(uid, a, b, pool));
+    }
+    else
+        return res.status(500).json({ "error": "Authentication Error" });
+};
 //# sourceMappingURL=userController.js.map
