@@ -84,7 +84,7 @@ export async function  getUploadFileUrl(req:any, res:any)  {
     if (person.access_token == accessToken && accessToken)
     {
       if (await isRelatedToAdventure(id, role, adventureId, pool)) {
-        const data = await generateUploadUrl(fileName, contentType, adventureId, await fileCount(adventureId, pool));
+        const data = await generateUploadUrl(fileName, contentType, adventureId, await fileCount(adventureId, pool)+1);
 
         res.json(data);
       }
