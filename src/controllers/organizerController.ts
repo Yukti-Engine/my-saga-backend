@@ -5,7 +5,7 @@ import { getOrganizer, updateOrganizer, updateAccessToken, getOrganizerByEmail, 
   currentMatchRequest, completeMatch, getActiveAdventures, getInactiveAdventures, approveEvent } from "../dbms/organizer-helpers.js"; // Ensure this file exports updateOrganizer correctly
 import {isRelatedToAdventure, createEvent} from '../dbms/adventure-helpers.js';
 import {getAdventureOf} from "../dbms/event-helpers.js";
-import { getWord2s } from "../dbms/lobby-helpers.js";
+import { getWord2s } from "../dbms/search-helpers.js";
 
 export const getAdventures = async (req: Request, res: Response) => {
   const { oid, accessToken} = req.body;
