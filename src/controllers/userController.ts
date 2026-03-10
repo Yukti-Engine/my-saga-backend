@@ -1,9 +1,7 @@
 import type { Request, Response } from "express";
 import pool from "../dbms/db.js";
 import { updateUser, getUser, logout, deductGems, getCompatibleRequests, checkReverseCompatibility, match, currentMatchRequest, 
-  getActiveAdventures, getInactiveAdventures, approveEvent, sendNotification, countNotifications, getNotificationsFromAToB} from "../dbms/user-helpers.js"; // Ensure this file exports updateUser correctly
-import { isRelatedToAdventure } from "../dbms/adventure-helpers.js";
-import { getAdventureOf } from "../dbms/event-helpers.js";
+  getActiveAdventures, getInactiveAdventures, sendNotification, countNotifications, getNotificationsFromAToB} from "../dbms/user-helpers.js"; // Ensure this file exports updateUser correctly
 
 export const updateUserProfile = async (req: Request, res: Response) => {
   const { uid, accessToken, updates } = req.body;
@@ -13,31 +11,6 @@ export const updateUserProfile = async (req: Request, res: Response) => {
     {
       const updatedUser = await updateUser(uid, updates, pool);
       return res.json(updatedUser);
-    }
-    else
-      return res.status(500).json({"error": "Access token does not match"});
-  else
-    return res.status(500).json({"error": "No such user"});
-};
-
-export const approveAdventureEvent = async (req: Request, res: Response) => {
-  const { uid, accessToken, eventId } = req.body;
-  const user = await getUser(uid, pool);
-  if (user)
-    if (user.access_token == accessToken && accessToken)
-    {
-      try
-      {
-        const adventureId = await getAdventureOf(eventId, pool);
-        if (await isRelatedToAdventure(uid, "user", adventureId, pool)){
-          await approveEvent(eventId, uid, pool);
-          return res.json({success:true});
-        }
-        return res.json({success:false});
-      }
-      catch {
-        return res.json({success:false});
-      }
     }
     else
       return res.status(500).json({"error": "Access token does not match"});

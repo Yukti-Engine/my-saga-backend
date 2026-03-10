@@ -4,7 +4,6 @@ import pool from "../dbms/db.js";
 import { getOrganizer, updateOrganizer, updateAccessToken, getOrganizerByEmail, logout, createRequest, getNotificationsFromAToB, countNotifications, sendNotification, 
   currentMatchRequest, completeMatch, getActiveAdventures, getInactiveAdventures, approveEvent } from "../dbms/organizer-helpers.js"; // Ensure this file exports updateOrganizer correctly
 import {isRelatedToAdventure, createEvent} from '../dbms/adventure-helpers.js';
-import {getAdventureOf} from "../dbms/event-helpers.js";
 import { getWord2s } from "../dbms/search-helpers.js";
 
 export const getAdventures = async (req: Request, res: Response) => {
@@ -14,29 +13,6 @@ export const getAdventures = async (req: Request, res: Response) => {
     if (organizer.access_token == accessToken && accessToken)
     {
       return res.json(await getActiveAdventures(oid, pool));
-    }
-    else
-      return res.status(500).json({"error": "Access token does not match"});
-  else
-    return res.status(500).json({"error": "No such organizer"});
-}
-
-export const approveAdventureEvent = async (req: Request, res: Response) => {
-  const { oid, accessToken, eventId} = req.body;
-  const organizer = await getOrganizer(oid, pool);
-  if (organizer)
-    if (organizer.access_token == accessToken && accessToken)
-    {
-      try{
-        if (await isRelatedToAdventure(oid, "organizer", await getAdventureOf(eventId, pool), pool)){
-          await approveEvent(eventId, pool);
-          return res.json({success:!false});
-        }
-        return res.json({success:false});
-      }
-      catch{
-        return res.json({success:false});
-      }
     }
     else
       return res.status(500).json({"error": "Access token does not match"});

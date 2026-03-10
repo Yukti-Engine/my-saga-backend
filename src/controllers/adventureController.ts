@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import pool from "../dbms/db.js";
-import { isRelatedToAdventure, countMessages, getMessagesFromAToB, roomAvailable, fileCount} from '../dbms/adventure-helpers.js';
+import { isRelatedToAdventure, countMessages, getMessagesFromAToB, roomAvailable, fileCount, addMessage} from '../dbms/adventure-helpers.js';
 import {getBoss} from '../dbms/boss-helpers.js';
 import {getUser} from '../dbms/user-helpers.js';
 import { getOrganizer } from "../dbms/organizer-helpers.js";
@@ -51,23 +51,54 @@ export const getMessages = async (req: Request, res: Response) => {
 }
 
 export default function roomSocket(io:any, socket:any) {
-  socket.on("join_room", (roomName:string) => {
-    roomAvailable(roomName, pool).then((answer)=>{
-      if (answer){
-        socket.join(roomName);
-        socket.to(roomName).emit("message", "A user has joined!");
-      }
-    });
+  socket.on("join_room", async ({roomName, id, role, accessToken}:any) => {
+    let person;
+    if (role == "organizer")
+      person = await getOrganizer(id, pool);
+    else if (role == "boss")
+      person = await getBoss(id, pool);
+    else
+      person = await getUser(id, pool);
+    if (person)
+      if (person.access_token == accessToken && accessToken)
+        if (await roomAvailable(roomName, pool) && await isRelatedToAdventure(id, role, parseInt(roomName.substrimg(0, roomName.indexOf('_'))), pool)){
+          socket.join(roomName);
+          socket.to(roomName).emit("message", "A user has joined!");
+        }
     
   });
 
-  socket.on("send_message", ({ room, message }:any) => {
-    io.to(room).emit("message", message);
+  socket.on("send_message", async ({ room, senderId, senderType, accessToken, message }:any) => {
+    let person;
+    const role = senderType;
+    if (role == "organizer")
+      person = await getOrganizer(senderId, pool);
+    else if (role == "boss")
+      person = await getBoss(senderId, pool);
+    else
+      person = await getUser(senderId, pool);
+    if (person)
+      if (person.access_token == accessToken && accessToken && await isRelatedToAdventure(senderId, role, parseInt(room.substrimg(0, room.indexOf('_'))), pool)){
+        await addMessage(senderId, senderType, parseInt(room.substring(0, room.indexOf('_'))), message, pool);
+        io.to(room).emit("message", message);
+      }
   });
 
-  socket.on("leave_room", (roomName:string) => {
-    socket.leave(roomName);
-    socket.to(roomName).emit("message", "A user has left!");
+  socket.on("leave_room", async ({roomName, id, role, accessToken}:any) => {
+    let person;
+    if (role == "organizer")
+      person = await getOrganizer(id, pool);
+    else if (role == "boss")
+      person = await getBoss(id, pool);
+    else
+      person = await getUser(id, pool);
+    if (person)
+      if (person.access_token == accessToken && accessToken)
+        if (await isRelatedToAdventure(id, role, parseInt(roomName.substrimg(0, roomName.indexOf('_'))), pool)){
+          socket.leave(roomName);
+          socket.to(roomName).emit("message", "A user has left!");
+        }
+    
   });
 }
 
