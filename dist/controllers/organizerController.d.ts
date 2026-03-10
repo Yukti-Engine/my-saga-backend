@@ -1,6 +1,5 @@
 import type { Request, Response } from "express";
 export declare const getAdventures: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
-export declare const approveAdventureEvent: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 export declare const organizeEvent: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 export declare const getPastAdventures: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 export declare const updateOrganizerProfile: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;

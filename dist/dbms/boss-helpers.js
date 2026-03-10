@@ -73,8 +73,8 @@ export async function getBossByEmail(email, pool) {
     return result.rows[0];
 }
 export async function updateAccessToken(id, accessToken, pool) {
-    const query = `UPDATE bosses SET access_token = $1 WHERE id = $2 returning *`;
-    const result = await pool.query(query, [accessToken, id]);
+    const query = `UPDATE bosses SET access_token = $1, refreshed_at = $2 WHERE id = $3 returning *`;
+    const result = await pool.query(query, [accessToken, Date.now(), id]);
     return result.rows[0];
 }
 export async function logout(id, pool) {

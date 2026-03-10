@@ -1,3 +1,8 @@
+export async function addMessage(senderId, senderType, adventureId, message, pool) {
+    const query = 'INSERT INTO messages (sender_id, sender_type, adventure_id, message) VALUES ($1, $2, $3, $4);';
+    const result = await pool.query(query, [senderId, senderType, adventureId, message]);
+    return result.rows;
+}
 export async function getMessagesFromAToB(adventure_id, a, b, pool) {
     const query = 'SELECT * FROM messages WHERE adventure_id = $1 ORDER BY created_at DESC LIMIT $3 OFFSET $4';
     const result = await pool.query(query, [adventure_id, b, a]);

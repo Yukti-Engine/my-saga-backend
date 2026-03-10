@@ -1,5 +1,5 @@
 import pool from "../dbms/db.js";
-import { getAllCategories, getAllSubcategories } from "../dbms/lobby-helpers.js"; // Ensure this file exports updateUser correctly
+import { getAllCategories, getAllSubcategories } from "../dbms/search-helpers.js"; // Ensure this file exports updateUser correctly
 export const getCategories = async (req, res) => {
     return res.json(await getAllCategories(pool));
 };

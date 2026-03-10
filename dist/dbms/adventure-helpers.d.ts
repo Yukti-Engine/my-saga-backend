@@ -1,3 +1,4 @@
+export declare function addMessage(senderId: number, senderType: String, adventureId: number, message: string, pool: any): Promise<any>;
 export declare function getMessagesFromAToB(adventure_id: number, a: number, b: number, pool: any): Promise<any>;
 export declare function countMessages(adventure_id: number, pool: any): Promise<number>;
 export declare function fileCount(adventure_id: number, pool: any): Promise<number>;

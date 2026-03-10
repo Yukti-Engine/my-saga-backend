@@ -12,6 +12,7 @@ import adventureRoutes from "./routes/adventureRoutes.js";
 import http from "http";
 import { Server } from "socket.io";
 import roomSocket from "./controllers/adventureController.js";
+import eventRoutes from "./routes/eventRoutes.js";
 dotenv.config();
 const app = express();
 const server = http.createServer(app);
@@ -29,6 +30,7 @@ app.use("/organizer", organizerRoutes);
 app.use("/boss", bossRoutes);
 app.use("/search", searchRoutes);
 app.use("/adventure", adventureRoutes);
+app.use("/event", eventRoutes);
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
