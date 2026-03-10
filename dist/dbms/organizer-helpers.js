@@ -74,8 +74,8 @@ export async function getOrganizerByEmail(email, pool) {
     return result.rows[0];
 }
 export async function updateAccessToken(id, accessToken, pool) {
-    const query = `UPDATE organizers SET access_token = $1, refreshed_at = $2 WHERE id = $3 returning *`;
-    const result = await pool.query(query, [accessToken, Date.now(), id]);
+    const query = `UPDATE organizers SET access_token = $1, refreshed_at = NOW() WHERE id = $2 returning *`;
+    const result = await pool.query(query, [accessToken, id]);
     return result.rows[0];
 }
 export async function logout(id, pool) {
