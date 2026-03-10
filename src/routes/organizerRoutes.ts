@@ -9,7 +9,7 @@ router.post("/request-match", requestMatch);
 router.post("/login", login);
 router.post("/logout", logOut);
 router.post("/lobby", currentLobby);
-router.post("/startAdventure", startAdventure);
+router.post("/start-adventure", startAdventure);
 router.post("/current-adventures", getAdventures);
 router.post("/past-adventures", getPastAdventures);
 router.post("/organize-event", organizeEvent);
