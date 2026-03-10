@@ -1,8 +1,8 @@
 import type { Request, Response } from "express";
-import pool from "../dbms/db";
-import { changeAttendance, getAdventureOf } from "../dbms/event-helpers";
-import { getOrganizer } from "../dbms/organizer-helpers";
-import { isRelatedToAdventure } from "../dbms/adventure-helpers";
+import pool from "../dbms/db.js";
+import { changeAttendance, getAdventureOf } from "../dbms/event-helpers.js";
+import { getOrganizer } from "../dbms/organizer-helpers.js";
+import { isRelatedToAdventure } from "../dbms/adventure-helpers.js";
 
 export const setAttendance = async (req: Request, res: Response) => {
   const { oid, accessToken, eventId, attendance} = req.body;
