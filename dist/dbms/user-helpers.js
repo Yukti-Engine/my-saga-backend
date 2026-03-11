@@ -30,10 +30,6 @@ export async function findUserByPhone(phone, pool) {
     console.log("Fetched User:", result.rows[0]);
     return result.rows[0];
 }
-/**
- * Update user by id, allowing username, bio, and/or email.
- * Returns the updated user or null if not found.
- */
 export async function updateUser(id, updates, pool) {
     const setClauses = [];
     const params = [];
@@ -58,9 +54,12 @@ export async function updateUser(id, updates, pool) {
         setClauses.push(`setting_2 = $${paramIndex++}`);
         params.push(updates.setting_2);
     }
+    if (typeof updates.icon !== "undefined") {
+        setClauses.push(`icon = $${paramIndex++}`);
+        params.push(Buffer.from(updates.icon, "base64")); // decode base64 → bytea
+    }
     if (setClauses.length === 0) {
-        const currentQuery = 'SELECT * FROM users WHERE id = $1';
-        const currentResult = await pool.query(currentQuery, [id]);
+        const currentResult = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
         return currentResult.rows[0] || null;
     }
     const query = `

@@ -46,9 +46,16 @@ export async function updateOrganizer(id, updates, pool) {
         setClauses.push(`setting_2 = $${paramIndex++}`);
         params.push(updates.setting_2);
     }
+    if (typeof updates.bio !== "undefined") {
+        setClauses.push(`bio = $${paramIndex++}`);
+        params.push(updates.bio);
+    }
+    if (typeof updates.icon !== "undefined") {
+        setClauses.push(`icon = $${paramIndex++}`);
+        params.push(Buffer.from(updates.icon, "base64")); // decode base64 → bytea
+    }
     if (setClauses.length === 0) {
-        const currentQuery = 'SELECT * FROM organizers WHERE id = $1';
-        const currentResult = await pool.query(currentQuery, [id]);
+        const currentResult = await pool.query('SELECT * FROM organizers WHERE id = $1', [id]);
         return currentResult.rows[0] || null;
     }
     const query = `

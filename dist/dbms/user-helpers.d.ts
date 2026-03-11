@@ -6,16 +6,13 @@ export declare function deleteUser(id: number, pool: any): Promise<any>;
  * Find user by email OR phone (first match). If both undefined, returns null.
  */
 export declare function findUserByPhone(phone: string, pool: any): Promise<any>;
-/**
- * Update user by id, allowing username, bio, and/or email.
- * Returns the updated user or null if not found.
- */
 export declare function updateUser(id: number, updates: {
     username?: string;
     bio?: string;
     email?: string;
     setting_1?: boolean;
     setting_2?: boolean;
+    icon?: string;
 }, pool: any): Promise<any>;
 export declare function updateAccessToken(id: number, accessToken: string | null, pool: any): Promise<any>;
 export declare function logout(id: number, pool: any): Promise<any>;

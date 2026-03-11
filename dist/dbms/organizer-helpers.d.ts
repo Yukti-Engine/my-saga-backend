@@ -23,8 +23,10 @@ export declare function getOrganizer(id: number, pool: any): Promise<any>;
  */
 export declare function updateOrganizer(id: number, updates: {
     username?: string;
-    setting_1: boolean;
-    setting_2: boolean;
+    setting_1?: boolean;
+    setting_2?: boolean;
+    bio?: string;
+    icon?: string;
 }, pool: any): Promise<any>;
 export declare function getOrganizerByEmail(email: string, pool: any): Promise<any>;
 export declare function updateAccessToken(id: number, accessToken: string | null, pool: any): Promise<any>;
