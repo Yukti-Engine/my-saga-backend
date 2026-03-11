@@ -91,10 +91,10 @@ export const findAdventures = async (req, res) => {
     const age = getAge(boss.dob);
     if (boss)
         if (boss.access_token == accessToken && accessToken) {
-            const compatibleRequests = await getCompatibleRequests(categoryId, age, latitude, longitude, (boss.gender == "M" && boss.setting_1 == true), (boss.gender == "F" && boss.setting_1 == true), (boss.gender == "F" && boss.setting_2 == true), boss.gender, pool);
+            const compatibleRequests = await getCompatibleRequests(categoryId, age, latitude, longitude, boss.gender, pool);
             const potentialAdventures = [];
             for (const element of compatibleRequests) {
-                const isCompatible = await checkReverseCompatibility(element.id, latitude, longitude, matchRadius, ageRangeMin, ageRangeMax, pool);
+                const isCompatible = await checkReverseCompatibility(element.id, latitude, longitude, matchRadius, ageRangeMin, ageRangeMax, (boss.gender == 'F' && boss.setting_1), (boss.gender == 'F' && boss.setting_2), pool);
                 if (isCompatible) {
                     potentialAdventures.push(element);
                 }
@@ -115,11 +115,11 @@ export const findAdventures = async (req, res) => {
         return res.status(500).json({ "error": "No such boss" });
 };
 export const joinAdventure = async (req, res) => {
-    const { bid, accessToken, matchRequest, payPerHead2 } = req.body;
+    const { bid, accessToken, matchRequest, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2 } = req.body;
     const user = await getBoss(bid, pool);
     if (user)
         if (user.access_token == accessToken && accessToken)
-            return res.json(await match(bid, payPerHead2, matchRequest, pool));
+            return res.json(await match(bid, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2, matchRequest, pool));
     return res.status(500).json({ "error": "Authentication Failed" });
 };
 export const logOut = async (req, res) => {

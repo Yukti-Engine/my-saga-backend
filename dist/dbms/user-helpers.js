@@ -240,36 +240,37 @@ export async function checkReverseCompatibility(matchRequestId, latitude, longit
 }
 export async function match(id, minTeamMembers, ageRangeMin, ageRangeMax, snapshot, pool) {
     // ================= USER JOIN =================
-    const userRes = await pool.query(`SELECT dob, gender FROM users WHERE id = $1`, [id]);
+    const userRes = await pool.query(`SELECT dob, gender, setting_1, setting_2 FROM users WHERE id = $1`, [id]);
     if (userRes.rowCount === 0)
         throw new Error("User not found");
-    const { dob, gender } = userRes.rows[0];
+    const { dob, gender, setting_1, setting_2 } = userRes.rows[0];
     const age = calculateAge(dob);
     const result = await pool.query(`
     UPDATE match_requests
     SET 
       user_ids = array_append(user_ids, $1),
       genders = array_append(genders, $2),
-      ages = array_append(ages, $3),
+      ages = array_append(ages, $3), 
       min_team_members = GREATEST(min_team_members, $4),
       age_range_min    = LEAST(age_range_min, $5),
-      age_range_max    = GREATEST(age_range_max, $6)
+      age_range_max    = GREATEST(age_range_max, $6),
+      all_girls = (all_girls OR $7),
+      half_girls = (half_girls OR $8)
     WHERE
-        id = $7
-        AND boss_id IS NOT DISTINCT FROM $8
-        AND org_id = $9
-        AND category_id = $10
-        AND match_radius = $11
-        AND min_team_members = $12
-        AND age_range_min = $13
-        AND age_range_max = $14
-        AND latitude = $15
-        AND longitude = $16
-        AND pay_per_head = $17
-        AND pay_per_head_2 IS NOT DISTINCT FROM $18
-        AND all_boys = $19
-        AND all_girls = $20
-        AND half_girls = $21
+        id = $9
+        AND boss_id IS NOT DISTINCT FROM $10
+        AND org_id = $11
+        AND category_id = $12
+        AND match_radius = $13
+        AND min_team_members = $14
+        AND age_range_min = $15
+        AND age_range_max = $16
+        AND latitude = $17
+        AND longitude = $18
+        AND pay_per_head = $19
+        AND pay_per_head_2 IS NOT DISTINCT FROM $20
+        AND all_girls = $21
+        AND half_girls = $22
     RETURNING *
     `, [
         id,
@@ -278,6 +279,8 @@ export async function match(id, minTeamMembers, ageRangeMin, ageRangeMax, snapsh
         minTeamMembers,
         ageRangeMin,
         ageRangeMax,
+        setting_1,
+        setting_2,
         snapshot.id,
         snapshot.boss_id,
         snapshot.org_id,
@@ -290,7 +293,6 @@ export async function match(id, minTeamMembers, ageRangeMin, ageRangeMax, snapsh
         snapshot.longitude,
         snapshot.pay_per_head,
         snapshot.pay_per_head_2,
-        snapshot.all_boys,
         snapshot.all_girls,
         snapshot.half_girls
     ]);

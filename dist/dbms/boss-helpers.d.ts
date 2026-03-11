@@ -38,9 +38,11 @@ export declare function countNotifications(receiver_id: number, pool: any): Prom
 export declare function addMessage(message: string, sender_id: number, adventure_id: number, pool: any): Promise<any>;
 export declare function getMessagesFromAToB(adventure_id: number, a: number, b: number, pool: any): Promise<any>;
 export declare function countMessages(adventure_id: number, pool: any): Promise<number>;
-export declare function getCompatibleRequests(categoryId: number, age: number, latitude: number, longitude: number, allBoys: boolean, allGirls: boolean, halfGirls: boolean, gender: string, pool: any): Promise<any>;
-export declare function checkReverseCompatibility(matchRequestId: number, latitude: number, longitude: number, matchRadius: number, ageRangeMin: number, ageRangeMax: number, pool: any): Promise<boolean>;
-export declare function match(id: number, payPerHead2: number, snapshot: any, pool: any): Promise<any>;
+export declare function getCompatibleRequests(categoryId: number, age: number, latitude: number, longitude: number, gender: string, pool: any): Promise<any>;
+export declare function checkReverseCompatibility(matchRequestId: number, latitude: number, longitude: number, matchRadius: number, ageRangeMin: number, ageRangeMax: number, allGirls: boolean, halfGirls: boolean, pool: any): Promise<boolean>;
+export declare function match(id: number, minTeamMembers: number, ageRangeMin: number, ageRangeMax: number, payPerHead2: number, snapshot: any, pool: any): Promise<{
+    success: boolean;
+}>;
 export declare function currentMatchRequest(id: number, pool: any): Promise<any>;
 export declare function getActiveAdventures(id: number, pool: any): Promise<any>;
 export declare function getInactiveAdventures(id: number, a: number, b: number, pool: any): Promise<any>;
