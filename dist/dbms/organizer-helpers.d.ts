@@ -37,7 +37,7 @@ export declare function countNotifications(receiver_id: number, pool: any): Prom
 export declare function addMessage(message: string, sender_id: number, adventure_id: number, pool: any): Promise<any>;
 export declare function getMessagesFromAToB(adventure_id: number, a: number, b: number, pool: any): Promise<any>;
 export declare function countMessages(adventure_id: number, pool: any): Promise<number>;
-export declare function createRequest(orgId: number, categoryId: number, matchRadius: number, minTeamMembers: number, ageRangeMin: number, ageRangeMax: number, latitude: number, longitude: number, payPerHead: number, allBoys: boolean, allGirls: boolean, halfGirls: boolean, pool: any): Promise<any>;
+export declare function createRequest(orgId: number, categoryId: number, matchRadius: number, minTeamMembers: number, ageRangeMin: number, ageRangeMax: number, latitude: number, longitude: number, payPerHead: number, allGirls: boolean, halfGirls: boolean, pool: any): Promise<any>;
 export declare function currentMatchRequest(id: number, pool: any): Promise<any>;
 export declare function completeMatch(name: string, id: number, pool: any): Promise<any>;
 export declare function approveEvent(event_id: number, pool: any): Promise<any>;

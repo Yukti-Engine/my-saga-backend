@@ -79,7 +79,7 @@ export const requestMatch = async (req, res) => {
     const organizer = await getOrganizer(oid, pool);
     if (organizer)
         if (organizer.access_token == accessToken && accessToken)
-            return res.json(await createRequest(oid, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, payPerHead, (organizer.gender == "M" && organizer.setting_1 == true), (organizer.gender == "F" && organizer.setting_1 == true), (organizer.gender == "F" && organizer.setting_2 == true), pool));
+            return res.json(await createRequest(oid, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, payPerHead, (organizer.gender == "F" && organizer.setting_1 == true), (organizer.gender == "F" && organizer.setting_2 == true), pool));
         else
             return res.status(500).json({ "error": "Access token does not match" });
     else

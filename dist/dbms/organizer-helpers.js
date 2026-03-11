@@ -116,7 +116,7 @@ export async function countMessages(adventure_id, pool) {
     const result = await pool.query(query, [adventure_id]);
     return parseInt(result.rows[0].count, 10);
 }
-export async function createRequest(orgId, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, payPerHead, allBoys, allGirls, halfGirls, pool) {
+export async function createRequest(orgId, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, payPerHead, allGirls, halfGirls, pool) {
     // 1. Fetch organizer
     const organizerRes = await pool.query(`SELECT dob, gender FROM organizers WHERE id = $1`, [orgId]);
     if (organizerRes.rowCount === 0) {
@@ -137,7 +137,6 @@ export async function createRequest(orgId, categoryId, matchRadius, minTeamMembe
       latitude,
       longitude,
       pay_per_head,
-      all_boys,
       all_girls,
       half_girls,
       ages,
@@ -146,7 +145,7 @@ export async function createRequest(orgId, categoryId, matchRadius, minTeamMembe
     VALUES (
       $1, $2, $3, $4, $5, $6,
       $7, $8, $9, $10, $11, $12,
-      $13, $14
+      $13
     )
     RETURNING *
   `;
@@ -160,7 +159,6 @@ export async function createRequest(orgId, categoryId, matchRadius, minTeamMembe
         latitude,
         longitude,
         payPerHead,
-        allBoys,
         allGirls,
         halfGirls,
         [age], // int[]
