@@ -223,10 +223,10 @@ export async function checkReverseCompatibility(matchRequestId, latitude, longit
 }
 export async function match(id, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2, snapshot, pool) {
     // ================= USER JOIN =================
-    const userRes = await pool.query(`SELECT dob, gender, setting_1, setting_2 FROM users WHERE id = $1`, [id]);
-    if (userRes.rowCount === 0)
+    const bossRes = await pool.query(`SELECT dob, gender, setting_1, setting_2 FROM bosses WHERE id = $1`, [id]);
+    if (bossRes.rowCount === 0)
         throw new Error("User not found");
-    const { dob, gender, setting_1, setting_2 } = userRes.rows[0];
+    const { dob, gender, setting_1, setting_2 } = bossRes.rows[0];
     const age = calculateAge(dob);
     const result = await pool.query(`
     UPDATE match_requests
