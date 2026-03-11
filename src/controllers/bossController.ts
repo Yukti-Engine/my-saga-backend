@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
-import { randomBytes } from "crypto";
 import pool from "../dbms/db.js";
-import { getBoss, updateBoss, updateAccessToken, getBossByEmail, logout, getActiveAdventures, getInactiveAdventures, getCompatibleRequests, checkReverseCompatibility, match, currentMatchRequest  } from "../dbms/boss-helpers.js"; // Ensure this file exports updateUser correctly
+import { getBoss, updateBoss, logout, getActiveAdventures, getInactiveAdventures, getCompatibleRequests, checkReverseCompatibility, match, currentMatchRequest  } from "../dbms/boss-helpers.js"; // Ensure this file exports updateUser correctly
 import { isRelatedToAdventure, createEvent } from "../dbms/adventure-helpers.js";
 
 export const getAdventures = async (req: Request, res: Response) => {
@@ -150,24 +149,6 @@ export const findAdventures = async (req: Request, res: Response) => {
     return res.status(500).json({"error": "No such boss"});
 }
 
-export const login = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-  const boss = await getBossByEmail(email, pool);
-  const encode = (text: string): string => {
-    return Buffer.from(text, "utf8").toString("base64");
-  };
-  if (boss)
-    if (boss.password == encode(password))
-    {
-      const bossDetails = await updateAccessToken(boss.id, randomBytes(16).toString("hex"), pool);
-      bossDetails.password = password;
-      return res.json(bossDetails)
-    }
-    else
-      return res.status(500).json({"error": "Password does not match"});
-  else
-    return res.status(500).json({"error": "No such boss"});
-}
 export const  joinAdventure = async (req: Request, res: Response) => {
   const {bid, accessToken, matchRequest, payPerHead2}  = req.body;
   const user = await getBoss(bid, pool);

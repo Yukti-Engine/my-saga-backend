@@ -1,8 +1,7 @@
 import type { Request, Response } from "express";
-import { randomBytes } from "crypto";
 import pool from "../dbms/db.js";
-import { getOrganizer, updateOrganizer, updateAccessToken, getOrganizerByEmail, logout, createRequest, getNotificationsFromAToB, countNotifications, sendNotification, 
-  currentMatchRequest, completeMatch, getActiveAdventures, getInactiveAdventures, approveEvent } from "../dbms/organizer-helpers.js"; // Ensure this file exports updateOrganizer correctly
+import { getOrganizer, updateOrganizer, logout, createRequest, getNotificationsFromAToB, countNotifications, sendNotification, 
+  currentMatchRequest, completeMatch, getActiveAdventures, getInactiveAdventures} from "../dbms/organizer-helpers.js"; // Ensure this file exports updateOrganizer correctly
 import {isRelatedToAdventure, createEvent} from '../dbms/adventure-helpers.js';
 import { getWord2s } from "../dbms/search-helpers.js";
 
@@ -98,26 +97,6 @@ export const requestMatch = async (req: Request, res: Response) => {
   else
     return res.status(500).json({"error": "No such organizer"});
 }
-
-export const login = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-  const organizer = await getOrganizerByEmail(email, pool);
-  const encode = (text: string): string => {
-    return Buffer.from(text, "utf8").toString("base64");
-  };
-  if (organizer)
-    if (organizer.password == encode(password))
-    {
-      const organizerDetails = await updateAccessToken(organizer.id, randomBytes(16).toString("hex"), pool);
-      organizerDetails.password = password;
-      return res.json(organizerDetails)
-    }
-    else
-      return res.status(500).json({"error": "Password does not match"});
-  else
-    return res.status(500).json({"error": "No such organizer"});
-}
-
 
 export const  logOut = async (req: Request, res: Response) => {
   const {oid, accessToken}  = req.body;
