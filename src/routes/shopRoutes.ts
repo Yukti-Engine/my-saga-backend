@@ -3,6 +3,6 @@ import { getOffers } from "../controllers/shopController.js";
 
 const router = express.Router();
 
-router.get("/offers", getOffers);
+router.post("/offers", getOffers);
 
 export default router;

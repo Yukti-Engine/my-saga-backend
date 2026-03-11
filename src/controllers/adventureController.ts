@@ -25,7 +25,7 @@ export const count = async (req: Request, res: Response) => {
     else
       return res.status(500).json({"error": "Access token does not match"});
   else
-    return res.status(500).json({"error": "No such organizer"});
+    return res.status(500).json({"error": "No such person"});
 }
 
 export const getMessages = async (req: Request, res: Response) => {

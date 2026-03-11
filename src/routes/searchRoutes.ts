@@ -3,7 +3,7 @@ import { getCategories, getSubcategories } from "../controllers/searchController
 
 const router = express.Router();
 
-router.get("/categories", getCategories);
+router.post("/categories", getCategories);
 router.post("/subcategories", getSubcategories);
 
 export default router;
