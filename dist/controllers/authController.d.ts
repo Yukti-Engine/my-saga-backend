@@ -6,4 +6,6 @@ export declare const signupResendOtp: (req: Request, res: Response) => Promise<R
 export declare const loginRequestOtp: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 export declare const loginResendOtp: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 export declare const loginVerifyOtp: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
+export declare const organizerLogin: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
+export declare const bossLogin: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 //# sourceMappingURL=authController.d.ts.map

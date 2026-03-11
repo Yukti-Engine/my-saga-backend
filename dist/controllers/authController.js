@@ -3,6 +3,8 @@ import pool from "../dbms/db.js";
 import { findPendingUser, removePendingUser, findUserByPhone, updateAccessToken } from "../dbms/user-helpers.js";
 import { sendOtp, verify } from "../services/otpService.js";
 import { createPendingUser, createUser } from "../dbms/auth-helpers.js";
+import { getOrganizerByEmail, updateAccessToken as updateAccessTokenForOrganizer } from "../dbms/organizer-helpers.js";
+import { getBossByEmail, updateAccessToken as updateAccessTokenForBoss } from "../dbms/boss-helpers.js";
 const adjectives = [
     "anonymous",
     "brave",
@@ -132,5 +134,39 @@ export const loginVerifyOtp = async (req, res) => {
         console.error("Error in loginVerifyOtp:", err);
         return res.status(500).json({ error: "OTP verification failed" });
     }
+};
+export const organizerLogin = async (req, res) => {
+    const { email, password } = req.body;
+    const organizer = await getOrganizerByEmail(email, pool);
+    const encode = (text) => {
+        return Buffer.from(text, "utf8").toString("base64");
+    };
+    if (organizer)
+        if (organizer.password == encode(password)) {
+            const organizerDetails = await updateAccessTokenForOrganizer(organizer.id, randomBytes(16).toString("hex"), pool);
+            organizerDetails.password = password;
+            return res.json(organizerDetails);
+        }
+        else
+            return res.status(500).json({ "error": "Password does not match" });
+    else
+        return res.status(500).json({ "error": "No such organizer" });
+};
+export const bossLogin = async (req, res) => {
+    const { email, password } = req.body;
+    const boss = await getBossByEmail(email, pool);
+    const encode = (text) => {
+        return Buffer.from(text, "utf8").toString("base64");
+    };
+    if (boss)
+        if (boss.password == encode(password)) {
+            const bossDetails = await updateAccessTokenForBoss(boss.id, randomBytes(16).toString("hex"), pool);
+            bossDetails.password = password;
+            return res.json(bossDetails);
+        }
+        else
+            return res.status(500).json({ "error": "Password does not match" });
+    else
+        return res.status(500).json({ "error": "No such boss" });
 };
 //# sourceMappingURL=authController.js.map

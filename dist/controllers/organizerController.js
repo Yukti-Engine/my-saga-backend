@@ -1,6 +1,5 @@
-import { randomBytes } from "crypto";
 import pool from "../dbms/db.js";
-import { getOrganizer, updateOrganizer, updateAccessToken, getOrganizerByEmail, logout, createRequest, getNotificationsFromAToB, countNotifications, sendNotification, currentMatchRequest, completeMatch, getActiveAdventures, getInactiveAdventures } from "../dbms/organizer-helpers.js"; // Ensure this file exports updateOrganizer correctly
+import { getOrganizer, updateOrganizer, logout, createRequest, getNotificationsFromAToB, countNotifications, sendNotification, currentMatchRequest, completeMatch, getActiveAdventures, getInactiveAdventures } from "../dbms/organizer-helpers.js"; // Ensure this file exports updateOrganizer correctly
 import { isRelatedToAdventure, createEvent } from '../dbms/adventure-helpers.js';
 import { getWord2s } from "../dbms/search-helpers.js";
 export const getAdventures = async (req, res) => {
@@ -83,23 +82,6 @@ export const requestMatch = async (req, res) => {
             return res.json(await createRequest(oid, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, payPerHead, (organizer.gender == "M" && organizer.setting_1 == true), (organizer.gender == "F" && organizer.setting_1 == true), (organizer.gender == "F" && organizer.setting_2 == true), pool));
         else
             return res.status(500).json({ "error": "Access token does not match" });
-    else
-        return res.status(500).json({ "error": "No such organizer" });
-};
-export const login = async (req, res) => {
-    const { email, password } = req.body;
-    const organizer = await getOrganizerByEmail(email, pool);
-    const encode = (text) => {
-        return Buffer.from(text, "utf8").toString("base64");
-    };
-    if (organizer)
-        if (organizer.password == encode(password)) {
-            const organizerDetails = await updateAccessToken(organizer.id, randomBytes(16).toString("hex"), pool);
-            organizerDetails.password = password;
-            return res.json(organizerDetails);
-        }
-        else
-            return res.status(500).json({ "error": "Password does not match" });
     else
         return res.status(500).json({ "error": "No such organizer" });
 };
