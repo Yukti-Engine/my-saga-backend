@@ -238,7 +238,7 @@ export async function match(id, minTeamMembers, ageRangeMin, ageRangeMax, payPer
       age_range_min    = LEAST(age_range_min, $5),
       age_range_max    = GREATEST(age_range_max, $6),
       all_girls = (all_girls OR $7),
-      half_girls = (half_girls OR $8)
+      half_girls = (half_girls OR $8),
       pay_per_head_2 = $9
     WHERE
         id = $10
