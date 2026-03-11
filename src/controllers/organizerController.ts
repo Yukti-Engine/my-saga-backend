@@ -77,7 +77,7 @@ export const getOrganizerDashboard = async (req: Request, res: Response) => {
   const organizer = await getOrganizer(oid, pool);
   if (organizer)
     if (organizer.access_token == accessToken && accessToken)
-      return res.json({"username": organizer.username, "bio": organizer.bio, "gender": organizer.gender, "dob": organizer.dob, "setting_1": organizer.setting_1, "setting_2": organizer.setting_2, "icon": organizer.icon.toString("base64")});
+      return res.json({"username": organizer.username, "bio": organizer.bio, "gender": organizer.gender, "dob": organizer.dob, "setting_1": organizer.setting_1, "setting_2": organizer.setting_2, "icon": organizer.icon?.toString("base64")});
     else
       return res.status(500).json({"error": "Access token does not match"});
   else

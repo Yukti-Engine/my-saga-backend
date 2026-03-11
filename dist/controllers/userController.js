@@ -18,7 +18,7 @@ export const getUserDashboard = async (req, res) => {
     const user = await getUser(uid, pool);
     if (user)
         if (user.access_token == accessToken && accessToken)
-            return res.json({ "id": user.id, "username": user.username, "email": user.email, "level": user.level, "star_score": user.star_score, "penalties": user.penalties, "bio": user.bio, "age": user.age, "gender": user.gender, "setting_1": user.setting_1, "setting_2": user.setting_2, "icon": user.icon.toString("base64") });
+            return res.json({ "id": user.id, "username": user.username, "email": user.email, "level": user.level, "star_score": user.star_score, "penalties": user.penalties, "bio": user.bio, "age": user.age, "gender": user.gender, "setting_1": user.setting_1, "setting_2": user.setting_2, "icon": user.icon?.toString("base64") });
         else
             return res.status(500).json({ "error": "Access token does not match" });
     else

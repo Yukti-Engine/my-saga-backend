@@ -55,7 +55,7 @@ export const getProfile = async (req, res) => {
                 person2 = await getBoss(profileId, pool);
             else
                 person2 = await getUser(profileId, pool);
-            return { "username": person2.username, "dob": person2.dob, "gender": person2.gender, "setting_1": person2.setting_1, "setting_2": person2.setting_2, "icon": person2.icon.toString('base64'), "bio": person2.bio };
+            return { "username": person2.username, "dob": person2.dob, "gender": person2.gender, "setting_1": person2.setting_1, "setting_2": person2.setting_2, "icon": person2.icon?.toString('base64'), "bio": person2.bio };
         }
         else
             return res.status(500).json({ "error": "Access token does not match" });

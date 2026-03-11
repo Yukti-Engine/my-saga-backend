@@ -65,7 +65,7 @@ export const getBossDashboard = async (req, res) => {
     const boss = await getBoss(bid, pool);
     if (boss)
         if (boss.access_token == accessToken && accessToken)
-            return res.json({ "username": boss.username, "gender": boss.gender, "bio": boss.bio, "dob": boss.dob, "setting_1": boss.setting_1, "setting_2": boss.setting_2, "icon": boss.icon.toString("base64") });
+            return res.json({ "username": boss.username, "gender": boss.gender, "bio": boss.bio, "dob": boss.dob, "setting_1": boss.setting_1, "setting_2": boss.setting_2, "icon": boss?.icon.toString("base64") });
         else
             return res.status(500).json({ "error": "Access token does not match" });
     else
