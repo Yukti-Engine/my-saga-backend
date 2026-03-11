@@ -113,7 +113,7 @@ export const findAdventures = async (req: Request, res: Response) => {
   const age = getAge(boss.dob);
   if (boss)
     if (boss.access_token == accessToken && accessToken){
-      const compatibleRequests = await getCompatibleRequests(categoryId, age, latitude, longitude, (boss.gender=="M" && boss.setting_1==true), (boss.gender=="F" && boss.setting_1==true), (boss.gender=="F" && boss.setting_2==true), boss.gender, pool);
+      const compatibleRequests = await getCompatibleRequests(categoryId, age, latitude, longitude, boss.gender, pool);
       const potentialAdventures: any = [];
       
 
@@ -125,6 +125,8 @@ export const findAdventures = async (req: Request, res: Response) => {
           matchRadius,
           ageRangeMin,
           ageRangeMax,
+          (boss.gender=='F' && boss.setting_1),
+          (boss.gender=='F' && boss.setting_2),
           pool
         );
 
@@ -150,11 +152,11 @@ export const findAdventures = async (req: Request, res: Response) => {
 }
 
 export const  joinAdventure = async (req: Request, res: Response) => {
-  const {bid, accessToken, matchRequest, payPerHead2}  = req.body;
+  const {bid, accessToken, matchRequest, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2}  = req.body;
   const user = await getBoss(bid, pool);
   if (user)
     if (user.access_token == accessToken && accessToken)
-      return res.json(await match(bid, payPerHead2, matchRequest, pool));
+      return res.json(await match(bid, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2, matchRequest, pool));
   return res.status(500).json({"error": "Authentication Failed"});
 }
 
