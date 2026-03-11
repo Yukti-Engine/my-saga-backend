@@ -6,8 +6,6 @@ import { getUser } from "../dbms/user-helpers.js";
 export const getOffers = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
   const user = await getUser(uid, pool);
-  if (user.is_non_binary== true)
-    user.gender = "NB"
   if (user)
     if (user.access_token == accessToken && accessToken)
       return res.json(await getAllOffers(pool));

@@ -56,7 +56,7 @@ export const signupVerifyOtp = async (req, res) => {
         const verified = await verify(pendingUser.phone, otp);
         if (!verified)
             return res.status(400).json({ error: "Invalid OTP" });
-        await createUser(pendingUser.name, pendingUser.phone, pendingUser.email, new Date(pendingUser.dob), pendingUser.gender, pendingUser.is_non_binary, pool);
+        await createUser(pendingUser.name, pendingUser.phone, pendingUser.email, new Date(pendingUser.dob), pendingUser.gender, pool);
         await removePendingUser(requestId, pool);
         return res.json({ message: "Signup successful" });
     }

@@ -16,8 +16,6 @@ export const updateUserProfile = async (req, res) => {
 export const getUserDashboard = async (req, res) => {
     const { uid, accessToken } = req.body;
     const user = await getUser(uid, pool);
-    if (user.is_non_binary == true)
-        user.gender = "NB";
     if (user)
         if (user.access_token == accessToken && accessToken)
             return res.json(user);
@@ -33,10 +31,10 @@ export const requestMatch = async (req, res) => {
     const age = getAge(user.dob);
     if (user)
         if (user.access_token == accessToken && accessToken) {
-            const compatibleRequests = await getCompatibleRequests(categoryId, age, latitude, longitude, (user.gender == "M" && user.setting_1 == true), (user.gender == "F" && user.setting_1 == true), (user.gender == "F" && user.setting_2 == true), user.gender, pool);
+            const compatibleRequests = await getCompatibleRequests(categoryId, age, latitude, longitude, user.gender, pool);
             const potentialAdventures = [];
             for (const element of compatibleRequests) {
-                const isCompatible = await checkReverseCompatibility(element.id, latitude, longitude, matchRadius, ageRangeMin, ageRangeMax, pool);
+                const isCompatible = await checkReverseCompatibility(element.id, latitude, longitude, matchRadius, ageRangeMin, ageRangeMax, (user.gender == 'F' && user.setting_1), (user.gender == 'F' && user.setting_2), pool);
                 if (isCompatible) {
                     potentialAdventures.push(element);
                 }

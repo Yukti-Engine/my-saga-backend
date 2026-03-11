@@ -21,8 +21,6 @@ export const updateUserProfile = async (req: Request, res: Response) => {
 export const getUserDashboard = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
   const user = await getUser(uid, pool);
-  if (user.is_non_binary== true)
-    user.gender = "NB"
   if (user)
     if (user.access_token == accessToken && accessToken)
       return res.json(user);
@@ -39,7 +37,7 @@ export const requestMatch = async (req: Request, res: Response) => {
   const age = getAge(user.dob);
   if (user)
     if (user.access_token == accessToken && accessToken){
-      const compatibleRequests = await getCompatibleRequests(categoryId, age, latitude, longitude, (user.gender=="M" && user.setting_1==true), (user.gender=="F" && user.setting_1==true), (user.gender=="F" && user.setting_2==true), user.gender, pool);
+      const compatibleRequests = await getCompatibleRequests(categoryId, age, latitude, longitude, user.gender, pool);
       const potentialAdventures: any = [];
       
 
@@ -51,6 +49,8 @@ export const requestMatch = async (req: Request, res: Response) => {
           matchRadius,
           ageRangeMin,
           ageRangeMax,
+          (user.gender=='F' && user.setting_1),
+          (user.gender=='F' && user.setting_2),
           pool
         );
 
