@@ -1,62 +1,28 @@
 {
-  "name": "g1-backend",
+  "name": "my-saga-backend",
   "version": "1.0.0",
   "description": "no description",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "nodemon --exec ts-node-esm dist/index.js",
-    "db:generate": "prisma generate --schema src/dbms/prisma/schema.prisma",
-    "db:push": "prisma db push --schema src/dbms/prisma/schema.prisma",
-    "db:migrate": "prisma migrate dev --schema src/dbms/prisma/schema.prisma",
-    "db:studio": "prisma studio --schema src/dbms/prisma/schema.prisma"
+    "start": "node dist/index.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Vegybin/G1-backend.git"
+    "url": "git+https://github.com/Vegybin/my-saga-backend.git"
   },
   "keywords": [
-    "database",
-    "prisma",
-    "utilities",
     "adventure-app"
   ],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Vegybin/G1-backend/issues"
+    "url": "https://github.com/Vegybin/my-saga-backend/issues"
   },
-  "homepage": "https://github.com/Vegybin/G1-backend#readme",
+  "homepage": "https://github.com/Vegybin/my-saga-backend",
   "dependencies": {
-    "@google-cloud/storage": "^7.19.0",
-    "@prisma/client": "^5.22.0",
-    "bcrypt": "^6.0.0",
-    "body-parser": "^2.2.0",
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.2",
-    "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^7.0.9",
-    "pg": "^8.16.3",
-    "socket.io": "^4.8.3",
-    "twilio": "^5.9.0",
-    "uuid": "^12.0.0",
-    "zod": "^3.22.0"
-  },
-  "devDependencies": {
-    "@types/bcrypt": "^6.0.0",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.3",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^24.3.1",
-    "@types/nodemailer": "^7.0.2",
-    "@types/pg": "^8.15.5",
-    "nodemon": "^3.1.11",
-    "prisma": "^5.0.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.2"
+    "@google-cloud/storage": "^7.19.0"
   },
   "type": "module"
 }
