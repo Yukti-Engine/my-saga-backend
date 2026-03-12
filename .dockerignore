@@ -2,6 +2,6 @@ node_modules
 dist
 .env
 .env.*
-gcs-credentials.json
+feisty-audio-471914-d7-4ba42316eee6.json
 .git
 .gitignore

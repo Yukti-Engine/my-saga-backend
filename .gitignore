@@ -10,7 +10,7 @@ dist/
 !.env.example
 
 # Google Cloud credentials
-gcs-credentials.json
+feisty-audio-471914-d7-4ba42316eee6.json
 
 # Logs
 logs/
@@ -24,11 +24,6 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
-```
 
----
-
-Key line to note:
-```
 .env.*
 !.env.example

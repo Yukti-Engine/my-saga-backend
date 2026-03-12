@@ -6,5 +6,5 @@ services:
     env_file:
       - .env
     volumes:
-      - ./gcs-credentials.json:/app/gcs-credentials.json:ro
+      - ./feisty-audio-471914-d7-4ba42316eee6.json:/app/feisty-audio-471914-d7-4ba42316eee6.json:ro
     restart: unless-stopped
