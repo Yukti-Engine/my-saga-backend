@@ -1,15 +1,7 @@
 import type { Request, Response } from "express";
 import { randomBytes } from "crypto";
 import pool from "../db.js";
-import { sendOtp, verify } from "../services/otpService.js";
-
-export function generateRandomUsername(): string {
-  const adjectives = ["anonymous","brave","happy","silly","fast","tiny","cool"];
-  const nouns = ["whale","kid","carrot","lion","robot","panda","gamer"];
-  const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  return `${adjective} ${noun}`;
-}
+import { sendOtp, retry, verify } from "../services/otpService.js";
 
 
 /* ----------------- SIGNUP FLOW ----------------- */
@@ -47,7 +39,7 @@ export const signupVerifyOtp = async (req: Request, res: Response) => {
     if (pendingUser.expires_at < new Date())
       return res.status(400).json({ error: "OTP expired" });
 
-    const verified = await verify(pendingUser.phone, otp);
+    const verified = await verify(pendingUser.request_id, otp);
     if (!verified)
       return res.status(400).json({ error: "Invalid OTP" });
 
@@ -65,18 +57,16 @@ export const signupVerifyOtp = async (req: Request, res: Response) => {
 };
 
 export const signupResendOtp = async (req: Request, res: Response) => {
-  const { name, phone, email, dob, gender } = req.body;
+  const { phone } = req.body;
 
-  if (!name || !dob || !gender || !phone)
+  if (!phone)
     return res.status(400).json({ error: "Missing required fields" });
 
   try {
-    const requestId = await sendOtp(phone);
-    await pool.query(
-      `SELECT create_pending_user($1, $2, $3, $4, $5, $6)`,
-      [requestId, name, phone, email, dob, gender]
-    );
-    return res.json({ message: "OTP sent", requestId });
+    const { rows } = await pool.query(`SELECT * FROM get_pending_user($1)`, [phone]);
+    const pendingUser = rows[0]
+    await retry(pendingUser.request_id);
+    return res.json({ message: "OTP sent" });
   } catch (err) {
     console.error("Error in signupResendOtp:", err);
     return res.status(500).json({ error: "Failed to send OTP" });
@@ -92,8 +82,9 @@ export const loginRequestOtp = async (req: Request, res: Response) => {
   try {
     const { rows } = await pool.query(`SELECT * FROM find_user_by_phone($1)`, [phone]);
     if (!rows[0]) return res.status(404).json({ error: "User not found" });
-
-    await sendOtp(phone);
+  
+    const requestId = await sendOtp(phone);
+    await pool.query(`SELECT * FROM update_user_request_id($1)`, [phone, requestId]);
     return res.json({ message: "OTP sent", phone });
   } catch (err) {
     console.error("Error in loginRequestOtp:", err);
@@ -108,8 +99,8 @@ export const loginResendOtp = async (req: Request, res: Response) => {
   try {
     const { rows } = await pool.query(`SELECT * FROM find_user_by_phone($1)`, [phone]);
     if (!rows[0]) return res.status(404).json({ error: "User not found" });
-
-    await sendOtp(phone);
+    const requestId = rows[0].request_id;
+    await retry(requestId);
     return res.json({ message: "OTP sent", phone });
   } catch (err) {
     console.error("Error in loginResendOtp:", err);
@@ -126,7 +117,7 @@ export const loginVerifyOtp = async (req: Request, res: Response) => {
     if (!potentialUser)
       return res.status(404).json({ error: "User not found" });
 
-    const verified = await verify(phone, otp);
+    const verified = await verify(potentialUser.request_id, otp);
     if (!verified)
       return res.status(400).json({ error: "Invalid or expired OTP" });
 

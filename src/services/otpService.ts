@@ -1,44 +1,59 @@
 import "dotenv/config";
 import axios from "axios";
 
-const fs_api = process.env.FACTOR_SMS;
+const msg91_api = process.env.MSG91_AUTH_KEY;
 
-if (!fs_api) {
-  throw new Error("FACTOR_SMS is not defined in environment variables");
+if (!msg91_api) {
+  throw new Error("MSG91_AUTH_KEY is not defined in environment variables");
 }
 
 export async function sendOtp(phone: string): Promise<string> {
+
+  const options = {
+    method: 'POST',
+    url: 'https://api.msg91.com/api/v5/widget/sendOtp',
+    headers: {authkey: msg91_api, 'content-type': 'application/json'},
+    data: `{\n  "widgetId": "mysaga",\n  "identifier": "${phone}"\n}\n`
+  };
+
   try {
-    const url = `https://2factor.in/API/V1/${fs_api}/SMS/${phone}/AUTOGEN/OTP1`;
-
-    const response = await axios.get(url, {
-      maxBodyLength: Infinity,
-    });
-
-    console.log(response.data);
-
-    // return something meaningful (session_id is what 2Factor usually gives)
-    return response.data.Details; 
-  } catch (error: any) {
-    console.error("OTP send failed:", error.response?.data || error.message);
-    throw error;
-  }
+    return (await axios.request(options)).message;
+  } catch (error) {
+    console.error(error);
+    return "failed";
+  } 
 }
 
 
-export async function verify(phone: string, otp: string): Promise<boolean> {
-  try {
-    const response = await axios.get(
-      `https://2factor.in/API/V1/${fs_api}/SMS/VERIFY3/${phone}/${otp}`,
-      { maxBodyLength: Infinity }
-    );
+export async function verify(requestId: string, otp: string): Promise<boolean> {
+  const options = {
+    method: 'POST',
+    url: 'https://api.msg91.com/api/v5/widget/verifyOtp',
+    headers: {authkey: msg91_api, 'content-type': 'application/json'},
+    data: `{\n  "widgetId": "mysaga",\n  "reqId": "${requestId}",\n  "otp": "${otp}"\n}\n`
+  };
 
-    return response.data.Details === "OTP Matched";
-  } catch (error: any) {
-    console.error(
-      "OTP verification failed:",
-      error.response?.data || error.message
-    );
+  try {
+    await axios.request(options);
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
+export async function retry(requestId: string): Promise<boolean> {
+  const options = {
+    method: 'POST',
+    url: 'https://api.msg91.com/api/v5/widget/retryOtp',
+    headers: {authkey: msg91_api, 'content-type': 'application/json'},
+    data: `{\n  "widgetId": "mysaga",\n  "reqId": "${requestId}" \n}`
+  };
+
+  try {
+    await axios.request(options);
+    return true;
+  } catch (error) {
     return false;
   }
 }
