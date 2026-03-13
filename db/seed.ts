@@ -1,30 +1,49 @@
 import { faker } from '@faker-js/faker';
 import { Pool } from 'pg';
-import dotenv from "dotenv";
+import dotenv from 'dotenv';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
 dotenv.config();
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// ESM doesn't have __dirname, so we recreate it
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const databaseUrl = process.env.DATABASE_URL;
+let pool = new Pool({ connectionString: databaseUrl });
 
 async function seed() {
-  const client = await pool.connect();
-
-  try {
-    await client.query('BEGIN');
-
-    const { rows } = await client.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_name = 'seed_meta'
-      ) as exists
-    `);
-    if (rows[0].exists) {
-      console.log('⏭️  Already seeded, skipping...');
-      await client.release();
+  if(databaseUrl.substring(databaseUrl.lastIndexOf('/')+1,databaseUrl.length) == 'postgres'){
+      const adminClient = await pool.connect();
+      const { rows: pg_database_rows } = await adminClient.query(   // <-- fixed destructuring
+        `SELECT 1 FROM pg_database WHERE datname = 'g1'`
+      );
+      if (pg_database_rows.length === 0) {
+        await adminClient.query(`CREATE DATABASE g1`);
+      }
+      adminClient.release();
       await pool.end();
+      pool = new Pool({ connectionString: databaseUrl.substring(0, databaseUrl.length-8)+"g1" });
+  }
+  const client = await pool.connect();
+  try {
+    const { rows } = await client.query(`
+      SELECT COUNT(*) FROM information_schema.tables 
+      WHERE table_schema = 'public'
+    `);
+
+    if (parseInt(rows[0].count) > 0) {
+      console.log('⏭️  Schema already exists, skipping...');
       return;
     }
 
+   await client.query('BEGIN');
+    // ESM-safe path resolution instead of relative './db/schema.sql'
+    const schema = readFileSync(join(__dirname, './schema.sql')).toString( 'utf8');
+    await client.query(schema); 
+    await client.query(`SET search_path TO public`);
     // ── Clear all tables (order matters due to foreign keys) ──────────────────
     await client.query(`
       TRUNCATE
@@ -59,7 +78,7 @@ async function seed() {
     const badgeIds: number[] = [];
     for (let i = 0; i < badgeNames.length; i++) {
       const res = await client.query(
-        `INSERT INTO badges (name, category_id) VALUES ($1, $2) RETURNING id`,
+        `INSERT INTO badges (title, category_id) VALUES ($1, $2) RETURNING id`,
         [badgeNames[i], categoryIds[i % categoryIds.length]]
       );
       badgeIds.push(res.rows[0].id);
@@ -291,11 +310,6 @@ async function seed() {
         [advId, 1, badgeList, teamUsers, starScores, remarks]
       );
     }
-
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS seed_meta (seeded boolean);
-    `);
-    await client.query(`INSERT INTO seed_meta (seeded) VALUES (true)`);
 
     await client.query('COMMIT');
     console.log('✅ Database seeded successfully!');

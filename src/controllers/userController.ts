@@ -3,7 +3,7 @@ import pool from "../db.js";
 
 export const updateUserProfile = async (req: Request, res: Response) => {
   const { uid, accessToken, updates } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_user($1)`, [uid]);
+  const { rows } = await pool.query(`SELECT * FROM get_user($1::int)`, [uid]);
   const user = rows[0];
   if (!user)
     return res.status(500).json({ error: "No such user" });
@@ -11,17 +11,17 @@ export const updateUserProfile = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Access token does not match" });
 
   const updated = await pool.query(
-    `SELECT * FROM update_user($1, $2, $3, $4, $5, $6, $7)`,
+    `SELECT update_user($1::int, $2::text, $3::text, $4::text, $5::boolean, $6::boolean, $7::bytea)`,
     [uid, updates.username ?? null, updates.bio ?? null, updates.email ?? null,
      updates.setting_1 ?? null, updates.setting_2 ?? null,
      updates.icon ? Buffer.from(updates.icon, "base64") : null]
   );
-  return res.json(updated.rows[0]);
+  return res.json({updated});
 };
 
 export const getUserDashboard = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_user($1)`, [uid]);
+  const { rows } = await pool.query(`SELECT * FROM get_user($1::int)`, [uid]);
   const user = rows[0];
   if (!user)
     return res.status(500).json({ error: "No such user" });
@@ -39,23 +39,23 @@ export const getUserDashboard = async (req: Request, res: Response) => {
 
 export const requestMatch = async (req: Request, res: Response) => {
   const { uid, accessToken, categoryId, matchRadius, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_user($1)`, [uid]);
+  const { rows } = await pool.query(`SELECT * FROM get_user($1::int)`, [uid]);
   const user = rows[0];
   if (!user)
-    return res.status(500).json({ error: "No such boss" });
+    return res.status(500).json({ error: "No such user" });
   if (user.access_token !== accessToken || !accessToken)
     return res.status(500).json({ error: "Access token does not match" });
 
   const age = getAge(user.dob);
   const compatible = await pool.query(
-    `SELECT * FROM get_compatible_requests_user($1, $2, $3, $4, $5)`,
+    `SELECT * FROM get_compatible_requests_user($1::int, $2::int, $3::float8, $4::float8, $5::text)`,
     [categoryId, age, latitude, longitude, user.gender]
   );
 
   const potentialAdventures: any[] = [];
   for (const element of compatible.rows) {
     const check = await pool.query(
-      `SELECT check_reverse_compatibility_user($1, $2, $3, $4, $5, $6, $7, $8) AS ok`,
+      `SELECT check_reverse_compatibility($1::int, $2::float8, $3::float8, $4::float8, $5::int, $6::int, $7::boolean, $8::boolean) AS ok`,
       [element.id, latitude, longitude, matchRadius, ageRangeMin, ageRangeMax,
        user.gender === 'F' && user.setting_1,
        user.gender === 'F' && user.setting_2]
@@ -67,39 +67,39 @@ export const requestMatch = async (req: Request, res: Response) => {
 
 export const getAdventures = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_user($1)`, [uid]);
+  const { rows } = await pool.query(`SELECT * FROM get_user($1::int)`, [uid]);
   const user = rows[0];
   if (!user)
     return res.status(500).json({ error: "No such user" });
   if (user.access_token !== accessToken || !accessToken)
     return res.status(500).json({ error: "Access token does not match" });
 
-  const result = await pool.query(`SELECT * FROM get_active_adventures_user($1)`, [uid]);
+  const result = await pool.query(`SELECT * FROM get_active_adventures_user($1::int)`, [uid]);
   return res.json(result.rows);
 };
 
 export const getPastAdventures = async (req: Request, res: Response) => {
   const { uid, accessToken, a, b } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_user($1)`, [uid]);
+  const { rows } = await pool.query(`SELECT * FROM get_user($1::int)`, [uid]);
   const user = rows[0];
   if (!user)
     return res.status(500).json({ error: "No such user" });
   if (user.access_token !== accessToken || !accessToken)
     return res.status(500).json({ error: "Access token does not match" });
 
-  const result = await pool.query(`SELECT * FROM get_inactive_adventures_user($1, $2, $3)`, [uid, a, b]);
+  const result = await pool.query(`SELECT * FROM get_inactive_adventures_user($1::int, $2::int, $3::int)`, [uid, a, b]);
   return res.json(result.rows);
 };
 
 export const joinAdventure = async (req: Request, res: Response) => {
   const { uid, accessToken, matchRequest, minTeamMembers, ageRangeMin, ageRangeMax } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_user($1)`, [uid]);
+  const { rows } = await pool.query(`SELECT * FROM get_user($1::int)`, [uid]);
   const user = rows[0];
   if (!user || user.access_token !== accessToken || !accessToken)
     return res.json({ success: false, message: "Authentication Failed" });
 
   const matched = await pool.query(
-    `SELECT match_user($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) AS result`,
+    `SELECT match_user($1::int, $2::int, $3::int, $4::int, $5::int, $6::int, $7::int, $8::int, $9::float8, $10::int, $11::int, $12::int, $13::float8, $14::float8, $15::float8, $16::float8, $17::boolean, $18::boolean) AS result`,
     [uid, minTeamMembers, ageRangeMin, ageRangeMax,
      matchRequest.id, matchRequest.boss_id, matchRequest.org_id, matchRequest.category_id,
      matchRequest.match_radius, matchRequest.min_team_members, matchRequest.age_range_min,
@@ -109,7 +109,7 @@ export const joinAdventure = async (req: Request, res: Response) => {
   );
   const result = matched.rows[0].result;
   if (result.success) {
-    const deducted = await pool.query(`SELECT deduct_gems($1, $2) AS ok`, [uid, result.cost]);
+    const deducted = await pool.query(`SELECT deduct_gems($1::int, $2::int) AS ok`, [uid, result.cost]);
     if (deducted.rows[0].ok)
       return res.json({ success: true });
     else
@@ -120,38 +120,38 @@ export const joinAdventure = async (req: Request, res: Response) => {
 
 export const logOut = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_user($1)`, [uid]);
+  const { rows } = await pool.query(`SELECT * FROM get_user($1::int)`, [uid]);
   const user = rows[0];
   if (!user || user.access_token !== accessToken || !accessToken)
     return res.status(500).json({ error: "Authentication Failed" });
 
-  const result = await pool.query(`SELECT * FROM logout_user($1)`, [uid]);
+  const result = await pool.query(`SELECT * FROM logout_user($1::int)`, [uid]);
   return res.json(result.rows[0]);
 };
 
 export const currentLobby = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_user($1)`, [uid]);
+  const { rows } = await pool.query(`SELECT * FROM get_user($1::int)`, [uid]);
   const user = rows[0];
   if (!user || user.access_token !== accessToken || !accessToken)
     return res.status(500).json({ error: "Authentication Failed" });
 
-  const result = await pool.query(`SELECT * FROM current_match_request_user($1)`, [uid]);
+  const result = await pool.query(`SELECT * FROM current_match_request_user($1::int)`, [uid]);
   return res.json(result.rows);
 };
 
 export const send = async (req: Request, res: Response) => {
   const { uid, accessToken, message, receiverRole, receiverId } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_user($1)`, [uid]);
+  const { rows } = await pool.query(`SELECT * FROM get_user($1::int)`, [uid]);
   const user = rows[0];
   if (!user || user.access_token !== accessToken || !accessToken)
     return res.status(500).json({ error: "Authentication Error" });
 
   await pool.query(
-    `SELECT send_notification_user($1, $2, $3, $4)`,
+    `SELECT send_notification_user($1::int, $2::text, $3::int, $4::text)`,
     [uid, receiverRole, receiverId, message]
   );
-  const deducted = await pool.query(`SELECT deduct_gems($1, 1) AS ok`, [uid]);
+  const deducted = await pool.query(`SELECT deduct_gems($1::int, 1) AS ok`, [uid]);
   if (deducted.rows[0].ok)
     return res.json({ success: true });
   else
@@ -160,23 +160,23 @@ export const send = async (req: Request, res: Response) => {
 
 export const count = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_user($1)`, [uid]);
+  const { rows } = await pool.query(`SELECT * FROM get_user($1::int)`, [uid]);
   const user = rows[0];
   if (!user || user.access_token !== accessToken || !accessToken)
     return res.status(500).json({ error: "Authentication Error" });
 
-  const result = await pool.query(`SELECT count_notifications_user($1) AS count`, [uid]);
+  const result = await pool.query(`SELECT count_notifications_user($1::int) AS count`, [uid]);
   return res.json(result.rows[0].count);
 };
 
 export const receive = async (req: Request, res: Response) => {
   const { uid, accessToken, a, b } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_user($1)`, [uid]);
+  const { rows } = await pool.query(`SELECT * FROM get_user($1::int)`, [uid]);
   const user = rows[0];
   if (!user || user.access_token !== accessToken || !accessToken)
     return res.status(500).json({ error: "Authentication Error" });
 
-  const result = await pool.query(`SELECT * FROM get_notifications_user($1, $2, $3)`, [uid, a, b]);
+  const result = await pool.query(`SELECT * FROM get_notifications_user($1::int, $2::int, $3::int)`, [uid, a, b]);
   return res.json(result.rows);
 };
 

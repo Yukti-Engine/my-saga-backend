@@ -3,11 +3,11 @@ import pool from "../db.js";
 
 async function getPerson(role: string, id: number) {
   if (role === "organizer")
-    return (await pool.query(`SELECT * FROM get_organizer($1)`, [id])).rows[0];
+    return (await pool.query(`SELECT * FROM get_organizer($1::int)`, [id])).rows[0];
   else if (role === "boss")
-    return (await pool.query(`SELECT * FROM get_boss($1)`, [id])).rows[0];
+    return (await pool.query(`SELECT * FROM get_boss($1::int)`, [id])).rows[0];
   else
-    return (await pool.query(`SELECT * FROM get_user($1)`, [id])).rows[0];
+    return (await pool.query(`SELECT * FROM get_user($1::int)`, [id])).rows[0];
 }
 
 export const getCategories = async (req: Request, res: Response) => {
@@ -30,7 +30,7 @@ export const getSubcategories = async (req: Request, res: Response) => {
   if (person.access_token !== accessToken || !accessToken)
     return res.status(500).json({ error: "Access token does not match" });
 
-  const result = await pool.query(`SELECT * FROM get_all_subcategories($1)`, [category]);
+  const result = await pool.query(`SELECT * FROM get_all_subcategories($1::text)`, [category]);
   return res.json(result.rows);
 };
 

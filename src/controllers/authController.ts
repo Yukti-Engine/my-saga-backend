@@ -14,7 +14,7 @@ export const signupRequestOtp = async (req: Request, res: Response) => {
   try {
     const requestId = await sendOtp(phone);
     await pool.query(
-      `SELECT create_pending_user($1, $2, $3, $4, $5, $6)`,
+      `SELECT create_pending_user($1::text, $2::text, $3::text, $4::text, $5::text, $6::text)`,
       [requestId, name, phone, email, dob, gender]
     );
     return res.json({ message: "OTP sent", requestId });
@@ -29,25 +29,22 @@ export const signupVerifyOtp = async (req: Request, res: Response) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT * FROM find_pending_user($1)`,
+      `SELECT * FROM find_pending_user($1::text)`,
       [requestId]
     );
     const pendingUser = rows[0];
     if (!pendingUser)
       return res.status(400).json({ error: "Invalid requestId" });
 
-    if (pendingUser.expires_at < new Date())
-      return res.status(400).json({ error: "OTP expired" });
-
     const verified = await verify(pendingUser.request_id, otp);
     if (!verified)
       return res.status(400).json({ error: "Invalid OTP" });
 
     await pool.query(
-      `SELECT create_user($1, $2, $3, $4, $5)`,
-      [pendingUser.name, pendingUser.phone, pendingUser.email, new Date(pendingUser.dob), pendingUser.gender]
+      `SELECT create_user($1::text, $2::text, $3::text, $4::date, $5::text)`,
+      [pendingUser.name, pendingUser.phone, pendingUser.email, pendingUser.dob, pendingUser.gender]
     );
-    await pool.query(`SELECT remove_pending_user($1)`, [requestId]);
+    await pool.query(`SELECT remove_pending_user($1::text)`, [requestId]);
 
     return res.json({ message: "Signup successful" });
   } catch (err) {
@@ -63,7 +60,7 @@ export const signupResendOtp = async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Missing required fields" });
 
   try {
-    const { rows } = await pool.query(`SELECT * FROM get_pending_user($1)`, [phone]);
+    const { rows } = await pool.query(`SELECT * FROM get_pending_user($1::text)`, [phone]);
     const pendingUser = rows[0]
     await retry(pendingUser.request_id);
     return res.json({ message: "OTP sent" });
@@ -80,11 +77,11 @@ export const loginRequestOtp = async (req: Request, res: Response) => {
   if (!phone) return res.status(400).json({ error: "Phone required" });
 
   try {
-    const { rows } = await pool.query(`SELECT * FROM find_user_by_phone($1)`, [phone]);
+    const { rows } = await pool.query(`SELECT * FROM find_user_by_phone($1::text)`, [phone]);
     if (!rows[0]) return res.status(404).json({ error: "User not found" });
-  
+
     const requestId = await sendOtp(phone);
-    await pool.query(`SELECT * FROM update_user_request_id($1)`, [phone, requestId]);
+    await pool.query(`SELECT * FROM update_user_request_id($1::text, $2::text)`, [phone, requestId]);
     return res.json({ message: "OTP sent", phone });
   } catch (err) {
     console.error("Error in loginRequestOtp:", err);
@@ -97,7 +94,7 @@ export const loginResendOtp = async (req: Request, res: Response) => {
   if (!phone) return res.status(400).json({ error: "Phone required" });
 
   try {
-    const { rows } = await pool.query(`SELECT * FROM find_user_by_phone($1)`, [phone]);
+    const { rows } = await pool.query(`SELECT * FROM find_user_by_phone($1::text)`, [phone]);
     if (!rows[0]) return res.status(404).json({ error: "User not found" });
     const requestId = rows[0].request_id;
     await retry(requestId);
@@ -112,7 +109,7 @@ export const loginVerifyOtp = async (req: Request, res: Response) => {
   const { phone, otp } = req.body;
 
   try {
-    const { rows } = await pool.query(`SELECT * FROM find_user_by_phone($1)`, [phone]);
+    const { rows } = await pool.query(`SELECT * FROM find_user_by_phone($1::text)`, [phone]);
     const potentialUser = rows[0];
     if (!potentialUser)
       return res.status(404).json({ error: "User not found" });
@@ -123,7 +120,7 @@ export const loginVerifyOtp = async (req: Request, res: Response) => {
 
     const accessToken = randomBytes(16).toString("hex");
     const updated = await pool.query(
-      `SELECT * FROM update_user_access_token($1, $2)`,
+      `SELECT * FROM update_user_access_token($1::int, $2::text)`,
       [potentialUser.id, accessToken]
     );
 
@@ -142,7 +139,7 @@ export const organizerLogin = async (req: Request, res: Response) => {
   const { email, password } = req.body;
   const encode = (text: string) => Buffer.from(text, "utf8").toString("base64");
 
-  const { rows } = await pool.query(`SELECT * FROM get_organizer_by_email($1)`, [email]);
+  const { rows } = await pool.query(`SELECT * FROM get_organizer_by_email($1::text)`, [email]);
   const organizer = rows[0];
 
   if (!organizer)
@@ -152,7 +149,7 @@ export const organizerLogin = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Password does not match" });
 
   const updated = await pool.query(
-    `SELECT * FROM update_organizer_access_token($1, $2)`,
+    `SELECT * FROM update_organizer_access_token($1::int, $2::text)`,
     [organizer.id, randomBytes(16).toString("hex")]
   );
   const organizerDetails = updated.rows[0];
@@ -164,7 +161,7 @@ export const bossLogin = async (req: Request, res: Response) => {
   const { email, password } = req.body;
   const encode = (text: string) => Buffer.from(text, "utf8").toString("base64");
 
-  const { rows } = await pool.query(`SELECT * FROM get_boss_by_email($1)`, [email]);
+  const { rows } = await pool.query(`SELECT * FROM get_boss_by_email($1::text)`, [email]);
   const boss = rows[0];
 
   if (!boss)
@@ -174,7 +171,7 @@ export const bossLogin = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Password does not match" });
 
   const updated = await pool.query(
-    `SELECT * FROM update_boss_access_token($1, $2)`,
+    `SELECT * FROM update_boss_access_token($1::int, $2::text)`,
     [boss.id, randomBytes(16).toString("hex")]
   );
   const bossDetails = updated.rows[0];

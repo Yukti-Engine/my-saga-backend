@@ -3,7 +3,7 @@ import pool from "../db.js";
 
 export const getOffers = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_user($1)`, [uid]);
+  const { rows } = await pool.query(`SELECT * FROM get_user($1::int)`, [uid]);
   const user = rows[0];
   if (!user)
     return res.status(500).json({ error: "No such user" });
