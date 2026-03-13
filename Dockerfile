@@ -10,4 +10,4 @@ RUN npm run build
 
 EXPOSE ${PORT}
 
-CMD ["node", "dist/index.js"]
+CMD ["npm",  "start"]

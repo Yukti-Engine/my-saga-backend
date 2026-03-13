@@ -12,6 +12,12 @@ async function seed() {
   try {
     await client.query('BEGIN');
 
+    const { rows } = await client.query('SELECT COUNT(*) FROM users');
+    if (parseInt(rows[0].count) > 0) {
+      console.log('⏭️  Database already seeded, skipping...');
+      return;
+    }
+
     // ── Clear all tables (order matters due to foreign keys) ──────────────────
     await client.query(`
       TRUNCATE
