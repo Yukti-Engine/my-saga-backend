@@ -8,3 +8,5 @@ services:
     volumes:
       - ./feisty-audio-471914-d7-4ba42316eee6.json:/app/feisty-audio-471914-d7-4ba42316eee6.json:ro
     restart: unless-stopped
+  
+  db:
