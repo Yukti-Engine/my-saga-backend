@@ -12,9 +12,16 @@ async function seed() {
   try {
     await client.query('BEGIN');
 
-    const { rows } = await client.query('SELECT COUNT(*) FROM users');
-    if (parseInt(rows[0].count) > 0) {
-      console.log('⏭️  Database already seeded, skipping...');
+    const { rows } = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'seed_meta'
+      ) as exists
+    `);
+    if (rows[0].exists) {
+      console.log('⏭️  Already seeded, skipping...');
+      await client.release();
+      await pool.end();
       return;
     }
 
@@ -284,6 +291,11 @@ async function seed() {
         [advId, 1, badgeList, teamUsers, starScores, remarks]
       );
     }
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS seed_meta (seeded boolean);
+    `);
+    await client.query(`INSERT INTO seed_meta (seeded) VALUES (true)`);
 
     await client.query('COMMIT');
     console.log('✅ Database seeded successfully!');
