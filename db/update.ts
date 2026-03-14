@@ -1,7 +1,10 @@
 import { Client } from "pg";
+import { fileURLToPath } from 'url';
 import { readdir, readFile } from "fs/promises";
-import { join } from "path";
+import { dirname, join } from "path";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const DATABASE_URL = process.env.DATABASE_URL;
 
 if (!DATABASE_URL) {
@@ -47,7 +50,7 @@ async function runMigration(filePath: string, filename: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const migrationsDir = join(process.cwd(), "migrations");
+  const migrationsDir = join(__dirname, "./migrations");
 
   await client.connect();
   console.log("✅ Connected to database.\n");
