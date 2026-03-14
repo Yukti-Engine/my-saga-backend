@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
+import { calculateAge } from "../utils.js";
 
 export const getAdventures = async (req: Request, res: Response) => {
   const { bid, accessToken } = req.body;
@@ -87,7 +88,7 @@ export const findAdventures = async (req: Request, res: Response) => {
   const { rows } = await pool.query(`SELECT * FROM get_boss($1::int)`, [bid]);
   const boss = rows[0];
 
-  const age = getAge(boss.dob);
+  const age = calculateAge(boss.dob);
   const compatible = await pool.query(
     `SELECT * FROM get_compatible_requests($1::text, $2::int, $3::int, $4::float8, $5::float8, $6::text)`,
     ["boss", categoryId, age, latitude, longitude, boss.gender]

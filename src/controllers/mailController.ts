@@ -1,4 +1,4 @@
-import pool from "../db";
+import pool from "../db.js";
 import {Request, Response} from "express";
 
 export const send = async (req: Request, res: Response) => {
