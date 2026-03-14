@@ -2,22 +2,12 @@ import type { Request, Response } from "express";
 import pool from "../db.js";
 import { generateDownloadUrl, generateUploadUrl } from "../services/bucketService.js";
 
-async function getPerson(role: string, id: number) {
-  if (role === "organizer")
-    return (await pool.query(`SELECT * FROM get_organizer($1::int)`, [id])).rows[0];
-  else if (role === "boss")
-    return (await pool.query(`SELECT * FROM get_boss($1::int)`, [id])).rows[0];
-  else
-    return (await pool.query(`SELECT * FROM get_user($1::int)`, [id])).rows[0];
-}
 
 export const count = async (req: Request, res: Response) => {
   const { adventureId, id, role, accessToken } = req.body;
-  const person = await getPerson(role, id);
-  if (!person)
-    return res.status(500).json({ error: "No such person" });
-  if (person.access_token !== accessToken || !accessToken)
-    return res.status(500).json({ error: "Access token does not match" });
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
 
   const check = await pool.query(
     `SELECT is_related_to_adventure($1::int, $2::text, $3::int) AS ok`,
@@ -32,11 +22,9 @@ export const count = async (req: Request, res: Response) => {
 
 export const getMessages = async (req: Request, res: Response) => {
   const { adventureId, id, role, accessToken, a, b } = req.body;
-  const person = await getPerson(role, id);
-  if (!person)
-    return res.status(500).json({ error: "No such person" });
-  if (person.access_token !== accessToken || !accessToken)
-    return res.status(500).json({ error: "Access token does not match" });
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
 
   const check = await pool.query(
     `SELECT is_related_to_adventure($1::int, $2::text, $3::int) AS ok`,
@@ -54,9 +42,9 @@ export const getMessages = async (req: Request, res: Response) => {
 
 export default function roomSocket(io: any, socket: any) {
   socket.on("join_room", async ({ roomName, id, role, accessToken }: any) => {
-    const person = await getPerson(role, id);
-    if (!person || person.access_token !== accessToken || !accessToken) return;
-
+    const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
+    if (!authResult.rows[0].is_authenticated)
+      return;
     const adventureId = parseInt(roomName.substring(0, roomName.indexOf('_')));
     const roomOk = await pool.query(`SELECT room_available($1::text) AS ok`, [roomName]);
     const related = await pool.query(
@@ -70,8 +58,9 @@ export default function roomSocket(io: any, socket: any) {
   });
 
   socket.on("send_message", async ({ room, senderId, senderType, accessToken, message }: any) => {
-    const person = await getPerson(senderType, senderId);
-    if (!person || person.access_token !== accessToken || !accessToken) return;
+    const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [senderId, senderType, accessToken]);
+    if (!authResult.rows[0].is_authenticated)
+      return;
 
     const adventureId = parseInt(room.substring(0, room.indexOf('_')));
     const related = await pool.query(
@@ -88,8 +77,9 @@ export default function roomSocket(io: any, socket: any) {
   });
 
   socket.on("leave_room", async ({ roomName, id, role, accessToken }: any) => {
-    const person = await getPerson(role, id);
-    if (!person || person.access_token !== accessToken || !accessToken) return;
+    const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
+    if (!authResult.rows[0].is_authenticated)
+      return;
 
     const adventureId = parseInt(roomName.substring(0, roomName.indexOf('_')));
     const related = await pool.query(
@@ -105,11 +95,9 @@ export default function roomSocket(io: any, socket: any) {
 
 export async function getUploadFileUrl(req: any, res: any) {
   const { fileName, contentType, adventureId, id, role, accessToken } = req.body;
-  const person = await getPerson(role, id);
-  if (!person)
-    return res.status(500).json({ error: "No such person" });
-  if (person.access_token !== accessToken || !accessToken)
-    return res.status(500).json({ error: "Access token does not match" });
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
 
   const check = await pool.query(
     `SELECT is_related_to_adventure($1::int, $2::text, $3::int) AS ok`,
@@ -125,11 +113,9 @@ export async function getUploadFileUrl(req: any, res: any) {
 
 export async function getDownloadFileUrl(req: any, res: any) {
   const { fileName, adventureId, fileNumber, id, role, accessToken } = req.body;
-  const person = await getPerson(role, id);
-  if (!person)
-    return res.status(500).json({ error: "No such person" });
-  if (person.access_token !== accessToken || !accessToken)
-    return res.status(500).json({ error: "Access token does not match" });
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
 
   const check = await pool.query(
     `SELECT is_related_to_adventure($1::int, $2::text, $3::int) AS ok`,

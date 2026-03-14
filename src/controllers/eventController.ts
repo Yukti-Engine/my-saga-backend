@@ -3,12 +3,9 @@ import pool from "../db.js";
 
 export const setAttendance = async (req: Request, res: Response) => {
   const { oid, accessToken, eventId, attendance } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_organizer($1::int)`, [oid]);
-  const organizer = rows[0];
-  if (!organizer)
-    return res.status(500).json({ error: "No such organizer" });
-  if (organizer.access_token !== accessToken || !accessToken)
-    return res.status(500).json({ error: "Access token does not match" });
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [oid, "organizer", accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
 
   const adventureRes = await pool.query(`SELECT get_adventure_of($1::int) AS adventure_id`, [eventId]);
   const adventureId = adventureRes.rows[0].adventure_id;

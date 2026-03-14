@@ -3,25 +3,19 @@ import pool from "../db.js";
 
 export const getAdventures = async (req: Request, res: Response) => {
   const { bid, accessToken } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_boss($1::int)`, [bid]);
-  const boss = rows[0];
-  if (!boss)
-    return res.status(500).json({ error: "No such boss" });
-  if (boss.access_token !== accessToken || !accessToken)
-    return res.status(500).json({ error: "Access token does not match" });
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [bid, "boss", accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
 
-  const result = await pool.query(`SELECT * FROM get_active_adventures_boss($1::int)`, [bid]);
+  const result = await pool.query(`SELECT * FROM get_active_adventures($1::int, $2::text)`, [bid, "boss"]);
   return res.json(result.rows);
 };
 
 export const organizeExam = async (req: Request, res: Response) => {
   const { bid, accessToken, activity, timing, venue, venueLink, adventureId, instruction } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_boss($1::int)`, [bid]);
-  const boss = rows[0];
-  if (!boss)
-    return res.status(500).json({ error: "No such boss" });
-  if (boss.access_token !== accessToken || !accessToken)
-    return res.status(500).json({ error: "Access token does not match" });
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [bid, "boss", accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
 
   try {
     const check = await pool.query(
@@ -43,25 +37,19 @@ export const organizeExam = async (req: Request, res: Response) => {
 
 export const getPastAdventures = async (req: Request, res: Response) => {
   const { bid, accessToken, a, b } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_boss($1::int)`, [bid]);
-  const boss = rows[0];
-  if (!boss)
-    return res.status(500).json({ error: "No such boss" });
-  if (boss.access_token !== accessToken || !accessToken)
-    return res.status(500).json({ error: "Access token does not match" });
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [bid, "boss", accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
 
-  const result = await pool.query(`SELECT * FROM get_inactive_adventures_boss($1::int, $2::int, $3::int)`, [bid, a, b]);
+  const result = await pool.query(`SELECT * FROM get_inactive_adventures($1::int, $2::text, $3::int, $4::int)`, [bid, "boss", a, b]);
   return res.json(result.rows);
 };
 
 export const updateBossProfile = async (req: Request, res: Response) => {
   const { bid, accessToken, updates } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_boss($1::int)`, [bid]);
-  const boss = rows[0];
-  if (!boss)
-    return res.status(500).json({ error: "No such boss" });
-  if (boss.access_token !== accessToken || !accessToken)
-    return res.status(500).json({ error: "Access token does not match" });
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [bid, "boss", accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
 
   const updated = await pool.query(
     `SELECT * FROM update_boss($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::bytea)`,
@@ -75,12 +63,13 @@ export const updateBossProfile = async (req: Request, res: Response) => {
 
 export const getBossDashboard = async (req: Request, res: Response) => {
   const { bid, accessToken } = req.body;
+
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [bid, "boss", accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
+
   const { rows } = await pool.query(`SELECT * FROM get_boss($1::int)`, [bid]);
   const boss = rows[0];
-  if (!boss)
-    return res.status(500).json({ error: "No such boss" });
-  if (boss.access_token !== accessToken || !accessToken)
-    return res.status(500).json({ error: "Access token does not match" });
 
   return res.json({
     username: boss.username, gender: boss.gender, bio: boss.bio,
@@ -91,17 +80,17 @@ export const getBossDashboard = async (req: Request, res: Response) => {
 
 export const findAdventures = async (req: Request, res: Response) => {
   const { bid, accessToken, categoryId, matchRadius, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [bid, "boss", accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
+
   const { rows } = await pool.query(`SELECT * FROM get_boss($1::int)`, [bid]);
   const boss = rows[0];
-  if (!boss)
-    return res.status(500).json({ error: "No such boss" });
-  if (boss.access_token !== accessToken || !accessToken)
-    return res.status(500).json({ error: "Access token does not match" });
 
   const age = getAge(boss.dob);
   const compatible = await pool.query(
-    `SELECT * FROM get_compatible_requests_boss($1::int, $2::int, $3::float8, $4::float8, $5::text)`,
-    [categoryId, age, latitude, longitude, boss.gender]
+    `SELECT * FROM get_compatible_requests($1::text, $2::int, $3::int, $4::float8, $5::float8, $6::text)`,
+    ["boss", categoryId, age, latitude, longitude, boss.gender]
   );
 
   const potentialAdventures: any[] = [];
@@ -119,14 +108,13 @@ export const findAdventures = async (req: Request, res: Response) => {
 
 export const joinAdventure = async (req: Request, res: Response) => {
   const { bid, accessToken, matchRequest, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2 } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_boss($1::int)`, [bid]);
-  const boss = rows[0];
-  if (!boss || boss.access_token !== accessToken || !accessToken)
-    return res.status(500).json({ error: "Authentication Failed" });
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [bid, "boss", accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
 
   const result = await pool.query(
-    `SELECT match_boss($1::int, $2::int, $3::int, $4::int, $5::float8, $6::int, $7::int, $8::int, $9::int, $10::float8, $11::int, $12::int, $13::int, $14::float8, $15::float8, $16::float8, $17::float8, $18::boolean, $19::boolean) AS result`,
-    [bid, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2,
+    `SELECT match_request($1::int, $2::text, $3::int, $4::int, $5::int, $6::float8, $7::int, $8::int, $9::int, $10::int, $11::float8, $12::int, $13::int, $14::int, $15::float8, $16::float8, $17::float8, $18::float8, $19::boolean, $20::boolean) AS result`,
+    [bid, "boss", minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2,
      matchRequest.id, matchRequest.boss_id, matchRequest.org_id, matchRequest.category_id,
      matchRequest.match_radius, matchRequest.min_team_members, matchRequest.age_range_min,
      matchRequest.age_range_max, matchRequest.latitude, matchRequest.longitude,
@@ -138,33 +126,20 @@ export const joinAdventure = async (req: Request, res: Response) => {
 
 export const logOut = async (req: Request, res: Response) => {
   const { bid, accessToken } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_boss($1::int)`, [bid]);
-  const boss = rows[0];
-  if (!boss || boss.access_token !== accessToken || !accessToken)
-    return res.status(500).json({ error: "Authentication Failed" });
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [bid, "boss", accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
 
-  const result = await pool.query(`SELECT * FROM logout_boss($1::int)`, [bid]);
-  return res.json(result.rows[0]);
+  const result = await pool.query(`SELECT logout($1::int, $2::text) AS success`, [bid, "boss"]);
+  return res.json({ success: result.rows[0].success });
 };
 
 export const currentLobby = async (req: Request, res: Response) => {
   const { bid, accessToken } = req.body;
-  const { rows } = await pool.query(`SELECT * FROM get_boss($1::int)`, [bid]);
-  const boss = rows[0];
-  if (!boss || boss.access_token !== accessToken || !accessToken)
-    return res.status(500).json({ error: "Authentication Failed" });
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [bid, "boss", accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
 
-  const result = await pool.query(`SELECT * FROM current_match_request_boss($1::int)`, [bid]);
+  const result = await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [bid, "boss"]);
   return res.json(result.rows);
 };
-
-function getAge(dob: string) {
-  const birthDate = new Date(dob);
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const hasHadBirthday =
-    today.getMonth() > birthDate.getMonth() ||
-    (today.getMonth() === birthDate.getMonth() && today.getDate() >= birthDate.getDate());
-  if (!hasHadBirthday) age--;
-  return age;
-}

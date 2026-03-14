@@ -54,13 +54,13 @@ export const signupVerifyOtp = async (req: Request, res: Response) => {
 };
 
 export const signupResendOtp = async (req: Request, res: Response) => {
-  const { phone } = req.body;
+  const { requestId } = req.body;
 
-  if (!phone)
+  if (!requestId)
     return res.status(400).json({ error: "Missing required fields" });
 
   try {
-    const { rows } = await pool.query(`SELECT * FROM get_pending_user($1::text)`, [phone]);
+    const { rows } = await pool.query(`SELECT * FROM find_pending_user($1::text)`, [requestId]);
     const pendingUser = rows[0]
     await retry(pendingUser.request_id);
     return res.json({ message: "OTP sent" });
@@ -104,7 +104,6 @@ export const loginResendOtp = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Failed to send OTP" });
   }
 };
-
 export const loginVerifyOtp = async (req: Request, res: Response) => {
   const { phone, otp } = req.body;
 
@@ -119,15 +118,15 @@ export const loginVerifyOtp = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid or expired OTP" });
 
     const accessToken = randomBytes(16).toString("hex");
-    const updated = await pool.query(
-      `SELECT * FROM update_user_access_token($1::int, $2::text)`,
-      [potentialUser.id, accessToken]
+    await pool.query(
+      `SELECT update_access_token($1::int, $2::text, $3::text)`,
+      [potentialUser.id, 'user', accessToken]
     );
 
     return res.json({
       message: "Login successful",
       accessToken,
-      uid: updated.rows[0].id,
+      uid: potentialUser.id,
     });
   } catch (err) {
     console.error("Error in loginVerifyOtp:", err);
@@ -148,13 +147,17 @@ export const organizerLogin = async (req: Request, res: Response) => {
   if (organizer.password !== encode(password))
     return res.status(500).json({ error: "Password does not match" });
 
-  const updated = await pool.query(
-    `SELECT * FROM update_organizer_access_token($1::int, $2::text)`,
-    [organizer.id, randomBytes(16).toString("hex")]
+  const accessToken = randomBytes(16).toString("hex");
+  await pool.query(
+    `SELECT update_access_token($1::int, $2::text, $3::text)`,
+    [organizer.id, 'organizer', accessToken]
   );
-  const organizerDetails = updated.rows[0];
-  organizerDetails.password = password;
-  return res.json(organizerDetails);
+  
+  return res.json({
+    message: "Login successful",
+    accessToken,
+    oid: organizer.id,
+  });
 };
 
 export const bossLogin = async (req: Request, res: Response) => {
@@ -170,11 +173,15 @@ export const bossLogin = async (req: Request, res: Response) => {
   if (boss.password !== encode(password))
     return res.status(500).json({ error: "Password does not match" });
 
-  const updated = await pool.query(
-    `SELECT * FROM update_boss_access_token($1::int, $2::text)`,
-    [boss.id, randomBytes(16).toString("hex")]
+  const accessToken = randomBytes(16).toString("hex");
+  await pool.query(
+    `SELECT update_access_token($1::int, $2::text, $3::text)`,
+    [boss.id, 'boss', accessToken]
   );
-  const bossDetails = updated.rows[0];
-  bossDetails.password = password;
-  return res.json(bossDetails);
+  
+  return res.json({
+    message: "Login successful",
+    accessToken,
+    bid: boss.id,
+  });
 };

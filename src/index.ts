@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors"; // <-- import cors
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
-import shopRoutes from "./routes/shopRoutes.js";
+import mailRoutes from "./routes/mailRoutes.js";
 import organizerRoutes from "./routes/organizerRoutes.js"
 import bossRoutes from "./routes/bossRoutes.js"
 import searchRoutes from "./routes/searchRoutes.js"
@@ -26,7 +26,7 @@ io.on("connection", (socket) => {
 app.use(bodyParser.json());
 app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
-app.use("/shop", shopRoutes);
+app.use("/mail", mailRoutes);
 app.use("/organizer", organizerRoutes);
 app.use("/boss", bossRoutes);
 app.use("/search", searchRoutes);
