@@ -1,6 +1,5 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
-import { calculateAge } from "../utils.js";
 
 export const updateUserProfile = async (req: Request, res: Response) => {
   const { uid, accessToken, updates } = req.body;
@@ -31,32 +30,6 @@ export const getUserDashboard = async (req: Request, res: Response) => {
     setting_1: user.setting_1, setting_2: user.setting_2,
     icon: user.icon?.toString("base64")
   });
-};
-
-export const requestMatch = async (req: Request, res: Response) => {
-  const { uid, accessToken, categoryId, matchRadius, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [uid, "user", accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
-  const { rows } = await pool.query(`SELECT * FROM get_user($1::int)`, [uid]);
-  const user = rows[0];
-  const age = calculateAge(user.dob);
-  const compatible = await pool.query(
-    `SELECT * FROM get_compatible_requests($1::text, $2::int, $3::int, $4::float8, $5::float8, $6::text)`,
-    ["user", categoryId, age, latitude, longitude, user.gender]
-  );
-
-  const potentialAdventures: any[] = [];
-  for (const element of compatible.rows) {
-    const check = await pool.query(
-      `SELECT check_reverse_compatibility($1::int, $2::float8, $3::float8, $4::float8, $5::int, $6::int, $7::boolean, $8::boolean) AS ok`,
-      [element.id, latitude, longitude, matchRadius, ageRangeMin, ageRangeMax,
-       user.gender === 'F' && user.setting_1,
-       user.gender === 'F' && user.setting_2]
-    );
-    if (check.rows[0].ok) potentialAdventures.push(element);
-  }
-  return res.json(potentialAdventures);
 };
 
 export const getAdventures = async (req: Request, res: Response) => {

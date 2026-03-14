@@ -1,11 +1,10 @@
 import express from "express";
-import { updateBossProfile, getBossDashboard, findAdventures, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, organizeExam } from "../controllers/bossController.js";
+import { updateBossProfile, getBossDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, organizeExam } from "../controllers/bossController.js";
 
 const router = express.Router();
 
 router.post("/update-profile", updateBossProfile);
 router.post("/dashboard", getBossDashboard);
-router.post("/get-adventures", findAdventures);
 
 router.post("/match", joinAdventure);
 router.post("/logout", logOut);

@@ -74,37 +74,9 @@ export const getBossDashboard = async (req: Request, res: Response) => {
 
   return res.json({
     username: boss.username, gender: boss.gender, bio: boss.bio,
-    dob: boss.dob, setting_1: boss.setting_1, setting_2: boss.setting_2,
+    age: calculateAge(boss.dob), setting_1: boss.setting_1, setting_2: boss.setting_2,
     icon: boss.icon?.toString("base64")
   });
-};
-
-export const findAdventures = async (req: Request, res: Response) => {
-  const { bid, accessToken, categoryId, matchRadius, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [bid, "boss", accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
-
-  const { rows } = await pool.query(`SELECT * FROM get_boss($1::int)`, [bid]);
-  const boss = rows[0];
-
-  const age = calculateAge(boss.dob);
-  const compatible = await pool.query(
-    `SELECT * FROM get_compatible_requests($1::text, $2::int, $3::int, $4::float8, $5::float8, $6::text)`,
-    ["boss", categoryId, age, latitude, longitude, boss.gender]
-  );
-
-  const potentialAdventures: any[] = [];
-  for (const element of compatible.rows) {
-    const check = await pool.query(
-      `SELECT check_reverse_compatibility($1::int, $2::float8, $3::float8, $4::float8, $5::int, $6::int, $7::boolean, $8::boolean) AS ok`,
-      [element.id, latitude, longitude, matchRadius, ageRangeMin, ageRangeMax,
-       boss.gender === 'F' && boss.setting_1,
-       boss.gender === 'F' && boss.setting_2]
-    );
-    if (check.rows[0].ok) potentialAdventures.push(element);
-  }
-  return res.json(potentialAdventures);
 };
 
 export const joinAdventure = async (req: Request, res: Response) => {

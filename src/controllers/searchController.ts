@@ -1,14 +1,6 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
-
-async function getPerson(role: string, id: number) {
-  if (role === "organizer")
-    return (await pool.query(`SELECT * FROM get_organizer($1::int)`, [id])).rows[0];
-  else if (role === "boss")
-    return (await pool.query(`SELECT * FROM get_boss($1::int)`, [id])).rows[0];
-  else
-    return (await pool.query(`SELECT * FROM get_user($1::int)`, [id])).rows[0];
-}
+import { calculateAge } from "../utils.js";
 
 export const getCategories = async (req: Request, res: Response) => {
   const { id, role, accessToken } = req.body;
@@ -35,10 +27,16 @@ export const getProfile = async (req: Request, res: Response) => {
   const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
   if (!authResult.rows[0].is_authenticated)
     return res.status(500).json({ error: "Authentication Error" });
+  let person2;
+  if (role === profileRole)
+    person2 = (await pool.query(`SELECT * FROM get_organizer($1::int)`, [profileId])).rows[0];
+  else if (role === "boss")
+    person2 = (await pool.query(`SELECT * FROM get_boss($1::int)`, [profileId])).rows[0];
+  else
+    person2 = (await pool.query(`SELECT * FROM get_user($1::int)`, [profileId])).rows[0];
 
-  const person2 = await getPerson(profileRole, profileId);
   return res.json({
-    username: person2.username, dob: person2.dob, gender: person2.gender,
+    username: person2.username, age: calculateAge(person2.dob), gender: person2.gender,
     setting_1: person2.setting_1, setting_2: person2.setting_2,
     icon: person2.icon?.toString("base64"), bio: person2.bio
   });
@@ -101,3 +99,36 @@ export const generateAdventureName = async (req: Request, res: Response) => {
 
   return res.json({ "suggestion": `${word1} ${word2} ${word3}`});
 }
+
+
+export const findLobbies = async (req: Request, res: Response) => {
+  const { id, role, accessToken, categoryId, matchRadius, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
+  let rows;
+  if (role == "boss"){
+    rows = (await pool.query(`SELECT * FROM get_boss($1::int)`, [id])).rows;
+  }
+  else if (role == "user"){
+    rows = (await pool.query(`SELECT * FROM get_boss($1::int)`, [id])).rows;
+  }
+  const person = rows[0];
+  const age = calculateAge(person.dob);
+  const compatible = await pool.query(
+    `SELECT * FROM get_compatible_requests($1::text, $2::int, $3::int, $4::float8, $5::float8, $6::text)`,
+    [role, categoryId, age, latitude, longitude, person.gender]
+  );
+
+  const potentialAdventures: any[] = [];
+  for (const element of compatible.rows) {
+    const check = await pool.query(
+      `SELECT check_reverse_compatibility($1::int, $2::float8, $3::float8, $4::float8, $5::int, $6::int, $7::boolean, $8::boolean) AS ok`,
+      [element.id, latitude, longitude, matchRadius, ageRangeMin, ageRangeMax,
+       person.gender === 'F' && person.setting_1,
+       person.gender === 'F' && person.setting_2]
+    );
+    if (check.rows[0].ok) potentialAdventures.push(element);
+  }
+  return res.json(potentialAdventures);
+};
