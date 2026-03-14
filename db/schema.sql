@@ -1,11 +1,3 @@
---
--- PostgreSQL database dump
---
-
--- QUARANTINED(\restrict luarIuPTKVIl7q2Bi6ldEnljKHjj1i8bBwb31e2quo8Mcu3Wv6lcSf8DRVF0T4c)
-
--- Dumped from database version 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
--- Dumped by pg_dump version 18.3
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -20,7 +12,13 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 
--- *not* creating schema, since initdb creates it
+
+
+
+
+
+
+
 
 
 
@@ -31,6 +29,9 @@ CREATE TYPE public.chat_role AS ENUM (
     'boss',
     'organizer'
 );
+
+
+
 
 
 
@@ -53,6 +54,8 @@ $$;
 
 
 
+
+
 CREATE FUNCTION public.add_message(p_sender_id integer, p_sender_type text, p_adventure_id integer, p_message text) RETURNS void
     LANGUAGE sql
     AS $$
@@ -63,65 +66,9 @@ $$;
 
 
 
-SET default_tablespace = '';
-
-SET default_table_access_method = heap;
-
-
-CREATE TABLE public.messages (
-    id integer NOT NULL,
-    message character varying(250) NOT NULL,
-    sender_id integer NOT NULL,
-    adventure_id integer NOT NULL,
-    sender_type text NOT NULL,
-    created_at timestamp without time zone DEFAULT now(),
-    CONSTRAINT messages_sender_type_check CHECK ((sender_type = ANY (ARRAY['user'::text, 'boss'::text, 'organizer'::text])))
-);
- 
-CREATE FUNCTION public.add_message_boss(p_message text, p_sender_id integer, p_adventure_id integer) RETURNS public.messages
-    LANGUAGE sql
-    AS $$
-  INSERT INTO messages (message, sender_id, sender_type, adventure_id)
-  VALUES (p_message, p_sender_id, 'boss', p_adventure_id)
-  RETURNING *;
-$$;
 
 
 
-
---
-
---
-
-CREATE FUNCTION public.add_message_organizer(p_message text, p_sender_id integer, p_adventure_id integer) RETURNS public.messages
-    LANGUAGE sql
-    AS $$
-  INSERT INTO messages (message, sender_id, sender_type, adventure_id)
-  VALUES (p_message, p_sender_id, 'organizer', p_adventure_id)
-  RETURNING *;
-$$;
-
-
-
-
---
-
---
-
-CREATE FUNCTION public.add_message_user(p_message text, p_sender_id integer, p_adventure_id integer) RETURNS public.messages
-    LANGUAGE sql
-    AS $$
-  INSERT INTO messages (message, sender_id, sender_type, adventure_id)
-  VALUES (p_message, p_sender_id, 'user', p_adventure_id)
-  RETURNING *;
-$$;
-
-
-
-
---
-
---
 
 CREATE FUNCTION public.apply_for_tournament(p_id integer, p_organizer_id integer) RETURNS boolean
     LANGUAGE sql
@@ -132,9 +79,65 @@ $$;
 
 
 
---
 
---
+
+
+
+CREATE FUNCTION public.authenticate(p_id integer, p_role text, p_access_token text) RETURNS boolean
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  v_token text;
+BEGIN
+  
+  IF p_role NOT IN ('user', 'organizer', 'boss') THEN
+    RETURN FALSE;
+  END IF;
+
+  
+  IF p_role = 'user' THEN
+    SELECT access_token INTO v_token
+    FROM users
+    WHERE id = p_id;
+    
+    IF FOUND AND v_token = p_access_token THEN
+      RETURN TRUE;
+    END IF;
+  END IF;
+
+  
+  IF p_role = 'organizer' THEN
+    SELECT access_token INTO v_token
+    FROM organizers
+    WHERE id = p_id;
+    
+    IF FOUND AND v_token = p_access_token THEN
+      RETURN TRUE;
+    END IF;
+  END IF;
+
+  
+  IF p_role = 'boss' THEN
+    SELECT access_token INTO v_token
+    FROM bosses
+    WHERE id = p_id;
+    
+    IF FOUND AND v_token = p_access_token THEN
+      RETURN TRUE;
+    END IF;
+  END IF;
+
+  
+  RETURN FALSE;
+END;
+$$;
+
+
+
+
+
+
+
 
 CREATE FUNCTION public.calculate_age(dob date) RETURNS integer
     LANGUAGE sql IMMUTABLE
@@ -145,9 +148,13 @@ $$;
 
 
 
---
+SET default_tablespace = '';
 
---
+SET default_table_access_method = heap;
+
+
+
+
 
 CREATE TABLE public.events (
     id integer NOT NULL,
@@ -164,9 +171,9 @@ CREATE TABLE public.events (
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.change_attendance(p_event_id integer, p_attendance integer[]) RETURNS public.events
     LANGUAGE sql
@@ -180,9 +187,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE TABLE public.user_badges (
     user_id integer NOT NULL,
@@ -193,9 +200,9 @@ CREATE TABLE public.user_badges (
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.check_badge(p_id integer, p_badge_id integer) RETURNS SETOF public.user_badges
     LANGUAGE sql
@@ -207,9 +214,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE TABLE public.adventures (
     id integer NOT NULL,
@@ -226,9 +233,9 @@ CREATE TABLE public.adventures (
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.complete_match(p_name text, p_id integer) RETURNS public.adventures
     LANGUAGE plpgsql
@@ -260,9 +267,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.count_messages(p_adventure_id integer) RETURNS bigint
     LANGUAGE sql
@@ -273,51 +280,23 @@ $$;
 
 
 
---
 
---
 
-CREATE FUNCTION public.count_notifications_boss(p_receiver_id integer) RETURNS bigint
+
+
+CREATE FUNCTION public.count_notifications(p_receiver_id integer, p_receiver_role text) RETURNS bigint
     LANGUAGE sql
     AS $$
   SELECT COUNT(*) FROM private_messages
-  WHERE receiver_id = p_receiver_id AND receiver_role = 'boss'::chat_role;
+  WHERE receiver_id = p_receiver_id AND receiver_role = p_receiver_role::chat_role;
 $$;
 
 
 
 
---
-
---
-
-CREATE FUNCTION public.count_notifications_organizer(p_receiver_id integer) RETURNS bigint
-    LANGUAGE sql
-    AS $$
-  SELECT COUNT(*) FROM private_messages
-  WHERE receiver_id = p_receiver_id AND receiver_role = 'organizer'::chat_role;
-$$;
 
 
 
-
---
-
---
-
-CREATE FUNCTION public.count_notifications_user(p_receiver_id integer) RETURNS bigint
-    LANGUAGE sql
-    AS $$
-  SELECT COUNT(*) FROM private_messages
-  WHERE receiver_id = p_receiver_id AND receiver_role = 'user'::chat_role;
-$$;
-
-
-
-
---
-
---
 
 CREATE FUNCTION public.create_event(p_activity text, p_timing timestamp with time zone, p_venue text, p_venue_link text, p_adventure_id integer, p_instruction text, p_is_boss_battle boolean) RETURNS public.events
     LANGUAGE sql
@@ -336,9 +315,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE TABLE public.match_requests (
     id integer NOT NULL,
@@ -366,9 +345,9 @@ CREATE TABLE public.match_requests (
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.create_match_request(p_org_id integer, p_category_id integer, p_match_radius double precision, p_min_team_members integer, p_age_range_min integer, p_age_range_max integer, p_latitude double precision, p_longitude double precision, p_pay_per_head double precision, p_all_girls boolean, p_half_girls boolean) RETURNS public.match_requests
     LANGUAGE plpgsql
@@ -406,9 +385,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.create_pending_user(p_request_id text, p_name text, p_phone text, p_email text, p_dob text, p_gender text) RETURNS text
     LANGUAGE plpgsql
@@ -434,9 +413,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE TABLE public.users (
     id integer NOT NULL,
@@ -465,9 +444,9 @@ CREATE TABLE public.users (
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.create_user(p_name text, p_phone text, p_email text, p_dob date, p_gender text) RETURNS public.users
     LANGUAGE plpgsql
@@ -508,51 +487,48 @@ $$;
 
 
 
---
 
---
 
-CREATE FUNCTION public.current_match_request_boss(p_id integer) RETURNS SETOF public.match_requests
-    LANGUAGE sql
+
+
+CREATE FUNCTION public.current_match_request(p_id integer, p_role text) RETURNS SETOF public.match_requests
+    LANGUAGE plpgsql
     AS $$
-  SELECT * FROM match_requests
-  WHERE boss_id = p_id AND is_active = TRUE;
+BEGIN
+  
+  IF p_role NOT IN ('user', 'organizer', 'boss') THEN
+    RETURN;
+  END IF;
+
+  
+  IF p_role = 'user' THEN
+    RETURN QUERY
+    SELECT * FROM match_requests
+    WHERE user_ids @> ARRAY[p_id] AND is_active = TRUE;
+  END IF;
+
+  
+  IF p_role = 'organizer' THEN
+    RETURN QUERY
+    SELECT * FROM match_requests
+    WHERE org_id = p_id AND is_active = TRUE;
+  END IF;
+
+  
+  IF p_role = 'boss' THEN
+    RETURN QUERY
+    SELECT * FROM match_requests
+    WHERE boss_id = p_id AND is_active = TRUE;
+  END IF;
+END;
 $$;
 
 
 
 
---
-
---
-
-CREATE FUNCTION public.current_match_request_organizer(p_id integer) RETURNS SETOF public.match_requests
-    LANGUAGE sql
-    AS $$
-  SELECT * FROM match_requests
-  WHERE org_id = p_id AND is_active = TRUE;
-$$;
 
 
 
-
---
-
---
-
-CREATE FUNCTION public.current_match_request_user(p_id integer) RETURNS SETOF public.match_requests
-    LANGUAGE sql
-    AS $$
-  SELECT * FROM match_requests
-  WHERE user_ids @> ARRAY[p_id]::int[] AND is_active = TRUE;
-$$;
-
-
-
-
---
-
---
 
 CREATE FUNCTION public.deduct_gems(p_id integer, p_gems integer) RETURNS boolean
     LANGUAGE plpgsql
@@ -578,9 +554,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.delete_user(p_id integer) RETURNS public.users
     LANGUAGE sql
@@ -591,9 +567,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.file_count(p_adventure_id integer) RETURNS bigint
     LANGUAGE sql
@@ -607,9 +583,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE TABLE public.pending_users (
     request_id text NOT NULL,
@@ -624,9 +600,9 @@ CREATE TABLE public.pending_users (
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.find_pending_user(p_request_id text) RETURNS public.pending_users
     LANGUAGE sql
@@ -637,9 +613,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.find_user_by_phone(p_phone text) RETURNS public.users
     LANGUAGE sql
@@ -650,49 +626,51 @@ $$;
 
 
 
---
 
---
 
-CREATE FUNCTION public.get_active_adventures_boss(p_id integer) RETURNS SETOF public.adventures
-    LANGUAGE sql
+
+
+CREATE FUNCTION public.get_active_adventures(p_id integer, p_role text) RETURNS SETOF public.adventures
+    LANGUAGE plpgsql
     AS $$
-  SELECT * FROM adventures WHERE is_active = TRUE AND boss_id = p_id;
+BEGIN
+  
+  IF p_role NOT IN ('user', 'organizer', 'boss') THEN
+    RETURN;
+  END IF;
+
+  
+  IF p_role = 'user' THEN
+    RETURN QUERY
+    SELECT * FROM adventures
+    WHERE is_active = TRUE AND user_ids @> ARRAY[p_id]
+    ORDER BY created_at DESC;
+  END IF;
+
+  
+  IF p_role = 'organizer' THEN
+    RETURN QUERY
+    SELECT * FROM adventures
+    WHERE is_active = TRUE AND organizer_id = p_id
+    ORDER BY created_at DESC;
+  END IF;
+
+  
+  IF p_role = 'boss' THEN
+    RETURN QUERY
+    SELECT * FROM adventures
+    WHERE is_active = TRUE AND boss_id = p_id
+    ORDER BY created_at DESC;
+  END IF;
+END;
 $$;
 
 
 
 
---
-
---
-
-CREATE FUNCTION public.get_active_adventures_organizer(p_id integer) RETURNS SETOF public.adventures
-    LANGUAGE sql
-    AS $$
-  SELECT * FROM adventures WHERE is_active = TRUE AND organizer_id = p_id;
-$$;
 
 
 
-
---
-
---
-
-CREATE FUNCTION public.get_active_adventures_user(p_id integer) RETURNS SETOF public.adventures
-    LANGUAGE sql
-    AS $$
-  SELECT * FROM adventures
-  WHERE is_active = TRUE AND user_ids @> ARRAY[p_id];
-$$;
-
-
-
-
---
-
---
 
 CREATE FUNCTION public.get_adventure_of(p_event_id integer) RETURNS integer
     LANGUAGE sql
@@ -703,9 +681,54 @@ $$;
 
 
 
---
 
---
+
+
+
+CREATE FUNCTION public.get_adventures(p_id integer, p_role text, p_active boolean) RETURNS SETOF public.adventures
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  
+  IF p_role NOT IN ('user', 'organizer', 'boss') THEN
+    RETURN;
+  END IF;
+
+  
+  IF p_role = 'user' THEN
+    RETURN QUERY
+    SELECT * FROM adventures
+    WHERE user_ids @> ARRAY[p_id] AND is_active = p_active
+    ORDER BY created_at DESC;
+    RETURN;
+  END IF;
+
+  
+  IF p_role = 'organizer' THEN
+    RETURN QUERY
+    SELECT * FROM adventures
+    WHERE organizer_id = p_id AND is_active = p_active
+    ORDER BY created_at DESC;
+    RETURN;
+  END IF;
+
+  
+  IF p_role = 'boss' THEN
+    RETURN QUERY
+    SELECT * FROM adventures
+    WHERE boss_id = p_id AND is_active = p_active
+    ORDER BY created_at DESC;
+    RETURN;
+  END IF;
+END;
+$$;
+
+
+
+
+
+
+
 
 CREATE FUNCTION public.get_all_categories() RETURNS TABLE(category text)
     LANGUAGE sql
@@ -716,9 +739,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE TABLE public.offers (
     offer_name character varying(255),
@@ -729,9 +752,9 @@ CREATE TABLE public.offers (
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.get_all_offers() RETURNS SETOF public.offers
     LANGUAGE sql
@@ -742,9 +765,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE TABLE public.categories (
     id integer NOT NULL,
@@ -757,9 +780,9 @@ CREATE TABLE public.categories (
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.get_all_subcategories(p_category text) RETURNS SETOF public.categories
     LANGUAGE sql
@@ -770,9 +793,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE TABLE public.bosses (
     id integer NOT NULL,
@@ -796,9 +819,9 @@ CREATE TABLE public.bosses (
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.get_boss(p_id integer) RETURNS public.bosses
     LANGUAGE sql
@@ -809,9 +832,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.get_boss_by_email(p_email text) RETURNS public.bosses
     LANGUAGE sql
@@ -822,28 +845,27 @@ $$;
 
 
 
---
 
---
 
-CREATE FUNCTION public.get_compatible_requests_boss(p_category_id integer, p_age integer, p_latitude double precision, p_longitude double precision, p_gender text) RETURNS SETOF public.match_requests
+
+
+CREATE FUNCTION public.get_compatible_requests(p_role text, p_category_id integer, p_age integer, p_latitude double precision, p_longitude double precision, p_gender text) RETURNS SETOF public.match_requests
     LANGUAGE sql
     AS $$
   SELECT * FROM match_requests
   WHERE
-    category_id   = p_category_id
-    AND boss_id IS NULL
+    category_id = p_category_id
     AND age_range_min <= p_age
     AND age_range_max >= p_age
     AND (
       6371 * 2 * ASIN(SQRT(
-        POWER(SIN(RADIANS(p_latitude  - latitude)  / 2), 2) +
+        POWER(SIN(RADIANS(p_latitude - latitude) / 2), 2) +
         COS(RADIANS(latitude)) * COS(RADIANS(p_latitude)) *
         POWER(SIN(RADIANS(p_longitude - longitude) / 2), 2)
       ))
     ) <= match_radius
     AND (
-      (all_girls = TRUE  AND p_gender = 'F')
+      (all_girls = TRUE AND p_gender = 'F')
       OR (
         half_girls = TRUE AND (
           p_gender = 'F'
@@ -855,107 +877,19 @@ CREATE FUNCTION public.get_compatible_requests_boss(p_category_id integer, p_age
         )
       )
       OR (all_girls = FALSE AND half_girls = FALSE)
+    )
+    AND (
+      (p_role = 'boss' AND boss_id IS NULL)
+      OR p_role = 'user'
     );
 $$;
 
 
 
 
---
-
---
-
-CREATE FUNCTION public.get_compatible_requests_user(p_category_id integer, p_age integer, p_latitude double precision, p_longitude double precision, p_gender text) RETURNS SETOF public.match_requests
-    LANGUAGE sql
-    AS $$
-  SELECT * FROM match_requests
-  WHERE
-    category_id   = p_category_id
-    AND age_range_min <= p_age
-    AND age_range_max >= p_age
-    AND (
-      6371 * 2 * ASIN(SQRT(
-        POWER(SIN(RADIANS(p_latitude  - latitude)  / 2), 2) +
-        COS(RADIANS(latitude)) * COS(RADIANS(p_latitude)) *
-        POWER(SIN(RADIANS(p_longitude - longitude) / 2), 2)
-      ))
-    ) <= match_radius
-    AND (
-      (all_girls = TRUE  AND p_gender = 'F')
-      OR (
-        half_girls = TRUE AND (
-          p_gender = 'F'
-          OR (
-            array_length(genders, 1) > 0
-            AND (SELECT COUNT(*) FROM unnest(genders) g WHERE g = 'F')
-                >= array_length(genders, 1) / 2.0
-          )
-        )
-      )
-      OR (all_girls = FALSE AND half_girls = FALSE)
-    );
-$$;
 
 
-CREATE FUNCTION public.check_reverse_compatibility(
-  p_match_request_id INT,
-  p_latitude         FLOAT,
-  p_longitude        FLOAT,
-  p_match_radius     FLOAT,
-  p_age_range_min    INT,
-  p_age_range_max    INT,
-  p_all_girls        BOOLEAN,
-  p_half_girls       BOOLEAN
-)
-RETURNS BOOLEAN LANGUAGE plpgsql AS $$
-DECLARE
-  v_req        match_requests%ROWTYPE;
-  v_dist_km    FLOAT;
-  v_age        INT;
-  v_gender     TEXT;
-  v_females    INT := 0;
-  v_nonfemales INT := 0;
-BEGIN
-  SELECT * INTO v_req FROM match_requests WHERE id = p_match_request_id;
-  IF NOT FOUND THEN RETURN FALSE; END IF;
 
-  -- Distance check
-  v_dist_km := 6371 * 2 * ASIN(SQRT(
-    POWER(SIN(RADIANS(p_latitude  - v_req.latitude)  / 2), 2) +
-    COS(RADIANS(v_req.latitude)) * COS(RADIANS(p_latitude)) *
-    POWER(SIN(RADIANS(p_longitude - v_req.longitude) / 2), 2)
-  ));
-  IF v_dist_km > p_match_radius THEN RETURN FALSE; END IF;
-
-  -- Age check: every member in the request must fit within the joiner's age range
-  FOREACH v_age IN ARRAY v_req.ages LOOP
-    IF v_age < p_age_range_min OR v_age > p_age_range_max THEN
-      RETURN FALSE;
-    END IF;
-  END LOOP;
-
-  -- Gender check
-  FOREACH v_gender IN ARRAY v_req.genders LOOP
-    IF p_all_girls AND v_gender <> 'F' THEN
-      RETURN FALSE;
-    ELSIF p_half_girls THEN
-      IF v_gender = 'F' THEN v_females    := v_females    + 1;
-      ELSE                   v_nonfemales := v_nonfemales + 1;
-      END IF;
-    END IF;
-  END LOOP;
-
-  IF p_half_girls AND v_nonfemales > v_females THEN
-    RETURN FALSE;
-  END IF;
-
-  RETURN TRUE;
-END;
-$$;
-
---
-
---
 
 CREATE FUNCTION public.get_event(p_event_id integer) RETURNS public.events
     LANGUAGE sql
@@ -966,57 +900,71 @@ $$;
 
 
 
---
 
---
 
-CREATE FUNCTION public.get_inactive_adventures_boss(p_id integer, p_offset integer, p_limit integer) RETURNS SETOF public.adventures
-    LANGUAGE sql
+
+
+CREATE FUNCTION public.get_inactive_adventures(p_id integer, p_role text, p_a integer, p_b integer) RETURNS SETOF public.adventures
+    LANGUAGE plpgsql
     AS $$
-  SELECT * FROM adventures
-  WHERE is_active = FALSE AND boss_id = p_id
-  ORDER BY created_at DESC
-  LIMIT p_limit OFFSET p_offset;
+BEGIN
+  
+  IF p_role NOT IN ('user', 'organizer', 'boss') THEN
+    RETURN;
+  END IF;
+
+  
+  IF p_role = 'user' THEN
+    RETURN QUERY
+    SELECT * FROM adventures
+    WHERE is_active = FALSE AND user_ids @> ARRAY[p_id]
+    ORDER BY created_at DESC
+    LIMIT p_b OFFSET p_a;
+  END IF;
+
+  
+  IF p_role = 'organizer' THEN
+    RETURN QUERY
+    SELECT * FROM adventures
+    WHERE is_active = FALSE AND organizer_id = p_id
+    ORDER BY created_at DESC
+    LIMIT p_b OFFSET p_a;
+  END IF;
+
+  
+  IF p_role = 'boss' THEN
+    RETURN QUERY
+    SELECT * FROM adventures
+    WHERE is_active = FALSE AND boss_id = p_id
+    ORDER BY created_at DESC
+    LIMIT p_b OFFSET p_a;
+  END IF;
+END;
 $$;
 
 
 
 
---
-
---
-
-CREATE FUNCTION public.get_inactive_adventures_organizer(p_id integer, p_offset integer, p_limit integer) RETURNS SETOF public.adventures
-    LANGUAGE sql
-    AS $$
-  SELECT * FROM adventures
-  WHERE is_active = FALSE AND organizer_id = p_id
-  ORDER BY created_at DESC
-  LIMIT p_limit OFFSET p_offset;
-$$;
 
 
 
 
---
-
---
-
-CREATE FUNCTION public.get_inactive_adventures_user(p_id integer, p_offset integer, p_limit integer) RETURNS SETOF public.adventures
-    LANGUAGE sql
-    AS $$
-  SELECT * FROM adventures
-  WHERE is_active = FALSE AND user_ids @> ARRAY[p_id]
-  ORDER BY created_at DESC
-  LIMIT p_limit OFFSET p_offset;
-$$;
+CREATE TABLE public.messages (
+    id integer NOT NULL,
+    message character varying(250) NOT NULL,
+    sender_id integer NOT NULL,
+    adventure_id integer NOT NULL,
+    sender_type text NOT NULL,
+    created_at timestamp without time zone DEFAULT now(),
+    CONSTRAINT messages_sender_type_check CHECK ((sender_type = ANY (ARRAY['user'::text, 'boss'::text, 'organizer'::text])))
+);
 
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.get_messages_from_a_to_b(p_adventure_id integer, p_offset integer, p_limit integer) RETURNS SETOF public.messages
     LANGUAGE sql
@@ -1031,9 +979,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE TABLE public.private_messages (
     id bigint NOT NULL,
@@ -1048,57 +996,25 @@ CREATE TABLE public.private_messages (
 
 
 
---
 
---
 
-CREATE FUNCTION public.get_notifications_boss(p_receiver_id integer, p_offset integer, p_limit integer) RETURNS SETOF public.private_messages
+
+
+CREATE FUNCTION public.get_notifications(p_receiver_id integer, p_receiver_role text, p_a integer, p_b integer) RETURNS SETOF public.private_messages
     LANGUAGE sql
     AS $$
   SELECT * FROM private_messages
-  WHERE receiver_id = p_receiver_id AND receiver_role = 'boss'::chat_role
+  WHERE receiver_id = p_receiver_id AND receiver_role = p_receiver_role::chat_role
   ORDER BY sent_at DESC
-  LIMIT p_limit OFFSET p_offset;
+  LIMIT p_b OFFSET p_a;
 $$;
 
 
 
 
---
-
---
-
-CREATE FUNCTION public.get_notifications_organizer(p_receiver_id integer, p_offset integer, p_limit integer) RETURNS SETOF public.private_messages
-    LANGUAGE sql
-    AS $$
-  SELECT * FROM private_messages
-  WHERE receiver_id = p_receiver_id AND receiver_role = 'organizer'::chat_role
-  ORDER BY sent_at DESC
-  LIMIT p_limit OFFSET p_offset;
-$$;
 
 
 
-
---
-
---
-
-CREATE FUNCTION public.get_notifications_user(p_receiver_id integer, p_offset integer, p_limit integer) RETURNS SETOF public.private_messages
-    LANGUAGE sql
-    AS $$
-  SELECT * FROM private_messages
-  WHERE receiver_id = p_receiver_id AND receiver_role = 'user'::chat_role
-  ORDER BY sent_at DESC
-  LIMIT p_limit OFFSET p_offset;
-$$;
-
-
-
-
---
-
---
 
 CREATE TABLE public.organizers (
     id integer NOT NULL,
@@ -1122,9 +1038,9 @@ CREATE TABLE public.organizers (
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.get_organizer(p_id integer) RETURNS public.organizers
     LANGUAGE sql
@@ -1135,9 +1051,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.get_organizer_by_email(p_email text) RETURNS public.organizers
     LANGUAGE sql
@@ -1148,9 +1064,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.get_pending_user(p_phone text) RETURNS public.pending_users
     LANGUAGE sql
@@ -1161,9 +1077,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE TABLE public.polls (
     adventure_id integer NOT NULL,
@@ -1176,9 +1092,9 @@ CREATE TABLE public.polls (
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.get_poll(p_adventure_id integer, p_poll_number integer) RETURNS public.polls
     LANGUAGE sql
@@ -1190,9 +1106,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE TABLE public.boss_qualifications (
     boss_id integer NOT NULL,
@@ -1202,9 +1118,9 @@ CREATE TABLE public.boss_qualifications (
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.get_qualification(p_boss_id integer) RETURNS SETOF public.boss_qualifications
     LANGUAGE sql
@@ -1215,9 +1131,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE TABLE public.results (
     adventure_id integer NOT NULL,
@@ -1231,9 +1147,9 @@ CREATE TABLE public.results (
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.get_result(p_adventure_id integer, p_result_number integer) RETURNS public.results
     LANGUAGE sql
@@ -1245,9 +1161,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.get_user(p_id integer) RETURNS public.users
     LANGUAGE sql
@@ -1258,9 +1174,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.get_word2s(p_id integer) RETURNS public.categories
     LANGUAGE sql
@@ -1271,9 +1187,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.insert_poll(p_adventure_id integer, p_question text, p_options text[]) RETURNS integer
     LANGUAGE sql
@@ -1293,9 +1209,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.insert_result(p_adventure_id integer, p_badge_ids integer[], p_user_ids integer[], p_star_scores integer[], p_remarks text[]) RETURNS integer
     LANGUAGE sql
@@ -1316,9 +1232,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.is_related_to_adventure(p_id integer, p_role text, p_adventure_id integer) RETURNS boolean
     LANGUAGE plpgsql
@@ -1345,50 +1261,55 @@ $$;
 
 
 
---
 
---
 
-CREATE FUNCTION public.logout_boss(p_id integer) RETURNS public.bosses
-    LANGUAGE sql
+
+
+CREATE FUNCTION public.logout(p_id integer, p_role text) RETURNS boolean
+    LANGUAGE plpgsql
     AS $$
-  UPDATE bosses SET access_token = NULL WHERE id = p_id RETURNING *;
+BEGIN
+  
+  IF p_role NOT IN ('user', 'organizer', 'boss') THEN
+    RETURN FALSE;
+  END IF;
+
+  
+  IF p_role = 'user' THEN
+    UPDATE users
+    SET access_token = NULL
+    WHERE id = p_id;
+    RETURN FOUND;
+  END IF;
+
+  
+  IF p_role = 'organizer' THEN
+    UPDATE organizers
+    SET access_token = NULL
+    WHERE id = p_id;
+    RETURN FOUND;
+  END IF;
+
+  
+  IF p_role = 'boss' THEN
+    UPDATE bosses
+    SET access_token = NULL
+    WHERE id = p_id;
+    RETURN FOUND;
+  END IF;
+
+  RETURN FALSE;
+END;
 $$;
 
 
 
 
---
-
---
-
-CREATE FUNCTION public.logout_organizer(p_id integer) RETURNS public.organizers
-    LANGUAGE sql
-    AS $$
-  UPDATE organizers SET access_token = NULL WHERE id = p_id RETURNING *;
-$$;
 
 
 
 
---
-
---
-
-CREATE FUNCTION public.logout_user(p_id integer) RETURNS public.users
-    LANGUAGE sql
-    AS $$
-  UPDATE users SET access_token = NULL WHERE id = p_id RETURNING *;
-$$;
-
-
-
-
---
-
---
-
-CREATE FUNCTION public.match_boss(p_id integer, p_min_team_members integer, p_age_range_min integer, p_age_range_max integer, p_pay_per_head2 double precision, p_snapshot_id integer, p_snapshot_boss_id integer, p_snapshot_org_id integer, p_snapshot_category_id integer, p_snapshot_match_radius double precision, p_snapshot_min_team integer, p_snapshot_age_min integer, p_snapshot_age_max integer, p_snapshot_latitude double precision, p_snapshot_longitude double precision, p_snapshot_pay_per_head double precision, p_snapshot_pay_per_head2 double precision, p_snapshot_all_girls boolean, p_snapshot_half_girls boolean) RETURNS jsonb
+CREATE FUNCTION public.match_request(p_id integer, p_role text, p_min_team_members integer, p_age_range_min integer, p_age_range_max integer, p_pay_per_head2 double precision, p_snapshot_id integer, p_snapshot_boss_id integer, p_snapshot_org_id integer, p_snapshot_category_id integer, p_snapshot_match_radius double precision, p_snapshot_min_team integer, p_snapshot_age_min integer, p_snapshot_age_max integer, p_snapshot_latitude double precision, p_snapshot_longitude double precision, p_snapshot_pay_per_head double precision, p_snapshot_pay_per_head2 double precision, p_snapshot_all_girls boolean, p_snapshot_half_girls boolean) RETURNS jsonb
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -1397,26 +1318,40 @@ DECLARE
   v_setting1 BOOLEAN;
   v_setting2 BOOLEAN;
   v_age      INT;
+  v_table    TEXT;
 BEGIN
-  SELECT dob, gender, setting_1, setting_2
-  INTO v_dob, v_gender, v_setting1, v_setting2
-  FROM bosses WHERE id = p_id;
+  
+  IF p_role NOT IN ('user', 'boss') THEN
+    RAISE EXCEPTION 'Invalid role';
+  END IF;
+
+  
+  IF p_role = 'boss' THEN
+    SELECT dob, gender, setting_1, setting_2
+    INTO v_dob, v_gender, v_setting1, v_setting2
+    FROM bosses WHERE id = p_id;
+  ELSIF p_role = 'user' THEN
+    SELECT dob, gender, setting_1, setting_2
+    INTO v_dob, v_gender, v_setting1, v_setting2
+    FROM users WHERE id = p_id;
+  END IF;
 
   IF NOT FOUND THEN RAISE EXCEPTION 'User not found'; END IF;
-
   v_age := calculate_age(v_dob);
 
+  
   UPDATE match_requests
   SET
-    boss_id          = p_id,
+    boss_id          = CASE WHEN p_role = 'boss' THEN p_id ELSE boss_id END,
+    user_ids         = CASE WHEN p_role = 'user' THEN array_append(user_ids, p_id) ELSE user_ids END,
     genders          = array_append(genders, v_gender),
     ages             = array_append(ages, v_age),
     min_team_members = GREATEST(min_team_members, p_min_team_members),
-    age_range_min    = LEAST(age_range_min,    p_age_range_min),
+    age_range_min    = LEAST(age_range_min, p_age_range_min),
     age_range_max    = GREATEST(age_range_max, p_age_range_max),
-    all_girls        = (all_girls  OR v_setting1),
+    all_girls        = (all_girls OR v_setting1),
     half_girls       = (half_girls OR v_setting2),
-    pay_per_head_2   = p_pay_per_head2
+    pay_per_head_2   = CASE WHEN p_role = 'boss' THEN p_pay_per_head2 ELSE pay_per_head_2 END
   WHERE
     id                             = p_snapshot_id
     AND boss_id IS NOT DISTINCT FROM p_snapshot_boss_id
@@ -1437,78 +1372,24 @@ BEGIN
     RAISE EXCEPTION 'Match request changed, duplicate join, or slot unavailable';
   END IF;
 
-  RETURN jsonb_build_object('success', TRUE);
-END;
-$$;
-
-
-
-
---
-
---
-
-CREATE FUNCTION public.match_user(p_id integer, p_min_team_members integer, p_age_range_min integer, p_age_range_max integer, p_snapshot_id integer, p_snapshot_boss_id integer, p_snapshot_org_id integer, p_snapshot_category_id integer, p_snapshot_match_radius double precision, p_snapshot_min_team integer, p_snapshot_age_min integer, p_snapshot_age_max integer, p_snapshot_latitude double precision, p_snapshot_longitude double precision, p_snapshot_pay_per_head double precision, p_snapshot_pay_per_head2 double precision, p_snapshot_all_girls boolean, p_snapshot_half_girls boolean) RETURNS jsonb
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  v_dob      DATE;
-  v_gender   TEXT;
-  v_setting1 BOOLEAN;
-  v_setting2 BOOLEAN;
-  v_age      INT;
-BEGIN
-  SELECT dob, gender, setting_1, setting_2
-  INTO v_dob, v_gender, v_setting1, v_setting2
-  FROM users WHERE id = p_id;
-
-  IF NOT FOUND THEN RAISE EXCEPTION 'User not found'; END IF;
-
-  v_age := calculate_age(v_dob);
-
-  UPDATE match_requests
-  SET
-    user_ids         = array_append(user_ids, p_id),
-    genders          = array_append(genders, v_gender),
-    ages             = array_append(ages, v_age),
-    min_team_members = GREATEST(min_team_members, p_min_team_members),
-    age_range_min    = LEAST(age_range_min,    p_age_range_min),
-    age_range_max    = GREATEST(age_range_max, p_age_range_max),
-    all_girls        = (all_girls  OR v_setting1),
-    half_girls       = (half_girls OR v_setting2)
-  WHERE
-    id                             = p_snapshot_id
-    AND boss_id IS NOT DISTINCT FROM p_snapshot_boss_id
-    AND org_id                     = p_snapshot_org_id
-    AND category_id                = p_snapshot_category_id
-    AND match_radius               = p_snapshot_match_radius
-    AND min_team_members           = p_snapshot_min_team
-    AND age_range_min              = p_snapshot_age_min
-    AND age_range_max              = p_snapshot_age_max
-    AND latitude                   = p_snapshot_latitude
-    AND longitude                  = p_snapshot_longitude
-    AND pay_per_head               = p_snapshot_pay_per_head
-    AND pay_per_head_2 IS NOT DISTINCT FROM p_snapshot_pay_per_head2
-    AND all_girls                  = p_snapshot_all_girls
-    AND half_girls                 = p_snapshot_half_girls;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Match request changed, duplicate join, or slot unavailable';
+  
+  IF p_role = 'boss' THEN
+    RETURN jsonb_build_object('success', TRUE);
+  ELSE
+    RETURN jsonb_build_object(
+      'success', TRUE,
+      'cost', ROUND((p_snapshot_pay_per_head + p_snapshot_pay_per_head2) * 1.25)
+    );
   END IF;
-
-  RETURN jsonb_build_object(
-    'success', TRUE,
-    'cost', ROUND((p_snapshot_pay_per_head + p_snapshot_pay_per_head2) * 1.25)
-  );
 END;
 $$;
 
 
 
 
---
 
---
+
+
 
 CREATE TABLE public.tournaments (
     id integer NOT NULL,
@@ -1530,9 +1411,9 @@ CREATE TABLE public.tournaments (
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.purchase_ticket(p_id integer, p_user_id integer) RETURNS public.tournaments
     LANGUAGE sql
@@ -1546,9 +1427,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.remove_pending_user(p_request_id text) RETURNS void
     LANGUAGE sql
@@ -1559,9 +1440,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.reward_badge(p_id integer, p_badge_id integer) RETURNS public.user_badges
     LANGUAGE sql
@@ -1574,9 +1455,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.room_available(p_room_name text) RETURNS boolean
     LANGUAGE plpgsql
@@ -1600,51 +1481,68 @@ $$;
 
 
 
---
 
---
 
-CREATE FUNCTION public.send_notification_boss(p_sender_id integer, p_receiver_role text, p_receiver_id integer, p_message text) RETURNS void
+
+
+CREATE FUNCTION public.send_notification(p_sender_id integer, p_sender_role text, p_message text, p_receiver_id integer, p_receiver_role text) RETURNS public.private_messages
     LANGUAGE sql
     AS $$
-  INSERT INTO private_messages (sender_id, sender_role, receiver_role, receiver_id, message)
-  VALUES (p_sender_id, 'boss'::chat_role, p_receiver_role::chat_role, p_receiver_id, p_message);
+  INSERT INTO private_messages (sender_id, sender_role, receiver_id, receiver_role, message)
+  VALUES (p_sender_id, p_sender_role::chat_role, p_receiver_id, p_receiver_role::chat_role, p_message)
+  RETURNING *;
 $$;
 
 
 
 
---
 
---
 
-CREATE FUNCTION public.send_notification_organizer(p_sender_id integer, p_receiver_role text, p_receiver_id integer, p_message text) RETURNS void
-    LANGUAGE sql
+
+
+CREATE FUNCTION public.update_access_token(p_id integer, p_role text, p_new_access_token text) RETURNS boolean
+    LANGUAGE plpgsql
     AS $$
-  INSERT INTO private_messages (sender_id, sender_role, receiver_role, receiver_id, message)
-  VALUES (p_sender_id, 'organizer'::chat_role, p_receiver_role::chat_role, p_receiver_id, p_message);
+BEGIN
+  
+  IF p_role NOT IN ('user', 'organizer', 'boss') THEN
+    RETURN FALSE;
+  END IF;
+
+  
+  IF p_role = 'user' THEN
+    UPDATE users
+    SET access_token = p_new_access_token
+    WHERE id = p_id;
+    RETURN FOUND;
+  END IF;
+
+  
+  IF p_role = 'organizer' THEN
+    UPDATE organizers
+    SET access_token = p_new_access_token
+    WHERE id = p_id;
+    RETURN FOUND;
+  END IF;
+
+  
+  IF p_role = 'boss' THEN
+    UPDATE bosses
+    SET access_token = p_new_access_token
+    WHERE id = p_id;
+    RETURN FOUND;
+  END IF;
+
+  RETURN FALSE;
+END;
 $$;
 
 
 
 
---
-
---
-
-CREATE FUNCTION public.send_notification_user(p_sender_id integer, p_receiver_role text, p_receiver_id integer, p_message text) RETURNS void
-    LANGUAGE sql
-    AS $$
-  INSERT INTO private_messages (sender_id, sender_role, receiver_role, receiver_id, message)
-  VALUES (p_sender_id, 'user'::chat_role, p_receiver_role::chat_role, p_receiver_id, p_message);
-$$;
 
 
 
-
---
-
---
 
 CREATE FUNCTION public.update_boss(p_id integer, p_username text DEFAULT NULL::text, p_setting1 boolean DEFAULT NULL::boolean, p_setting2 boolean DEFAULT NULL::boolean, p_bio text DEFAULT NULL::text, p_icon bytea DEFAULT NULL::bytea) RETURNS public.bosses
     LANGUAGE plpgsql
@@ -1666,25 +1564,9 @@ $$;
 
 
 
---
-
---
-
-CREATE FUNCTION public.update_boss_access_token(p_id integer, p_access_token text) RETURNS public.bosses
-    LANGUAGE sql
-    AS $$
-  UPDATE bosses
-  SET access_token = p_access_token, refreshed_at = NOW()
-  WHERE id = p_id
-  RETURNING *;
-$$;
 
 
 
-
---
-
---
 
 CREATE FUNCTION public.update_organizer(p_id integer, p_username text DEFAULT NULL::text, p_setting1 boolean DEFAULT NULL::boolean, p_setting2 boolean DEFAULT NULL::boolean, p_bio text DEFAULT NULL::text, p_icon bytea DEFAULT NULL::bytea) RETURNS public.organizers
     LANGUAGE plpgsql
@@ -1706,25 +1588,9 @@ $$;
 
 
 
---
-
---
-
-CREATE FUNCTION public.update_organizer_access_token(p_id integer, p_access_token text) RETURNS public.organizers
-    LANGUAGE sql
-    AS $$
-  UPDATE organizers
-  SET access_token = p_access_token, refreshed_at = NOW()
-  WHERE id = p_id
-  RETURNING *;
-$$;
 
 
 
-
---
-
---
 
 CREATE FUNCTION public.update_poll_add_vote(p_adventure_id integer, p_poll_number integer, p_option_index integer, p_person_key text) RETURNS void
     LANGUAGE plpgsql
@@ -1741,7 +1607,7 @@ BEGIN
     RAISE EXCEPTION 'Poll not found';
   END IF;
 
-  -- Prevent duplicate vote (SQL arrays are 1-indexed, JS is 0-indexed)
+  
   IF v_votes[p_option_index + 1] @> to_jsonb(p_person_key) THEN
     RETURN;
   END IF;
@@ -1757,9 +1623,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE FUNCTION public.update_poll_remove_vote(p_adventure_id integer, p_poll_number integer, p_option_index integer, p_person_key text) RETURNS void
     LANGUAGE plpgsql
@@ -1797,11 +1663,11 @@ $$;
 
 
 
---
 
---
 
-CREATE FUNCTION public.update_user(p_id integer, p_username text DEFAULT NULL::text, p_bio text DEFAULT NULL::text, p_email text DEFAULT NULL::text, p_setting1 boolean DEFAULT NULL::boolean, p_setting2 boolean DEFAULT NULL::boolean, p_icon bytea DEFAULT NULL::bytea) RETURNS boolean
+
+
+CREATE FUNCTION public.update_user(p_id integer, p_username text DEFAULT NULL::text, p_bio text DEFAULT NULL::text, p_email text DEFAULT NULL::text, p_setting1 boolean DEFAULT NULL::boolean, p_setting2 boolean DEFAULT NULL::boolean, p_icon bytea DEFAULT NULL::bytea) RETURNS public.users
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -1814,32 +1680,17 @@ BEGIN
     setting_2 = COALESCE(p_setting2, setting_2),
     icon      = COALESCE(p_icon,     icon)
   WHERE id = p_id;
-  RETURN TRUE;
+
+  RETURN (SELECT * FROM users WHERE id = p_id);
 END;
 $$;
 
 
 
 
---
-
---
-
-CREATE FUNCTION public.update_user_access_token(p_id integer, p_access_token text) RETURNS public.users
-    LANGUAGE sql
-    AS $$
-  UPDATE users
-  SET access_token = p_access_token, refreshed_at = NOW()
-  WHERE id = p_id
-  RETURNING *;
-$$;
 
 
 
-
---
-
---
 
 CREATE FUNCTION public.update_user_request_id(p_phone text, p_request_id text) RETURNS public.users
     LANGUAGE sql
@@ -1853,9 +1704,9 @@ $$;
 
 
 
---
 
---
+
+
 
 CREATE SEQUENCE public.adventures_id_seq
     AS integer
@@ -1868,16 +1719,16 @@ CREATE SEQUENCE public.adventures_id_seq
 
 
 
---
 
---
+
+
 
 ALTER SEQUENCE public.adventures_id_seq OWNED BY public.adventures.id;
 
 
---
 
---
+
+
 
 CREATE TABLE public.badges (
     id integer NOT NULL,
@@ -1891,9 +1742,9 @@ CREATE TABLE public.badges (
 
 
 
---
 
---
+
+
 
 CREATE SEQUENCE public.badges_id_seq
     AS integer
@@ -1906,16 +1757,16 @@ CREATE SEQUENCE public.badges_id_seq
 
 
 
---
 
---
+
+
 
 ALTER SEQUENCE public.badges_id_seq OWNED BY public.badges.id;
 
 
---
 
---
+
+
 
 CREATE SEQUENCE public.bosses_id_seq
     AS integer
@@ -1928,16 +1779,16 @@ CREATE SEQUENCE public.bosses_id_seq
 
 
 
---
 
---
+
+
 
 ALTER SEQUENCE public.bosses_id_seq OWNED BY public.bosses.id;
 
 
---
 
---
+
+
 
 CREATE SEQUENCE public.categories_id_seq
     AS integer
@@ -1950,16 +1801,16 @@ CREATE SEQUENCE public.categories_id_seq
 
 
 
---
 
---
+
+
 
 ALTER SEQUENCE public.categories_id_seq OWNED BY public.categories.id;
 
 
---
 
---
+
+
 
 CREATE SEQUENCE public.events_id_seq
     AS integer
@@ -1972,16 +1823,16 @@ CREATE SEQUENCE public.events_id_seq
 
 
 
---
 
---
+
+
 
 ALTER SEQUENCE public.events_id_seq OWNED BY public.events.id;
 
 
---
 
---
+
+
 
 CREATE SEQUENCE public.match_request_id_seq
     AS integer
@@ -1994,16 +1845,16 @@ CREATE SEQUENCE public.match_request_id_seq
 
 
 
---
 
---
+
+
 
 ALTER SEQUENCE public.match_request_id_seq OWNED BY public.match_requests.id;
 
 
---
 
---
+
+
 
 CREATE SEQUENCE public.messages_id_seq
     AS integer
@@ -2016,16 +1867,16 @@ CREATE SEQUENCE public.messages_id_seq
 
 
 
---
 
---
+
+
 
 ALTER SEQUENCE public.messages_id_seq OWNED BY public.messages.id;
 
 
---
 
---
+
+
 
 CREATE SEQUENCE public.organizers_id_seq
     AS integer
@@ -2038,16 +1889,16 @@ CREATE SEQUENCE public.organizers_id_seq
 
 
 
---
 
---
+
+
 
 ALTER SEQUENCE public.organizers_id_seq OWNED BY public.organizers.id;
 
 
---
 
---
+
+
 
 CREATE SEQUENCE public.private_messages_id_seq
     START WITH 1
@@ -2059,16 +1910,16 @@ CREATE SEQUENCE public.private_messages_id_seq
 
 
 
---
 
---
+
+
 
 ALTER SEQUENCE public.private_messages_id_seq OWNED BY public.private_messages.id;
 
 
---
 
---
+
+
 
 CREATE SEQUENCE public.tournaments_id_seq
     AS integer
@@ -2081,16 +1932,16 @@ CREATE SEQUENCE public.tournaments_id_seq
 
 
 
---
 
---
+
+
 
 ALTER SEQUENCE public.tournaments_id_seq OWNED BY public.tournaments.id;
 
 
---
 
---
+
+
 
 CREATE SEQUENCE public.users_id_seq
     AS integer
@@ -2103,401 +1954,396 @@ CREATE SEQUENCE public.users_id_seq
 
 
 
---
 
---
+
+
 
 ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.adventures ALTER COLUMN id SET DEFAULT nextval('public.adventures_id_seq'::regclass);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.badges ALTER COLUMN id SET DEFAULT nextval('public.badges_id_seq'::regclass);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.bosses ALTER COLUMN id SET DEFAULT nextval('public.bosses_id_seq'::regclass);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.categories ALTER COLUMN id SET DEFAULT nextval('public.categories_id_seq'::regclass);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.events ALTER COLUMN id SET DEFAULT nextval('public.events_id_seq'::regclass);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.match_requests ALTER COLUMN id SET DEFAULT nextval('public.match_request_id_seq'::regclass);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.messages ALTER COLUMN id SET DEFAULT nextval('public.messages_id_seq'::regclass);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.organizers ALTER COLUMN id SET DEFAULT nextval('public.organizers_id_seq'::regclass);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.private_messages ALTER COLUMN id SET DEFAULT nextval('public.private_messages_id_seq'::regclass);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.tournaments ALTER COLUMN id SET DEFAULT nextval('public.tournaments_id_seq'::regclass);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.adventures
     ADD CONSTRAINT adventures_pkey PRIMARY KEY (id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.badges
     ADD CONSTRAINT badges_pkey PRIMARY KEY (id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.bosses
     ADD CONSTRAINT bosses_email_key UNIQUE (email);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.bosses
     ADD CONSTRAINT bosses_pkey PRIMARY KEY (id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.categories
     ADD CONSTRAINT categories_pkey PRIMARY KEY (id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.events
     ADD CONSTRAINT events_pkey PRIMARY KEY (id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.match_requests
     ADD CONSTRAINT match_request_pkey PRIMARY KEY (id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.messages
     ADD CONSTRAINT messages_pkey PRIMARY KEY (id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.organizers
     ADD CONSTRAINT organizers_email_key UNIQUE (email);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.organizers
     ADD CONSTRAINT organizers_pkey PRIMARY KEY (id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.pending_users
     ADD CONSTRAINT pending_users_pkey PRIMARY KEY (request_id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.private_messages
     ADD CONSTRAINT private_messages_pkey PRIMARY KEY (id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.tournaments
     ADD CONSTRAINT tournaments_pkey PRIMARY KEY (id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.polls
     ADD CONSTRAINT unique_poll_per_adventure UNIQUE (adventure_id, poll_number);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.results
     ADD CONSTRAINT unique_result_per_adventure UNIQUE (adventure_id, result_number);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.boss_qualifications
     ADD CONSTRAINT uq_boss_badge UNIQUE (boss_id, badge_id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.user_badges
     ADD CONSTRAINT user_badges_pkey PRIMARY KEY (user_id, badge_id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_phone_key UNIQUE (phone);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
 
 
---
 
---
+
+
 
 CREATE INDEX idx_events_adventure ON public.events USING btree (adventure_id);
 
 
---
 
---
+
+
 
 CREATE INDEX idx_inbox_latest ON public.private_messages USING btree (receiver_id, receiver_role, sent_at DESC);
 
 
---
 
---
+
+
 
 CREATE INDEX idx_pending_users_expires ON public.pending_users USING btree (expires_at);
 
 
---
 
---
+
+
 
 CREATE INDEX idx_sent_latest ON public.private_messages USING btree (sender_id, sender_role, sent_at DESC);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.adventures
     ADD CONSTRAINT adventures_boss_id_fkey FOREIGN KEY (boss_id) REFERENCES public.bosses(id) ON DELETE SET NULL;
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.events
     ADD CONSTRAINT events_adventure_id_fkey FOREIGN KEY (adventure_id) REFERENCES public.adventures(id) ON DELETE SET NULL;
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.messages
     ADD CONSTRAINT fk_adventure FOREIGN KEY (adventure_id) REFERENCES public.adventures(id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.tournaments
     ADD CONSTRAINT fk_adventure FOREIGN KEY (badge_id) REFERENCES public.badges(id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.adventures
     ADD CONSTRAINT fk_adventure_organizer FOREIGN KEY (organizer_id) REFERENCES public.organizers(id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.boss_qualifications
     ADD CONSTRAINT fk_badge FOREIGN KEY (badge_id) REFERENCES public.badges(id) ON DELETE CASCADE;
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.user_badges
     ADD CONSTRAINT fk_badge FOREIGN KEY (badge_id) REFERENCES public.badges(id) ON DELETE CASCADE;
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.boss_qualifications
     ADD CONSTRAINT fk_boss FOREIGN KEY (boss_id) REFERENCES public.bosses(id) ON DELETE CASCADE;
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.match_requests
     ADD CONSTRAINT fk_boss FOREIGN KEY (boss_id) REFERENCES public.bosses(id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.adventures
     ADD CONSTRAINT fk_categories FOREIGN KEY (category_id) REFERENCES public.categories(id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.badges
     ADD CONSTRAINT fk_categories FOREIGN KEY (category_id) REFERENCES public.categories(id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.match_requests
     ADD CONSTRAINT fk_category FOREIGN KEY (category_id) REFERENCES public.categories(id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.match_requests
     ADD CONSTRAINT fk_org FOREIGN KEY (org_id) REFERENCES public.organizers(id);
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.user_badges
     ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.polls
     ADD CONSTRAINT polls_adventure_fkey FOREIGN KEY (adventure_id) REFERENCES public.adventures(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
---
 
---
+
+
 
 ALTER TABLE ONLY public.results
     ADD CONSTRAINT polls_adventure_fkey FOREIGN KEY (adventure_id) REFERENCES public.adventures(id);
 
 
---
--- PostgreSQL database dump complete
---
-
--- QUARANTINED(\unrestrict luarIuPTKVIl7q2Bi6ldEnljKHjj1i8bBwb31e2quo8Mcu3Wv6lcSf8DRVF0T4c)
 

@@ -6,8 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "tsc && node dist/index.js",
+    "update": "npx tsx db/update.ts",
     "seed": "npx tsx db/seed.ts",
-    "dev": "npm run seed && npm run start"
+    "dev": "npm run seed && npm run update && npm run start"
   },
   "repository": {
     "type": "git",
@@ -23,7 +24,6 @@
   },
   "homepage": "https://github.com/Vegybin/my-saga-backend",
   "dependencies": {
-    "@faker-js/faker": "^10.3.0",
     "@google-cloud/storage": "^7.19.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
