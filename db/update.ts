@@ -11,8 +11,10 @@ if (!DATABASE_URL) {
   console.error("❌ DATABASE_URL environment variable is not set.");
   process.exit(1);
 }
-
-const client = new Client({ connectionString: DATABASE_URL });
+let databaseUrl = DATABASE_URL;
+if (databaseUrl.substring(databaseUrl.lastIndexOf('/')+1, databaseUrl.length)=="postgres")
+  databaseUrl = databaseUrl.substring(0, databaseUrl.lastIndexOf('/')+1) + "g1";
+const client = new Client({ connectionString: databaseUrl });
 
 async function ensureMigrationsTable(): Promise<void> {
   await client.query(`
