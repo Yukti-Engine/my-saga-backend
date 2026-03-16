@@ -111,8 +111,9 @@ export const findLobbies = async (req: Request, res: Response) => {
     rows = (await pool.query(`SELECT * FROM get_boss($1::int)`, [id])).rows;
   }
   else if (role == "user"){
-    rows = (await pool.query(`SELECT * FROM get_boss($1::int)`, [id])).rows;
+    rows = (await pool.query(`SELECT * FROM get_user($1::int)`, [id])).rows;
   }
+  if(!rows) throw new Error("no such person");
   const person = rows[0];
   const age = calculateAge(person.dob);
   const compatible = await pool.query(
