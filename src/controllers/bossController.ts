@@ -54,7 +54,7 @@ export const updateBossProfile = async (req: Request, res: Response) => {
 
   const updated = await pool.query(
     `SELECT * FROM update_boss($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::bytea)`,
-    [bid, updates.username ?? null, updates.setting_1 ?? null, updates.setting_2 ?? null,
+    [bid, updates.username ?? null, updates.setting1 ?? null, updates.setting2 ?? null,
      updates.bio ?? null, updates.icon ? Buffer.from(updates.icon, "base64") : null]
   );
   const updatedBoss = updated.rows[0];

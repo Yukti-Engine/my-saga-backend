@@ -54,7 +54,7 @@ export const updateOrganizerProfile = async (req: Request, res: Response) => {
 
   const updated = await pool.query(
     `SELECT * FROM update_organizer($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::bytea)`,
-    [oid, updates.username ?? null, updates.setting_1 ?? null, updates.setting_2 ?? null,
+    [oid, updates.username ?? null, updates.setting1 ?? null, updates.setting2 ?? null,
      updates.bio ?? null, updates.icon ? Buffer.from(updates.icon, "base64") : null]
   );
   const updatedOrganizer = updated.rows[0];

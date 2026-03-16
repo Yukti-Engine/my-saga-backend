@@ -10,7 +10,7 @@ export const updateUserProfile = async (req: Request, res: Response) => {
   const updated = await pool.query(
     `SELECT update_user($1::int, $2::text, $3::text, $4::text, $5::boolean, $6::boolean, $7::bytea)`,
     [uid, updates.username ?? null, updates.bio ?? null, updates.email ?? null,
-     updates.setting_1 ?? null, updates.setting_2 ?? null,
+     updates.setting1 ?? null, updates.setting2 ?? null,
      updates.icon ? Buffer.from(updates.icon, "base64") : null]
   );
   return res.json(updated.rows[0]);
