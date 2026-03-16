@@ -124,7 +124,7 @@ export const findLobbies = async (req: Request, res: Response) => {
   const potentialAdventures: any[] = [];
   for (const element of compatible.rows) {
     const check = await pool.query(
-      `SELECT check_reverse_compatibility($1::int, $2::float8, $3::float8, $4::float8, $5::int, $6::int, $7::boolean, $8::boolean) AS ok`,
+      `SELECT check_reverse_compatibilitdy($1::int, $2::float8, $3::float8, $4::float8, $5::int, $6::int, $7::boolean, $8::boolean) AS ok`,
       [element.id, latitude, longitude, matchRadius, ageRangeMin, ageRangeMax,
        person.gender === 'F' && person.setting_1,
        person.gender === 'F' && person.setting_2]
