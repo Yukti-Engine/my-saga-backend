@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION check_reverse_compatibility_user(
+CREATE OR REPLACE FUNCTION check_reverse_compatibility(
   p_match_request_id INT,
   p_latitude         FLOAT,
   p_longitude        FLOAT,
