@@ -1,8 +1,8 @@
 import express from "express";
-import { getCategories, getSubcategories, getOffers, generateAdventureName } from "../controllers/searchController.js";
+import { getCategories, getSubcategories, getOffers, generateAdventureName, findLobbies } from "../controllers/searchController.js";
 
 const router = express.Router();
-
+router.post("/find-lobbies", findLobbies);
 router.post("/categories", getCategories);
 router.post("/subcategories", getSubcategories);
 router.post("/offers", getOffers);
