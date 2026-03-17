@@ -17,7 +17,7 @@ export const count = async (req: Request, res: Response) => {
     return res.json({ success: false });
 
   const result = await pool.query(`SELECT count_messages($1::int) AS count`, [adventureId]);
-  return res.json(result.rows[0].count);
+  return res.json(result.rows[0]);
 };
 
 export const getMessages = async (req: Request, res: Response) => {

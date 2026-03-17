@@ -26,6 +26,7 @@ export const getUserDashboard = async (req: Request, res: Response) => {
   return res.json({
     id: user.id, username: user.username, email: user.email,
     level: user.level, star_score: user.star_score, penalties: user.penalties,
+    gems: user.gems,
     bio: user.bio, age: user.age, gender: user.gender,
     setting_1: user.setting_1, setting_2: user.setting_2,
     icon: user.icon?.toString("base64")
