@@ -174,7 +174,7 @@ export async function insertResult(req: any, res: any) {
   const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [bid, "boss", accessToken]);
   if (!authResult.rows[0].is_authenticated)
     return res.status(500).json({ error: "Authentication Error" });
-  const resultQuery = await pool.query(`SELECT insert_result($1::int, $2::int[], $3::int[], $4::int[], $5::text[]) AS poll_number`, [adventureId, badgeIds, userIds, starScores, remarks]);
+  const resultQuery = await pool.query(`SELECT insert_result($1::int, $2::int[], $3::int[], $4::int[], $5::text[]) AS result_number`, [adventureId, badgeIds, userIds, starScores, remarks]);
   return res.json({ resultNumber: resultQuery.rows[0].result_number });
 }
 export async function getResult(req: any, res: any) {
