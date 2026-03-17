@@ -1,9 +1,14 @@
 import express from "express";
-import { count, getEvent, getMessages} from "../controllers/adventureController.js";
+import { count, updatePollAddVote,updatePollRemoveVote, createPoll, getEvent, getMessages, getPoll} from "../controllers/adventureController.js";
 
 const router = express.Router();
 
 router.post("/count", count);
 router.post("/get-messages", getMessages);
 router.post("/get-event", getEvent);
+router.post("/create-poll", createPoll);
+router.post("/update-poll-add-vote", updatePollAddVote);
+router.post("/update-poll-remove-vote", updatePollRemoveVote);
+router.post("/get-poll", getPoll);
+
 export default router;

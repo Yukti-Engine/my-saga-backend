@@ -135,3 +135,36 @@ export async function getEvent(req: any, res: any) {
   const result = await pool.query(`SELECT * FROM get_event($1::int)`, [eventId]);
   return res.json(result.rows[0]);
 }
+export async function createPoll(req: any, res: any) {
+  const { adventureId, question, options, id, role, accessToken } = req.body;
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
+  const resultQuery = await pool.query(`SELECT insert_poll($1::int, $2::text, $3::text[]) AS poll_id`, [adventureId, question, options]);
+  return res.json({ pollNumber: resultQuery.rows[0].poll_number });
+}
+export async function updatePollAddVote(req: any, res: any) {
+  const {adventureId, pollNumber, optionIndex, id, role, accessToken } = req.body;
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
+  await pool.query(`SELECT update_poll_add_vote($1::int, $2::int, $3::int, $4::text)`, [adventureId, pollNumber, optionIndex,role.charAt(0).toLowerCase()+id.toString()]);
+  return res.json({ success: true });
+}
+export async function updatePollRemoveVote(req: any, res: any) {
+  const {adventureId, pollNumber, optionIndex, id, role, accessToken } = req.body;
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
+  await pool.query(`SELECT update_poll_remove_vote($1::int, $2::int, $3::int, $4::text)`, [adventureId, pollNumber, optionIndex,role.charAt(0).toLowerCase()+id.toString()]);
+  return res.json({ success: true });
+}
+export async function getPoll(req: any, res: any) {
+  const { adventureId, pollNumber, id, role, accessToken } = req.body;
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
+  const result = await pool.query(`SELECT * FROM get_poll($1::int, $2::int)`, [adventureId, pollNumber]);
+  return res.json(result.rows[0]);
+}
+
