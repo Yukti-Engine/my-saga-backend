@@ -42,6 +42,20 @@ export const getProfile = async (req: Request, res: Response) => {
   });
 };
 
+
+export const getBadges = async (req: Request, res: Response) => {
+  const { id, role, accessToken, categoryId, badgeId } = req.body;
+  
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
+  if (!categoryId)
+    return res.json((await pool.query(`SELECT * FROM get_badge($1::int)`, [badgeId])).rows);
+  else if (!badgeId)
+    return res.json((await pool.query(`SELECT * FROM get_badges($1::int)`, [categoryId])).rows);
+  return res.json({success:false});
+};
+
 export const getOffers = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
   const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [uid, "user", accessToken]);

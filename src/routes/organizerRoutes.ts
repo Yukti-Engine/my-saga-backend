@@ -12,5 +12,4 @@ router.post("/start-adventure", startAdventure);
 router.post("/current-adventures", getAdventures);
 router.post("/past-adventures", getPastAdventures);
 router.post("/organize-event", organizeEvent);
-
 export default router;

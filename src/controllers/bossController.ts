@@ -78,6 +78,17 @@ export const getBossDashboard = async (req: Request, res: Response) => {
     icon: boss.icon?.toString("base64")
   });
 };
+export const getBossQualifications = async (req: Request, res: Response) => {
+  const { bid, accessToken } = req.body;
+
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [bid, "boss", accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
+
+  const { rows } = await pool.query(`SELECT badge_id FROM get_qualifications($1::int, $2::text)`, [bid, "boss"]);
+
+  return res.json(rows);
+};
 
 export const joinAdventure = async (req: Request, res: Response) => {
   const { bid, accessToken, matchRequest, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2 } = req.body;

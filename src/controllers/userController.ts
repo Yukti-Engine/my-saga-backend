@@ -16,6 +16,18 @@ export const updateUserProfile = async (req: Request, res: Response) => {
   return res.json(updated.rows[0]);
 };
 
+export const getUserQualifications = async (req: Request, res: Response) => {
+  const { uid, accessToken } = req.body;
+
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [uid, "user", accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
+
+  const { rows } = await pool.query(`SELECT badge_id FROM get_qualifications($1::int, $2::text)`, [uid, "user"]);
+
+  return res.json(rows);
+};
+
 export const getUserDashboard = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
   const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [uid, "user", accessToken]);
