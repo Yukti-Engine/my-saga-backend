@@ -140,7 +140,7 @@ export async function createPoll(req: any, res: any) {
   const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
   if (!authResult.rows[0].is_authenticated)
     return res.status(500).json({ error: "Authentication Error" });
-  const resultQuery = await pool.query(`SELECT insert_poll($1::int, $2::text, $3::text[]) AS poll_id`, [adventureId, question, options]);
+  const resultQuery = await pool.query(`SELECT insert_poll($1::int, $2::text, $3::text[]) AS poll_number`, [adventureId, question, options]);
   return res.json({ pollNumber: resultQuery.rows[0].poll_number });
 }
 export async function updatePollAddVote(req: any, res: any) {
