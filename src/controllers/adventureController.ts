@@ -127,3 +127,11 @@ export async function getDownloadFileUrl(req: any, res: any) {
   const data = await generateDownloadUrl(fileName, adventureId, fileNumber);
   return res.json({ data });
 }
+export async function getEvent(req: any, res: any) {
+  const { eventId, id, role, accessToken } = req.body;
+  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
+  if (!authResult.rows[0].is_authenticated)
+    return res.status(500).json({ error: "Authentication Error" });
+  const result = await pool.query(`SELECT * FROM get_event($1::int)`, [eventId]);
+  return res.json(result.rows[0]);
+}
