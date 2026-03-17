@@ -24,16 +24,22 @@ export const organizeEvent = async (req: Request, res: Response) => {
       [oid, adventureId]
     );
     if (check.rows[0].ok) {
-      await pool.query(
+      const queryResult = await pool.query(
         `SELECT create_event($1::text, $2::timestamptz, $3::text, $4::text, $5::int, $6::text, false)`,
         [activity, timing, venue, venueLink, adventureId, instruction]
       );
-      return res.json({ success: true });
+    
+      return res.json({ success: true, eventId: queryResult.rows[0].event_id});
+      
     }
     return res.json({ success: false });
-  } catch {
+
+  } 
+
+  catch {
     return res.json({ success: false });
   }
+
 };
 
 export const getPastAdventures = async (req: Request, res: Response) => {
