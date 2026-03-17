@@ -23,7 +23,7 @@ export const getUserQualifications = async (req: Request, res: Response) => {
   if (!authResult.rows[0].is_authenticated)
     return res.status(500).json({ error: "Authentication Error" });
 
-  const { rows } = await pool.query(`SELECT badge_id FROM get_qualifications($1::int, $2::text)`, [uid, "user"]);
+  const { rows } = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS badge_id`, [uid, "user"]);
 
   return res.json(rows);
 };
