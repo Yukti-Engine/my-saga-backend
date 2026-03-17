@@ -24,11 +24,11 @@ export const organizeExam = async (req: Request, res: Response) => {
       [bid, adventureId]
     );
     if (check.rows[0].ok) {
-      await pool.query(
+      const resultQuery = await pool.query(
         `SELECT create_event($1::text, $2::timestamptz, $3::text, $4::text, $5::int, $6::text, true)`,
         [activity, timing, venue, venueLink, adventureId, instruction]
       );
-      return res.json({ success: true });
+      return res.json({ success: true, eventId: resultQuery.rows[0].create_event });
     }
     return res.json({ success: false });
   } catch {
