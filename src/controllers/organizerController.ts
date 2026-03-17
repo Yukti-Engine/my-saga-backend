@@ -18,7 +18,7 @@ export const organizeEvent = async (req: Request, res: Response) => {
   if (!authResult.rows[0].is_authenticated)
     return res.status(500).json({ error: "Authentication Error" });
 
-  try {
+  
     const check = await pool.query(
       `SELECT is_related_to_adventure($1::int, 'organizer', $2::int) AS ok`,
       [oid, adventureId]
@@ -28,17 +28,10 @@ export const organizeEvent = async (req: Request, res: Response) => {
         `SELECT create_event($1::text, $2::timestamptz, $3::text, $4::text, $5::int, $6::text, false)`,
         [activity, timing, venue, venueLink, adventureId, instruction]
       );
-    
-      return res.json({ success: true, eventId: queryResult.rows[0].id});
+      return res.json({ success: true, eventId: queryResult.rows[0].create_event });
       
     }
     return res.json({ success: false });
-
-  } 
-
-  catch {
-    return res.json({ success: false });
-  }
 
 };
 
