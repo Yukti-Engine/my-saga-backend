@@ -29,7 +29,7 @@ export const organizeEvent = async (req: Request, res: Response) => {
         [activity, timing, venue, venueLink, adventureId, instruction]
       );
     
-      return res.json({ success: true, eventId: queryResult.rows[0].event_id});
+      return res.json({ success: true, eventId: queryResult.rows[0].id});
       
     }
     return res.json({ success: false });
