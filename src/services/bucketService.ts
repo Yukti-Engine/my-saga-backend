@@ -21,6 +21,7 @@ export async function generateUploadUrl(
   return {
     uploadUrl: url,
     filePath: file.name,
+    fileNumber: fileNumber
   };
 }
 export async function generateDownloadUrl(
