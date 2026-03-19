@@ -118,9 +118,11 @@ export const startAdventure = async (req: Request, res: Response) => {
   if (!authResult.rows[0].is_authenticated)
     return res.status(500).json({ error: "Authentication Error" });
 
-  const lobbies = await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [oid, "organizer"]);
-  const matchId = lobbies.rows[0].id;
-
-  const result = await pool.query(`SELECT * FROM complete_match($1::text, $2::int)`, [name, matchId]);
-  return res.json(result.rows[0]);
+  const lobby = (await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [oid, "organizer"])).rows[0];
+  const matchId = lobby.id;
+  if (lobby.boss_id && lobby.user_ids.length >= lobby.min_team_members){
+    const result = await pool.query(`SELECT * FROM complete_match($1::text, $2::int)`, [name, matchId]);
+    return res.json(result.rows[0]);
+  }
+  return res.json({success:false})
 };
