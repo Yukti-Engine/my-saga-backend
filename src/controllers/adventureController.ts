@@ -4,10 +4,7 @@ import { generateDownloadUrl, generateUploadUrl } from "../services/bucketServic
 
 
 export const count = async (req: Request, res: Response) => {
-  const { adventureId, id, role, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
+  const { adventureId, id, role } = req.body;
 
   const check = await pool.query(
     `SELECT is_related_to_adventure($1::int, $2::text, $3::int) AS ok`,
@@ -21,10 +18,7 @@ export const count = async (req: Request, res: Response) => {
 };
 
 export const getMessages = async (req: Request, res: Response) => {
-  const { adventureId, id, role, accessToken, a, b } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
+  const { adventureId, id, role, a, b } = req.body;
 
   const check = await pool.query(
     `SELECT is_related_to_adventure($1::int, $2::text, $3::int) AS ok`,
@@ -94,10 +88,7 @@ export default function roomSocket(io: any, socket: any) {
 }
 
 export async function getUploadFileUrl(req: any, res: any) {
-  const { fileName, contentType, adventureId, id, role, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
+  const { fileName, contentType, adventureId, id, role } = req.body;
 
   const check = await pool.query(
     `SELECT is_related_to_adventure($1::int, $2::text, $3::int) AS ok`,
@@ -112,10 +103,7 @@ export async function getUploadFileUrl(req: any, res: any) {
 }
 
 export async function getDownloadFileUrl(req: any, res: any) {
-  const { fileName, adventureId, fileNumber, id, role, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
+  const { fileName, adventureId, fileNumber, id, role } = req.body;
 
   const check = await pool.query(
     `SELECT is_related_to_adventure($1::int, $2::text, $3::int) AS ok`,
@@ -129,41 +117,26 @@ export async function getDownloadFileUrl(req: any, res: any) {
 }
 export async function getEvent(req: any, res: any) {
   const { eventId, id, role, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
   const result = await pool.query(`SELECT * FROM get_event($1::int)`, [eventId]);
   return res.json(result.rows[0]);
 }
 export async function createPoll(req: any, res: any) {
   const { adventureId, question, options, id, role, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
   const resultQuery = await pool.query(`SELECT insert_poll($1::int, $2::text, $3::text[]) AS poll_number`, [adventureId, question, options]);
   return res.json({ pollNumber: resultQuery.rows[0].poll_number });
 }
 export async function updatePollAddVote(req: any, res: any) {
   const {adventureId, pollNumber, optionIndex, id, role, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
   await pool.query(`SELECT update_poll_add_vote($1::int, $2::int, $3::int, $4::text)`, [adventureId, pollNumber, optionIndex,role.charAt(0).toLowerCase()+id.toString()]);
   return res.json({ success: true });
 }
 export async function updatePollRemoveVote(req: any, res: any) {
   const {adventureId, pollNumber, optionIndex, id, role, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
   await pool.query(`SELECT update_poll_remove_vote($1::int, $2::int, $3::int, $4::text)`, [adventureId, pollNumber, optionIndex,role.charAt(0).toLowerCase()+id.toString()]);
   return res.json({ success: true });
 }
 export async function getPoll(req: any, res: any) {
   const { adventureId, pollNumber, id, role, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
   const result = await pool.query(`SELECT * FROM get_poll($1::int, $2::int)`, [adventureId, pollNumber]);
   return res.json(result.rows[0]);
 }
@@ -171,17 +144,11 @@ export async function getPoll(req: any, res: any) {
 
 export async function insertResult(req: any, res: any) {
   const { adventureId, userIds, starScores, remarks, badgeIds, bid, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [bid, "boss", accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
   const resultQuery = await pool.query(`SELECT insert_result($1::int, $2::int[], $3::int[], $4::int[], $5::text[]) AS result_number`, [adventureId, badgeIds, userIds, starScores, remarks]);
   return res.json({ resultNumber: resultQuery.rows[0].result_number });
 }
 export async function getResult(req: any, res: any) {
   const { adventureId, resultNumber, bid, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [bid, "boss", accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
   const result = await pool.query(`SELECT * FROM get_result($1::int, $2::int)`, [adventureId, resultNumber]);
   return res.json(result.rows[0]);
 }

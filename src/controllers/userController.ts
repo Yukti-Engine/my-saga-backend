@@ -3,9 +3,6 @@ import pool from "../db.js";
 
 export const updateUserProfile = async (req: Request, res: Response) => {
   const { uid, accessToken, updates } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [uid, "user", accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
 
   const updated = await pool.query(
     `SELECT update_user($1::int, $2::text, $3::text, $4::text, $5::boolean, $6::boolean, $7::bytea)`,
@@ -19,9 +16,6 @@ export const updateUserProfile = async (req: Request, res: Response) => {
 export const getUserQualifications = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
 
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [uid, "user", accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
 
   const { rows } = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS badge_id`, [uid, "user"]);
 
@@ -30,9 +24,6 @@ export const getUserQualifications = async (req: Request, res: Response) => {
 
 export const getUserDashboard = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [uid, "user", accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
   const { rows } = await pool.query(`SELECT * FROM get_user($1::int)`, [uid]);
   const user = rows[0];
   return res.json({
@@ -47,9 +38,6 @@ export const getUserDashboard = async (req: Request, res: Response) => {
 
 export const getAdventures = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [uid, "user", accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
 
   const result = await pool.query(`SELECT * FROM get_active_adventures($1::int, $2::text)`, [uid, "user"]);
   return res.json(result.rows);
@@ -57,9 +45,6 @@ export const getAdventures = async (req: Request, res: Response) => {
 
 export const getPastAdventures = async (req: Request, res: Response) => {
   const { uid, accessToken, a, b } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [uid, "user", accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
 
   const result = await pool.query(`SELECT * FROM get_inactive_adventures($1::int, $2::text, $3::int, $4::int)`, [uid, "user", a, b]);
   return res.json(result.rows);
@@ -67,9 +52,6 @@ export const getPastAdventures = async (req: Request, res: Response) => {
 
 export const joinAdventure = async (req: Request, res: Response) => {
   const { uid, accessToken, matchRequest, minTeamMembers, ageRangeMin, ageRangeMax } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [uid, "user", accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
 
   const matched = await pool.query(
 `SELECT match_request(
@@ -130,9 +112,6 @@ matchRequest.half_girls
 
 export const logOut = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [uid, "user", accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
 
   const result = await pool.query(`SELECT * FROM logout($1::int, $2::text)`, [uid, "user"]);
   return res.json(result.rows[0]);
@@ -140,9 +119,6 @@ export const logOut = async (req: Request, res: Response) => {
 
 export const currentLobby = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [uid, "user", accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
 
   const result = await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [uid, "user"]);
   return res.json(result.rows);

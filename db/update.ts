@@ -2,7 +2,9 @@ import { Client } from "pg";
 import { fileURLToPath } from 'url';
 import { readdir, readFile } from "fs/promises";
 import { dirname, join } from "path";
+import dotenv from 'dotenv';
 
+dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const DATABASE_URL = process.env.DATABASE_URL;

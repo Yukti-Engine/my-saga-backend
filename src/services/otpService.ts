@@ -1,4 +1,3 @@
-import "dotenv/config";
 import axios from "axios";
 
 const msg91_api = process.env.MSG91_AUTH_KEY;

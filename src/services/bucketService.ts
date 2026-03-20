@@ -2,7 +2,7 @@ import { Storage } from "@google-cloud/storage";
 
 const storage = new Storage();
 const bucket = storage.bucket("my-saga");
-
+const archiveBucket = storage.bucket("my-saga-archive");
 export async function generateUploadUrl(
   fileName: string,
   contentType: string,
@@ -39,4 +39,25 @@ export async function generateDownloadUrl(
   });
   
   return url;
+}
+
+export async function deleteAdventureFiles(adventureId: number) {
+  const [files] = await bucket.getFiles({ prefix: `files/${adventureId}/` });
+  if (files.length === 0) return false;
+  await Promise.all(files.map((file: { delete: () => any; }) => file.delete()));
+  return true;
+}
+
+export async function archiveFile(
+  filePath: string,
+  destination: string,
+  contentType?: string,
+) {
+  
+  await archiveBucket.upload(filePath, {
+    destination,
+    contentType,
+  });
+
+  return true;
 }

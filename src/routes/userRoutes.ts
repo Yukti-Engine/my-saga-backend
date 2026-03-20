@@ -1,6 +1,9 @@
 import express from "express";
 import { updateUserProfile, getUserDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, getUserQualifications } from "../controllers/userController.js";
+import { authUser } from "../middlewares/auth.js";
+
 const router = express.Router();
+router.use(authUser);
 
 router.post("/update-profile", updateUserProfile);
 router.post("/dashboard", getUserDashboard);

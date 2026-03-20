@@ -1,15 +1,16 @@
 import express from "express";
-import { count, updatePollAddVote,updatePollRemoveVote, createPoll, getEvent, getMessages, getPoll, insertResult, getResult} from "../controllers/adventureController.js";
+import { count, updatePollAddVote, updatePollRemoveVote, createPoll, getEvent, getMessages, getPoll, insertResult, getResult } from "../controllers/adventureController.js";
+import { authAny, authBoss } from "../middlewares/auth.js";
 
 const router = express.Router();
 
-router.post("/count", count);
-router.post("/get-messages", getMessages);
-router.post("/get-event", getEvent);
-router.post("/create-poll", createPoll);
-router.post("/update-poll-add-vote", updatePollAddVote);
-router.post("/update-poll-remove-vote", updatePollRemoveVote);
-router.post("/get-poll", getPoll);
-router.post("/insert-result", insertResult);
-router.post("/get-result", getResult);
+router.post("/count", authAny, count);
+router.post("/get-messages", authAny, getMessages);
+router.post("/get-event", authAny, getEvent);
+router.post("/create-poll", authAny, createPoll);
+router.post("/update-poll-add-vote", authAny, updatePollAddVote);
+router.post("/update-poll-remove-vote", authAny, updatePollRemoveVote);
+router.post("/get-poll", authAny, getPoll);
+router.post("/insert-result", authBoss, insertResult);
+router.post("/get-result", authBoss, getResult);
 export default router;

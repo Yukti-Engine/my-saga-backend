@@ -4,9 +4,6 @@ import { calculateAge } from "../utils.js";
 
 export const getCategories = async (req: Request, res: Response) => {
   const { id, role, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
 
   const result = await pool.query(`SELECT * FROM get_all_categories()`);
   return res.json(result.rows);
@@ -14,9 +11,6 @@ export const getCategories = async (req: Request, res: Response) => {
 
 export const getSubcategories = async (req: Request, res: Response) => {
   const { category, id, role, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
 
   const result = await pool.query(`SELECT * FROM get_all_subcategories($1::text)`, [category]);
   return res.json(result.rows);
@@ -24,9 +18,6 @@ export const getSubcategories = async (req: Request, res: Response) => {
 
 export const getProfile = async (req: Request, res: Response) => {
   const { profileId, profileRole, id, role, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
   let person2;
   if (role === profileRole)
     person2 = (await pool.query(`SELECT * FROM get_organizer($1::int)`, [profileId])).rows[0];
@@ -46,9 +37,6 @@ export const getProfile = async (req: Request, res: Response) => {
 export const getBadges = async (req: Request, res: Response) => {
   const { id, role, accessToken, categoryId, badgeId } = req.body;
   
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
   if (!categoryId)
     return res.json((await pool.query(`SELECT * FROM get_badge($1::int)`, [badgeId])).rows);
   else if (!badgeId)
@@ -58,10 +46,6 @@ export const getBadges = async (req: Request, res: Response) => {
 
 export const getOffers = async (req: Request, res: Response) => {
   const { uid, accessToken } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [uid, "user", accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
-
   const result = await pool.query(`SELECT * FROM get_all_offers()`);
   return res.json(result.rows);
 };
@@ -69,9 +53,6 @@ export const getOffers = async (req: Request, res: Response) => {
 
 export const generateAdventureName = async (req: Request, res: Response) => {
   const { oid, accessToken, categoryId } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [oid, "organizer", accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
   const word3Options = [
     "Adventure","Quest","Story","Exam","Course","Files","Case","Pursuit","Race",
     "Problem","Challenge","Puzzle","Battle","Journey","Mission","Expedition","Trial",
@@ -117,9 +98,6 @@ export const generateAdventureName = async (req: Request, res: Response) => {
 
 export const findLobbies = async (req: Request, res: Response) => {
   const { id, role, accessToken, categoryId, matchRadius, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
-  const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-  if (!authResult.rows[0].is_authenticated)
-    return res.status(500).json({ error: "Authentication Error" });
   let rows;
   if (role == "boss"){
     rows = (await pool.query(`SELECT * FROM get_boss($1::int)`, [id])).rows;

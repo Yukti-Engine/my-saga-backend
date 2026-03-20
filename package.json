@@ -32,10 +32,14 @@
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "node-cron": "^4.2.1",
     "pg": "^8.20.0",
     "socket.io": "^4.8.3",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "@types/node-cron": "^3.0.11"
+  }
 }

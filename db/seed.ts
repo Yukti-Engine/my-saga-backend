@@ -41,7 +41,6 @@ async function seed() {
     await client.query('BEGIN');
     const schema = readFileSync(join(__dirname, './schema.sql')).toString( 'utf8');
     await client.query(schema); 
-    await client.query(`SET search_path TO public`);
     await client.query('COMMIT');
     console.log('✅ Database seeded!');
   } catch (err) {
