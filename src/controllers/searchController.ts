@@ -3,25 +3,23 @@ import pool from "../db.js";
 import { calculateAge } from "../utils.js";
 
 export const getCategories = async (req: Request, res: Response) => {
-  const { id, role, accessToken } = req.body;
-
   const result = await pool.query(`SELECT * FROM get_all_categories()`);
   return res.json(result.rows);
 };
 
 export const getSubcategories = async (req: Request, res: Response) => {
-  const { category, id, role, accessToken } = req.body;
+  const { category } = req.body;
 
   const result = await pool.query(`SELECT * FROM get_all_subcategories($1::text)`, [category]);
   return res.json(result.rows);
 };
 
 export const getProfile = async (req: Request, res: Response) => {
-  const { profileId, profileRole, id, role, accessToken } = req.body;
+  const { profileId, profileRole } = req.body;
   let person2;
-  if (role === profileRole)
+  if (profileRole === "organizer")
     person2 = (await pool.query(`SELECT * FROM get_organizer($1::int)`, [profileId])).rows[0];
-  else if (role === "boss")
+  else if (profileRole === "boss")
     person2 = (await pool.query(`SELECT * FROM get_boss($1::int)`, [profileId])).rows[0];
   else
     person2 = (await pool.query(`SELECT * FROM get_user($1::int)`, [profileId])).rows[0];
@@ -35,7 +33,7 @@ export const getProfile = async (req: Request, res: Response) => {
 
 
 export const getBadges = async (req: Request, res: Response) => {
-  const { id, role, accessToken, categoryId, badgeId } = req.body;
+  const { categoryId, badgeId } = req.body;
   
   if (!categoryId)
     return res.json((await pool.query(`SELECT * FROM get_badge($1::int)`, [badgeId])).rows);
@@ -45,14 +43,13 @@ export const getBadges = async (req: Request, res: Response) => {
 };
 
 export const getOffers = async (req: Request, res: Response) => {
-  const { uid, accessToken } = req.body;
   const result = await pool.query(`SELECT * FROM get_all_offers()`);
   return res.json(result.rows);
 };
 
 
 export const generateAdventureName = async (req: Request, res: Response) => {
-  const { oid, accessToken, categoryId } = req.body;
+  const { categoryId } = req.body;
   const word3Options = [
     "Adventure","Quest","Story","Exam","Course","Files","Case","Pursuit","Race",
     "Problem","Challenge","Puzzle","Battle","Journey","Mission","Expedition","Trial",
@@ -97,7 +94,7 @@ export const generateAdventureName = async (req: Request, res: Response) => {
 
 
 export const findLobbies = async (req: Request, res: Response) => {
-  const { id, role, accessToken, categoryId, matchRadius, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
+  const { id, role, categoryId, matchRadius, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
   let rows;
   if (role == "boss"){
     rows = (await pool.query(`SELECT * FROM get_boss($1::int)`, [id])).rows;

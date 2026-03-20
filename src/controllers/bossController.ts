@@ -3,14 +3,14 @@ import pool from "../db.js";
 import { calculateAge } from "../utils.js";
 
 export const getAdventures = async (req: Request, res: Response) => {
-  const { bid, accessToken } = req.body;
+  const { bid } = req.body;
 
   const result = await pool.query(`SELECT * FROM get_active_adventures($1::int, $2::text)`, [bid, "boss"]);
   return res.json(result.rows);
 };
 
 export const organizeExam = async (req: Request, res: Response) => {
-  const { bid, accessToken, activity, timing, venue, venueLink, adventureId, instruction } = req.body;
+  const { bid, activity, timing, venue, venueLink, adventureId, instruction } = req.body;
 
   try {
     const check = await pool.query(
@@ -31,14 +31,14 @@ export const organizeExam = async (req: Request, res: Response) => {
 };
 
 export const getPastAdventures = async (req: Request, res: Response) => {
-  const { bid, accessToken, a, b } = req.body;
+  const { bid, a, b } = req.body;
 
   const result = await pool.query(`SELECT * FROM get_inactive_adventures($1::int, $2::text, $3::int, $4::int)`, [bid, "boss", a, b]);
   return res.json(result.rows);
 };
 
 export const updateBossProfile = async (req: Request, res: Response) => {
-  const { bid, accessToken, updates } = req.body;
+  const { bid, updates } = req.body;
 
   const updated = await pool.query(
     `SELECT * FROM update_boss($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::bytea)`,
@@ -51,7 +51,7 @@ export const updateBossProfile = async (req: Request, res: Response) => {
 };
 
 export const getBossDashboard = async (req: Request, res: Response) => {
-  const { bid, accessToken } = req.body;
+  const { bid } = req.body;
 
 
   const { rows } = await pool.query(`SELECT * FROM get_boss($1::int)`, [bid]);
@@ -64,7 +64,7 @@ export const getBossDashboard = async (req: Request, res: Response) => {
   });
 };
 export const getBossQualifications = async (req: Request, res: Response) => {
-  const { bid, accessToken } = req.body;
+  const { bid } = req.body;
 
 
   const { rows } = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS badge_id`, [bid, "boss"]);
@@ -73,7 +73,7 @@ export const getBossQualifications = async (req: Request, res: Response) => {
 };
 
 export const joinAdventure = async (req: Request, res: Response) => {
-  const { bid, accessToken, matchRequest, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2 } = req.body;
+  const { bid, matchRequest, minTeamMembers, ageRangeMin, ageRangeMax, payPerHead2 } = req.body;
 
   const result = await pool.query(
     `SELECT match_request($1::int, $2::text, $3::int, $4::int, $5::int, $6::float8, $7::int, $8::int, $9::int, $10::int, $11::float8, $12::int, $13::int, $14::int, $15::float8, $16::float8, $17::float8, $18::float8, $19::boolean, $20::boolean) AS result`,
@@ -88,14 +88,14 @@ export const joinAdventure = async (req: Request, res: Response) => {
 };
 
 export const logOut = async (req: Request, res: Response) => {
-  const { bid, accessToken } = req.body;
+  const { bid } = req.body;
 
   const result = await pool.query(`SELECT logout($1::int, $2::text) AS success`, [bid, "boss"]);
   return res.json({ success: result.rows[0].success });
 };
 
 export const currentLobby = async (req: Request, res: Response) => {
-  const { bid, accessToken } = req.body;
+  const { bid } = req.body;
 
   const result = await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [bid, "boss"]);
   return res.json(result.rows);

@@ -2,7 +2,7 @@ import pool from "../db.js";
 import {Request, Response} from "express";
 
 export const send = async (req: Request, res: Response) => {
-  const { id, role, accessToken, message, receiverRole, receiverId } = req.body;
+  const { id, role, message, receiverRole, receiverId } = req.body;
   
   if (role=="user"){
     const deducted = await pool.query(`SELECT deduct_gems($1::int, $2::int) AS ok`, [id, 1]);
@@ -17,7 +17,7 @@ export const send = async (req: Request, res: Response) => {
 };
 
 export const count = async (req: Request, res: Response) => {
-  const { id, role, accessToken } = req.body;
+  const { id, role } = req.body;
   
 
   const result = await pool.query(`SELECT count_notifications($1::int, $2::text) AS count`, [id, role]);
@@ -25,7 +25,7 @@ export const count = async (req: Request, res: Response) => {
 };
 
 export const receive = async (req: Request, res: Response) => {
-  const { id, role, accessToken, a, b } = req.body;
+  const { id, role, a, b } = req.body;
   
 
   const result = await pool.query(`SELECT * FROM get_notifications($1::int, $2::text, $3::int, $4::int)`, [id, role, a, b]);

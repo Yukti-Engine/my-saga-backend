@@ -116,39 +116,39 @@ export async function getDownloadFileUrl(req: any, res: any) {
   return res.json({ data });
 }
 export async function getEvent(req: any, res: any) {
-  const { eventId, id, role, accessToken } = req.body;
+  const { eventId } = req.body;
   const result = await pool.query(`SELECT * FROM get_event($1::int)`, [eventId]);
   return res.json(result.rows[0]);
 }
 export async function createPoll(req: any, res: any) {
-  const { adventureId, question, options, id, role, accessToken } = req.body;
+  const { adventureId, question, options } = req.body;
   const resultQuery = await pool.query(`SELECT insert_poll($1::int, $2::text, $3::text[]) AS poll_number`, [adventureId, question, options]);
   return res.json({ pollNumber: resultQuery.rows[0].poll_number });
 }
 export async function updatePollAddVote(req: any, res: any) {
-  const {adventureId, pollNumber, optionIndex, id, role, accessToken } = req.body;
+  const {adventureId, pollNumber, optionIndex, id, role } = req.body;
   await pool.query(`SELECT update_poll_add_vote($1::int, $2::int, $3::int, $4::text)`, [adventureId, pollNumber, optionIndex,role.charAt(0).toLowerCase()+id.toString()]);
   return res.json({ success: true });
 }
 export async function updatePollRemoveVote(req: any, res: any) {
-  const {adventureId, pollNumber, optionIndex, id, role, accessToken } = req.body;
+  const {adventureId, pollNumber, optionIndex, id, role } = req.body;
   await pool.query(`SELECT update_poll_remove_vote($1::int, $2::int, $3::int, $4::text)`, [adventureId, pollNumber, optionIndex,role.charAt(0).toLowerCase()+id.toString()]);
   return res.json({ success: true });
 }
 export async function getPoll(req: any, res: any) {
-  const { adventureId, pollNumber, id, role, accessToken } = req.body;
+  const { adventureId, pollNumber } = req.body;
   const result = await pool.query(`SELECT * FROM get_poll($1::int, $2::int)`, [adventureId, pollNumber]);
   return res.json(result.rows[0]);
 }
 
 
 export async function insertResult(req: any, res: any) {
-  const { adventureId, userIds, starScores, remarks, badgeIds, bid, accessToken } = req.body;
+  const { adventureId, userIds, starScores, remarks, badgeIds } = req.body;
   const resultQuery = await pool.query(`SELECT insert_result($1::int, $2::int[], $3::int[], $4::int[], $5::text[]) AS result_number`, [adventureId, badgeIds, userIds, starScores, remarks]);
   return res.json({ resultNumber: resultQuery.rows[0].result_number });
 }
 export async function getResult(req: any, res: any) {
-  const { adventureId, resultNumber, bid, accessToken } = req.body;
+  const { adventureId, resultNumber } = req.body;
   const result = await pool.query(`SELECT * FROM get_result($1::int, $2::int)`, [adventureId, resultNumber]);
   return res.json(result.rows[0]);
 }

@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import pool from "../db.js";
 
 export const setAttendance = async (req: Request, res: Response) => {
-  const { oid, accessToken, eventId, attendance } = req.body;
+  const { oid, eventId, attendance } = req.body;
   const adventureRes = await pool.query(`SELECT get_adventure_of($1::int) AS adventure_id`, [eventId]);
   const adventureId = adventureRes.rows[0].adventure_id;
 
