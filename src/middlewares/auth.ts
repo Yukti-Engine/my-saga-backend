@@ -71,6 +71,10 @@ export const authSuperToken = (req: Request, res: Response, next: NextFunction) 
 
 export const authAny = async (req: Request, res: Response, next: NextFunction) => {
   const { id, role, accessToken } = req.body;
+
+  if (id === 0 && role === "moderator" && accessToken === process.env.SUPER_TOKEN)
+    return next();
+
   const result = await pool.query(
     `SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`,
     [id, role, accessToken]

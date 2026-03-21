@@ -107,6 +107,38 @@ export const createCategory = async (req: Request, res: Response) => {
   }
 };
 
+export const createTournament = async (req: Request, res: Response) => {
+  const { name, badgeId, sponsoredBy, venue, timing, instructions, thirdPartyRewardDetail } = req.body;
+  if (!name)
+    return res.status(400).json({ error: "name is required" });
+
+  try {
+    let prize1: number | null = null;
+    let prize2: number | null = null;
+    let prize3: number | null = null;
+
+    if (badgeId) {
+      const badge = (await pool.query(`SELECT * FROM get_badge($1::int)`, [badgeId])).rows[0];
+      if (!badge)
+        return res.status(400).json({ error: "Badge not found" });
+
+      const league: number = badge.league;
+      prize1 = 1000 + (100 - league)*(100-league) * 25;
+      prize2 = Math.floor(prize1 / 2);
+      prize3 = Math.floor(prize2 / 2);
+    }
+
+    const { rows } = await pool.query(
+      `SELECT create_tournament($1::text, $2::int, $3::int, $4::int, $5::int, $6::text, $7::text, $8::timestamptz, $9::text, $10::text)`,
+      [name, badgeId ?? null, prize1, prize2, prize3, sponsoredBy ?? null, venue ?? null, timing ?? null, instructions ?? null, thirdPartyRewardDetail ?? null]
+    );
+    return res.json({ message: "Tournament created", id: rows[0].create_tournament, prize1, prize2, prize3 });
+  } catch (err) {
+    console.error("Error in createTournament:", err);
+    return res.status(500).json({ error: "Failed to create tournament" });
+  }
+};
+
 export const deactivateCompletedAdventures = async () => {
   const { rows } = await pool.query(`SELECT deactivate_completed_adventures();`);
   const ids: number[] = rows[0]?.deactivate_completed_adventures ?? [];
