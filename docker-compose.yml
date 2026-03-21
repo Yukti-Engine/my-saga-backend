@@ -13,6 +13,7 @@ services:
     image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0
     command:
       - "--port=5432"
+      - "--address=0.0.0.0"
       - "--credentials-file=/app/feisty-audio-471914-d7-4ba42316eee6.json"
       - "feisty-audio-471914-d7:asia-south1:my-saga-data"
     volumes:
