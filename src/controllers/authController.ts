@@ -44,7 +44,6 @@ export const signupVerifyOtp = async (req: Request, res: Response) => {
       `SELECT create_user($1::text, $2::text, $3::text, $4::date, $5::text)`,
       [pendingUser.name, pendingUser.phone, pendingUser.email, pendingUser.dob, pendingUser.gender]
     );
-    await pool.query(`SELECT remove_pending_user($1::text)`, [requestId]);
 
     return res.json({ message: "Signup successful" });
   } catch (err) {
