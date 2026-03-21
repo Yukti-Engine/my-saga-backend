@@ -15,7 +15,7 @@ services:
       - "--port=5432"
       - "--address=0.0.0.0"
       - "--credentials-file=/app/feisty-audio-471914-d7-4ba42316eee6.json"
-      - "feisty-audio-471914-d7:asia-south1:my-saga-data"
+      - "feisty-audio-471914-d7:asia-south1:my-saga-data?private-ip=true"
     volumes:
       - ./feisty-audio-471914-d7-4ba42316eee6.json:/app/feisty-audio-471914-d7-4ba42316eee6.json:ro
     user: "0:0"
