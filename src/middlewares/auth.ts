@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import pool from "../db.js";
+import axios from "axios";
 
 export const authUser = async (req: Request, res: Response, next: NextFunction) => {
   const { uid, accessToken } = req.body;
@@ -32,6 +33,33 @@ export const authOrganizer = async (req: Request, res: Response, next: NextFunct
   if (!result.rows[0].is_authenticated)
     return res.status(401).json({ error: "Authentication Error" });
   next();
+};
+
+export const verifyRecaptcha = async (req: Request, res: Response, next: NextFunction) => {
+  const { recaptchaToken } = req.body;
+  if (!recaptchaToken)
+    return res.status(400).json({ error: "reCAPTCHA token missing" });
+
+  try {
+    const { data } = await axios.post(
+      `https://www.google.com/recaptcha/api/siteverify`,
+      null,
+      {
+        params: {
+          secret: process.env.RECAPTCHA_API_KEY,
+          response: recaptchaToken,
+        },
+      }
+    );
+
+    if (!data.success || data.score < 0.5)
+      return res.status(403).json({ error: "reCAPTCHA verification failed" });
+
+    next();
+  } catch (err) {
+    console.error("reCAPTCHA error:", err);
+    return res.status(500).json({ error: "reCAPTCHA check failed" });
+  }
 };
 
 export const authSuperToken = (req: Request, res: Response, next: NextFunction) => {

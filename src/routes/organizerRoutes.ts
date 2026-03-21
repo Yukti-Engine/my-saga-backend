@@ -7,7 +7,7 @@ router.use(authOrganizer);
 
 router.post("/update-profile", updateOrganizerProfile);
 router.post("/dashboard", getOrganizerDashboard);
-router.post("/request-match", requestMatch);
+router.post("/create-lobby", requestMatch);
 router.post("/logout", logOut);
 router.post("/lobby", currentLobby);
 router.post("/start-adventure", startAdventure);

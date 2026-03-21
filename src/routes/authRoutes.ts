@@ -1,9 +1,10 @@
 import express from "express";
 import { signupRequestOtp, signupVerifyOtp, loginRequestOtp,loginVerifyOtp, signupResendOtp, loginResendOtp, organizerLogin, bossLogin } from "../controllers/authController.js";
+import { verifyRecaptcha } from "../middlewares/auth.js";
 
 const router = express.Router();
 
-router.post("/signup-request-otp", signupRequestOtp);
+router.post("/signup-request-otp", verifyRecaptcha, signupRequestOtp);
 router.post("/signup-verify-otp", signupVerifyOtp);
 router.post("/signup-resend-otp", signupResendOtp);
 router.post("/organizer-login", organizerLogin);

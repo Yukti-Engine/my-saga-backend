@@ -54,7 +54,7 @@ export const getOrganizerDashboard = async (req: Request, res: Response) => {
   const { rows } = await pool.query(`SELECT * FROM get_organizer($1::int)`, [oid]);
   const organizer = rows[0];
   return res.json({
-    username: organizer.username, bio: organizer.bio, gender: organizer.gender,
+    username: organizer.username, bio: organizer.bio, gender: organizer.gender, credits: organizer.credits,
     age: calculateAge(organizer.dob), setting_1: organizer.setting_1, setting_2: organizer.setting_2,
     icon: organizer.icon?.toString("base64")
   });

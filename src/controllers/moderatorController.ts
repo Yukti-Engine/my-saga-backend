@@ -71,6 +71,42 @@ export const addOrganizer = async (req: Request, res: Response) => {
   }
 };
 
+export const createNewBadge = async (req: Request, res: Response) => {
+  const { title, categoryId, league, description } = req.body;
+
+  if (!title)
+    return res.status(400).json({ error: "title is required" });
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT create_badge($1::text, $2::int, $3::smallint, $4::text)`,
+      [title, categoryId ?? null, league ?? null, description ?? null]
+    );
+    return res.json({ message: "Badge created", id: rows[0].create_badge });
+  } catch (err) {
+    console.error("Error in createNewBadge:", err);
+    return res.status(500).json({ error: "Failed to create badge" });
+  }
+};
+
+export const createCategory = async (req: Request, res: Response) => {
+  const { category, subCategory, word2s } = req.body;
+
+  if (!category)
+    return res.status(400).json({ error: "category is required" });
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT create_category($1::text, $2::text, $3::text[])`,
+      [category, subCategory ?? null, word2s ?? null]
+    );
+    return res.json({ message: "Category created", id: rows[0].create_category });
+  } catch (err) {
+    console.error("Error in createCategory:", err);
+    return res.status(500).json({ error: "Failed to create category" });
+  }
+};
+
 export const deactivateCompletedAdventures = async () => {
   const { rows } = await pool.query(`SELECT deactivate_completed_adventures();`);
   const ids: number[] = rows[0]?.deactivate_completed_adventures ?? [];
