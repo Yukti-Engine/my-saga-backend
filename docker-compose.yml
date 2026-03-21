@@ -5,6 +5,16 @@ services:
       - "${PORT}:${PORT}"
     env_file:
       - .env
+    depends_on:
+      - cloud-sql-proxy
+    restart: unless-stopped
+
+  cloud-sql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0
+    command:
+      - "--port=5432"
+      - "--credentials-file=/app/feisty-audio-471914-d7-4ba42316eee6.json"
+      - "feisty-audio-471914-d7:asia-south1:my-saga-data"
     volumes:
       - ./feisty-audio-471914-d7-4ba42316eee6.json:/app/feisty-audio-471914-d7-4ba42316eee6.json:ro
     restart: unless-stopped
