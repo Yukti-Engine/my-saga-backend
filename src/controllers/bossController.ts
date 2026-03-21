@@ -58,7 +58,7 @@ export const getBossDashboard = async (req: Request, res: Response) => {
   const boss = rows[0];
 
   return res.json({
-    username: boss.username, gender: boss.gender, bio: boss.bio,
+    username: boss.username, gender: boss.gender, bio: boss.bio, credits: boss.credits,
     age: calculateAge(boss.dob), setting_1: boss.setting_1, setting_2: boss.setting_2,
     icon: boss.icon?.toString("base64")
   });
