@@ -35,7 +35,10 @@ app.use("/search", searchRoutes);
 app.use("/adventure", adventureRoutes);
 app.use("/event", eventRoutes);
 app.use("/moderator", moderatorRoutes);
-const PORT = process.env.PORT || 4000;
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   initSchedulers();
