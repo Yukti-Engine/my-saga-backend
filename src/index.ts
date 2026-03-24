@@ -20,7 +20,11 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-app.use(cors());
+app.use(cors(
+  process.env.NODE_ENV === 'production'
+    ? { origin: ['https://mysaga.in', 'https://www.mysaga.in'], credentials: true }
+    : { origin: '*' }
+));
 io.on("connection", (socket) => {
   roomSocket(io, socket);
   socket.on("disconnect", () => {  });
