@@ -25,7 +25,7 @@ spec:
               memory: 512Mi
           env:
             - name: NODE_ENV
-              value: production
+              value: development
             - name: LOG_LEVEL
               value: info
             - name: DATABASE_URL
