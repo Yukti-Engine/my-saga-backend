@@ -11,6 +11,7 @@ const pool = new Pool({
   max: 10,              // maximum connections in the pool
   idleTimeoutMillis: 30000,   // close idle connections after 30s
   connectionTimeoutMillis: 2000, // fail fast if can't get a connection
+  ssl: false
 });
 
 process.on('SIGTERM', async () => {
