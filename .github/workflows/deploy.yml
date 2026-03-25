@@ -94,7 +94,7 @@ jobs:
                         value: info
                     envFrom: []
                     volumeMounts:
-                      - name: cloudsql
+                      - name: sqlsocket
                         mountPath: /cloudsql
                   - name: cloud-sql-proxy
                     image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2
@@ -108,10 +108,10 @@ jobs:
                         cpu: "0.5"
                         memory: 128Mi
                     volumeMounts:
-                      - name: cloudsql
+                      - name: sqlsocket
                         mountPath: /cloudsql
                 volumes:
-                  - name: cloudsql
+                  - name: sqlsocket
                     emptyDir: {}
           EOF
 
