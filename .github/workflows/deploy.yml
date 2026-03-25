@@ -11,6 +11,7 @@ env:
   SERVICE_NAME: backend
   REGISTRY: asia-south1-docker.pkg.dev
   IMAGE_NAME: asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-saga-backend/app
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   check:
@@ -34,7 +35,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
 
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
@@ -74,6 +75,7 @@ jobs:
             --concurrency 80 \
             --set-env-vars NODE_ENV=development,LOG_LEVEL=info \
             --set-secrets DATABASE_URL=DATABASE_URL:latest,MSG91_AUTH_KEY=MSG91_AUTH_KEY:latest,RECAPTCHA_API_KEY=RECAPTCHA_API_KEY:latest,SUPER_TOKEN=SUPER_TOKEN:latest \
+            --add-cloudsql-instances ${{ secrets.CLOUD_SQL_CONNECTION_NAME }} \
             --quiet
 
       - name: Show service URL
