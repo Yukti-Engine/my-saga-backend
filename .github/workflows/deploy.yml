@@ -60,22 +60,80 @@ jobs:
           docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
           docker push ${{ env.IMAGE_NAME }}:latest
 
+      - name: Write Cloud Run service spec
+        run: |
+          cat > service.yaml << EOF
+          apiVersion: serving.knative.dev/v1
+          kind: Service
+          metadata:
+            name: ${{ env.SERVICE_NAME }}
+            annotations:
+              run.googleapis.com/launch-stage: BETA
+          spec:
+            template:
+              metadata:
+                annotations:
+                  run.googleapis.com/cloudsql-instances: feisty-audio-471914-d7:asia-south1:my-saga-data
+                  autoscaling.knative.dev/minScale: "0"
+                  autoscaling.knative.dev/maxScale: "10"
+              spec:
+                containerConcurrency: 80
+                containers:
+                  - name: app
+                    image: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+                    ports:
+                      - containerPort: 3000
+                    resources:
+                      limits:
+                        cpu: "1"
+                        memory: 512Mi
+                    env:
+                      - name: NODE_ENV
+                        value: production
+                      - name: LOG_LEVEL
+                        value: info
+                    envFrom: []
+                    volumeMounts:
+                      - name: cloudsql
+                        mountPath: /cloudsql
+                  - name: cloud-sql-proxy
+                    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2
+                    args:
+                      - "--structured-logs"
+                      - "--port=5432"
+                      - "--address=0.0.0.0"
+                      - "feisty-audio-471914-d7:asia-south1:my-saga-data"
+                    resources:
+                      limits:
+                        cpu: "0.5"
+                        memory: 128Mi
+                    volumeMounts:
+                      - name: cloudsql
+                        mountPath: /cloudsql
+                volumes:
+                  - name: cloudsql
+                    emptyDir: {}
+          EOF
+
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy ${{ env.SERVICE_NAME }} \
-            --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          gcloud run services replace service.yaml \
             --region ${{ env.REGION }} \
-            --platform managed \
-            --allow-unauthenticated \
-            --port 3000 \
-            --cpu 1 \
-            --memory 512Mi \
-            --min-instances 0 \
-            --max-instances 10 \
-            --concurrency 80 \
-            --set-env-vars NODE_ENV=development,LOG_LEVEL=info \
-            --set-secrets DATABASE_URL=DATABASE_URL:latest,MSG91_AUTH_KEY=MSG91_AUTH_KEY:latest,RECAPTCHA_API_KEY=RECAPTCHA_API_KEY:latest,SUPER_TOKEN=SUPER_TOKEN:latest \
-            --add-cloudsql-instances ${{ secrets.CLOUD_SQL_CONNECTION_NAME }} \
+            --quiet
+
+      - name: Set secrets
+        run: |
+          gcloud run services update ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --update-secrets=DATABASE_URL=DATABASE_URL:latest,MSG91_AUTH_KEY=MSG91_AUTH_KEY:latest,RECAPTCHA_API_KEY=RECAPTCHA_API_KEY:latest,SUPER_TOKEN=SUPER_TOKEN:latest \
+            --quiet
+
+      - name: Allow unauthenticated access
+        run: |
+          gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --member="allUsers" \
+            --role="roles/run.invoker" \
             --quiet
 
       - name: Show service URL
