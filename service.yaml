@@ -55,7 +55,7 @@ spec:
             - "--structured-logs"
             - "--port=5432"
             - "--address=0.0.0.0"
-            - "feisty-audio-471914-d7:asia-south1:my-saga-data"
+            - "feisty-audio-471914-d7:asia-south1:my-saga-data?private-ip=true"
           resources:
             limits:
               cpu: "0.5"
