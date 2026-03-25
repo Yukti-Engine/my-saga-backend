@@ -1,10 +1,11 @@
-import { Pool } from 'pg';
 import dotenv from 'dotenv';
+dotenv.config();
+
+import { Pool } from 'pg';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-dotenv.config();
 
 // ESM doesn't have __dirname, so we recreate it
 const __filename = fileURLToPath(import.meta.url);
