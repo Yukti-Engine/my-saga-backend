@@ -60,72 +60,14 @@ jobs:
           docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
           docker push ${{ env.IMAGE_NAME }}:latest
 
-      - name: Write Cloud Run service spec
+      - name: Inject image into service spec
         run: |
-          cat > service.yaml << EOF
-          apiVersion: serving.knative.dev/v1
-          kind: Service
-          metadata:
-            name: ${{ env.SERVICE_NAME }}
-            annotations:
-              run.googleapis.com/launch-stage: BETA
-          spec:
-            template:
-              metadata:
-                annotations:
-                  run.googleapis.com/cloudsql-instances: feisty-audio-471914-d7:asia-south1:my-saga-data
-                  autoscaling.knative.dev/minScale: "0"
-                  autoscaling.knative.dev/maxScale: "10"
-              spec:
-                containerConcurrency: 80
-                containers:
-                  - name: app
-                    image: ${{ env.IMAGE_NAME }}:${{ github.sha }}
-                    ports:
-                      - containerPort: 3000
-                    resources:
-                      limits:
-                        cpu: "1"
-                        memory: 512Mi
-                    env:
-                      - name: NODE_ENV
-                        value: production
-                      - name: LOG_LEVEL
-                        value: info
-                    envFrom: []
-                    volumeMounts:
-                      - name: sqlsocket
-                        mountPath: /cloudsql
-                  - name: cloud-sql-proxy
-                    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2
-                    args:
-                      - "--structured-logs"
-                      - "--port=5432"
-                      - "--address=0.0.0.0"
-                      - "feisty-audio-471914-d7:asia-south1:my-saga-data"
-                    resources:
-                      limits:
-                        cpu: "0.5"
-                        memory: 128Mi
-                    volumeMounts:
-                      - name: sqlsocket
-                        mountPath: /cloudsql
-                volumes:
-                  - name: sqlsocket
-                    emptyDir: {}
-          EOF
+          sed -i "s|IMAGE_PLACEHOLDER|${{ env.IMAGE_NAME }}:${{ github.sha }}|g" service.yaml
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run services replace service.yaml \
             --region ${{ env.REGION }} \
-            --quiet
-
-      - name: Set secrets
-        run: |
-          gcloud run services update ${{ env.SERVICE_NAME }} \
-            --region ${{ env.REGION }} \
-            --update-secrets=DATABASE_URL=DATABASE_URL:latest,MSG91_AUTH_KEY=MSG91_AUTH_KEY:latest,RECAPTCHA_API_KEY=RECAPTCHA_API_KEY:latest,SUPER_TOKEN=SUPER_TOKEN:latest \
             --quiet
 
       - name: Allow unauthenticated access

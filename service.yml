@@ -1,0 +1,68 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: backend
+  annotations:
+    run.googleapis.com/launch-stage: BETA
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "10"
+    spec:
+      containerConcurrency: 80
+      containers:
+        - name: app
+          image: IMAGE_PLACEHOLDER
+          ports:
+            - containerPort: 3000
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: LOG_LEVEL
+              value: info
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: DATABASE_URL
+                  key: latest
+            - name: MSG91_AUTH_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: MSG91_AUTH_KEY
+                  key: latest
+            - name: RECAPTCHA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: RECAPTCHA_API_KEY
+                  key: latest
+            - name: SUPER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: SUPER_TOKEN
+                  key: latest
+          volumeMounts:
+            - name: sqlsocket
+              mountPath: /cloudsql
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2
+          args:
+            - "--structured-logs"
+            - "--port=5432"
+            - "--address=0.0.0.0"
+            - "feisty-audio-471914-d7:asia-south1:my-saga-data"
+          resources:
+            limits:
+              cpu: "0.5"
+              memory: 128Mi
+          volumeMounts:
+            - name: sqlsocket
+              mountPath: /cloudsql
+      volumes:
+        - name: sqlsocket
+          emptyDir: {}
