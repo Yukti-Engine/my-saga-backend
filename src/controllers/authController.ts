@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { randomBytes } from "crypto";
 import pool from "../db.js";
 import { sendOtp, retry, verify } from "../services/otpService.js";
+import { sendJoinRequestAcknowledgement } from "../services/emailService.js";
 
 
 /* ----------------- SIGNUP FLOW ----------------- */
@@ -133,6 +134,39 @@ export const loginVerifyOtp = async (req: Request, res: Response) => {
   }
 };
 
+/* ----------------- JOIN REQUESTS ----------------- */
+export const organizerJoinRequest = async (req: Request, res: Response) => {
+  const { email, reasonToJoin } = req.body;
+
+  if (!email || !reasonToJoin)
+    return res.status(400).json({ error: "email and reasonToJoin are required" });
+
+  try {
+    await sendJoinRequestAcknowledgement(email, "organizer", reasonToJoin);
+    return res.json({ message: "Join request submitted. Check your email for confirmation." });
+  } catch (err) {
+    console.error("Error in organizerJoinRequest:", err);
+    return res.status(500).json({ error: "Failed to submit join request" });
+  }
+};
+
+export const bossJoinRequest = async (req: Request, res: Response) => {
+  const { email, reasonToJoin } = req.body;
+
+  if (!email || !reasonToJoin)
+    return res.status(400).json({ error: "email and reasonToJoin are required" });
+
+  try {
+    await sendJoinRequestAcknowledgement(email, "boss", reasonToJoin);
+    return res.json({ message: "Join request submitted. Check your email for confirmation." });
+  } catch (err) {
+    console.error("Error in bossJoinRequest:", err);
+    return res.status(500).json({ error: "Failed to submit join request" });
+  }
+};
+
+
+/* ----------------- LOGIN FLOW (ORGANIZER / BOSS) ----------------- */
 export const organizerLogin = async (req: Request, res: Response) => {
   const { email, password } = req.body;
   const encode = (text: string) => Buffer.from(text, "utf8").toString("base64");
