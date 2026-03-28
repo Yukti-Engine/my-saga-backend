@@ -4,7 +4,7 @@ import { authBoss } from "../middlewares/auth.js";
 
 const router = express.Router();
 router.use(authBoss);
-
+ 
 router.post("/update-profile", updateBossProfile);
 router.post("/dashboard", getBossDashboard);
 router.post("/match", joinAdventure);
