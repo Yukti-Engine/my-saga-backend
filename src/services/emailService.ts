@@ -1,14 +1,21 @@
 import nodemailer from "nodemailer";
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.MY_EMAIL,
-    pass: process.env.MY_EMAIL_PASS,
-  },
-});
+let transporter: nodemailer.Transporter;
+
+function getTransporter() {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.MY_EMAIL,
+        pass: process.env.MY_EMAIL_PASS,
+      },
+    });
+  }
+  return transporter;
+}
 
 export async function sendJoinRequestAcknowledgement(
   to: string,
@@ -39,7 +46,7 @@ export async function sendJoinRequestAcknowledgement(
     </div>
   `;
 
-  await transporter.sendMail({
+  await getTransporter().sendMail({
     from: `"MySaga Support" <${process.env.MY_EMAIL}>`,
     to,
     subject: `MySaga ${roleLabel} Join Request — Received`,
