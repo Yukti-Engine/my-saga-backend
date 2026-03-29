@@ -38,6 +38,16 @@ spec:
                 secretKeyRef:
                   name: MSG91_AUTH_KEY
                   key: latest
+            - name: MY_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: MY_EMAIL
+                  key: latest
+            - name: MY_EMAIL_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: MY_EMAIL_PASS
+                  key: latest
             - name: RECAPTCHA_API_KEY
               valueFrom:
                 secretKeyRef:
