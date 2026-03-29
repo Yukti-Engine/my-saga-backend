@@ -1,0 +1,2 @@
+ALTER TABLE pending_users
+ALTER COLUMN email DROP NOT NULL;
