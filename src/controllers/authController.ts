@@ -116,8 +116,11 @@ export const loginVerifyOtp = async (req: Request, res: Response) => {
     const verified = await verify(potentialUser.request_id, otp);
     if (!verified)
       return res.status(400).json({ error: "Invalid or expired OTP" });
-
-    const accessToken = randomBytes(16).toString("hex");
+    let accessToken;
+    if (potentialUser.access_token)
+      accessToken = potentialUser.access_token;
+    else
+      accessToken = randomBytes(16).toString("hex");
     await pool.query(
       `SELECT update_access_token($1::int, $2::text, $3::text)`,
       [potentialUser.id, 'user', accessToken]
@@ -180,7 +183,11 @@ export const organizerLogin = async (req: Request, res: Response) => {
   if (organizer.password !== encode(password))
     return res.status(500).json({ error: "Password does not match" });
 
-  const accessToken = randomBytes(16).toString("hex");
+  let accessToken;
+  if (organizer.access_token)
+    accessToken = organizer.access_token;
+  else
+    accessToken = randomBytes(16).toString("hex");
   await pool.query(
     `SELECT update_access_token($1::int, $2::text, $3::text)`,
     [organizer.id, 'organizer', accessToken]
@@ -206,7 +213,11 @@ export const bossLogin = async (req: Request, res: Response) => {
   if (boss.password !== encode(password))
     return res.status(500).json({ error: "Password does not match" });
 
-  const accessToken = randomBytes(16).toString("hex");
+  let accessToken;
+  if (boss.access_token)
+    accessToken = boss.access_token;
+  else
+    accessToken = randomBytes(16).toString("hex");;
   await pool.query(
     `SELECT update_access_token($1::int, $2::text, $3::text)`,
     [boss.id, 'boss', accessToken]
