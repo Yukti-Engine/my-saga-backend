@@ -2,7 +2,42 @@ import type { Request, Response } from "express";
 import { randomBytes } from "crypto";
 import pool from "../db.js";
 import { sendOtp, retry, verify } from "../services/otpService.js";
-import { sendJoinRequestAcknowledgement } from "../services/emailService.js";
+import { sendEmail } from "../services/mailerService.js";
+
+
+function joinRequestAcknowledgement(
+  role: "organizer" | "boss",
+  reasonToJoin: string,
+) {
+  const roleLabel = role === "organizer" ? "Organizer" : "Boss";
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #333;">Thank you for your interest in joining MySaga!</h2>
+      <p>Dear Applicant,</p>
+      <p>We have received your request to join MySaga as a <strong>${roleLabel}</strong>.</p>
+      <p>Your message:</p>
+      <blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #555; margin: 16px 0;">
+        "${reasonToJoin}"
+      </blockquote>
+      <p>
+        Our team will carefully review your application. If we find your request worthy of further consideration,
+        a member of the MySaga workforce will reach out to you at this email address.
+      </p>
+      <p>We appreciate your patience and look forward to potentially welcoming you aboard.</p>
+      <br />
+      <p>Warm regards,</p>
+      <p><strong>MySaga Support Team</strong></p>
+      <hr style="border: none; border-top: 1px solid #eee; margin-top: 24px;" />
+      <p style="font-size: 12px; color: #999;">This is an automated message from support@mysaga.in. Please do not reply directly to this email.</p>
+    </div>
+  `;
+
+  return {
+    subject: `MySaga ${roleLabel} Join Request — Received`,
+    html
+  };
+}
 
 
 /* ----------------- SIGNUP FLOW ----------------- */
@@ -145,7 +180,8 @@ export const organizerJoinRequest = async (req: Request, res: Response) => {
     return res.status(400).json({ error: "email and reasonToJoin are required" });
 
   try {
-    await sendJoinRequestAcknowledgement(email, "organizer", reasonToJoin);
+    const {html, subject} = joinRequestAcknowledgement("organizer", reasonToJoin);
+    await sendEmail(email, subject, html);
     return res.json({ message: "Join request submitted. Check your email for confirmation." });
   } catch (err) {
     console.error("Error in organizerJoinRequest:", err);
@@ -160,7 +196,8 @@ export const bossJoinRequest = async (req: Request, res: Response) => {
     return res.status(400).json({ error: "email and reasonToJoin are required" });
 
   try {
-    await sendJoinRequestAcknowledgement(email, "boss", reasonToJoin);
+    const {html, subject} = joinRequestAcknowledgement("boss", reasonToJoin);
+    await sendEmail(email, subject, html);
     return res.json({ message: "Join request submitted. Check your email for confirmation." });
   } catch (err) {
     console.error("Error in bossJoinRequest:", err);

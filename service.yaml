@@ -28,6 +28,10 @@ spec:
               value: development
             - name: LOG_LEVEL
               value: info
+            - name: GOOGLE_CLIENT_ID
+              value: 37597246012-gbcbf1aq07h37ltn51fhbh51f4eui59s.apps.googleusercontent.com
+            - name: GOOGLE_SENDER_EMAIL
+              value: support@mysaga.in
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -38,20 +42,20 @@ spec:
                 secretKeyRef:
                   name: MSG91_AUTH_KEY
                   key: latest
-            - name: MY_EMAIL
-              valueFrom:
-                secretKeyRef:
-                  name: MY_EMAIL
-                  key: latest
-            - name: MY_EMAIL_PASS
-              valueFrom:
-                secretKeyRef:
-                  name: MY_EMAIL_PASS
-                  key: latest
             - name: RECAPTCHA_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: RECAPTCHA_API_KEY
+                  key: latest
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: GOOGLE_CLIENT_SECRET
+                  key: latest
+            - name: GOOGLE_REFRESH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: GOOGLE_REFRESH_TOKEN
                   key: latest
             - name: SUPER_TOKEN
               valueFrom:
