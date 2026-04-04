@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
+import { calculateAge } from "../utils.js";
 
 export const updateUserProfile = async (req: Request, res: Response) => {
   const { uid, updates } = req.body;
@@ -30,7 +31,7 @@ export const getUserDashboard = async (req: Request, res: Response) => {
     id: user.id, username: user.username, email: user.email,
     level: user.level, star_score: user.star_score, penalties: user.penalties,
     gems: user.gems,
-    bio: user.bio, age: user.age, gender: user.gender,
+    bio: user.bio, age: calculateAge(user.dob), gender: user.gender,
     setting_1: user.setting_1, setting_2: user.setting_2,
     icon: user.icon?.toString("base64")
   });
