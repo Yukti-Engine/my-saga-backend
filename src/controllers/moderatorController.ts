@@ -139,6 +139,169 @@ export const createTournament = async (req: Request, res: Response) => {
   }
 };
 
+export const verifyToken = async (req: Request, res: Response) => {
+  return res.json({ valid: true });
+};
+
+export const getUsers = async (req: Request, res: Response) => {
+  const { search, limit, offset } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, name, username, email, phone, gender, level, star_score, penalties, gems
+       FROM users
+       WHERE ($1::text IS NULL OR name ILIKE '%' || $1 || '%' OR username ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%')
+       ORDER BY id
+       LIMIT $2 OFFSET $3`,
+      [search ?? null, limit ?? 50, offset ?? 0]
+    );
+    return res.json({ users: rows });
+  } catch (err) {
+    console.error("Error in getUsers:", err);
+    return res.status(500).json({ error: "Failed to fetch users" });
+  }
+};
+
+export const getOrganizers = async (req: Request, res: Response) => {
+  const { search, limit, offset } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, name, username, email, phone, gender, credits
+       FROM organizers
+       WHERE ($1::text IS NULL OR name ILIKE '%' || $1 || '%' OR username ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%')
+       ORDER BY id
+       LIMIT $2 OFFSET $3`,
+      [search ?? null, limit ?? 50, offset ?? 0]
+    );
+    return res.json({ organizers: rows });
+  } catch (err) {
+    console.error("Error in getOrganizers:", err);
+    return res.status(500).json({ error: "Failed to fetch organizers" });
+  }
+};
+
+export const getBosses = async (req: Request, res: Response) => {
+  const { search, limit, offset } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, name, username, email, phone, gender, credits
+       FROM bosses
+       WHERE ($1::text IS NULL OR name ILIKE '%' || $1 || '%' OR username ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%')
+       ORDER BY id
+       LIMIT $2 OFFSET $3`,
+      [search ?? null, limit ?? 50, offset ?? 0]
+    );
+    return res.json({ bosses: rows });
+  } catch (err) {
+    console.error("Error in getBosses:", err);
+    return res.status(500).json({ error: "Failed to fetch bosses" });
+  }
+};
+
+export const grantGems = async (req: Request, res: Response) => {
+  const { userId, gems } = req.body;
+
+  if (!userId || gems == null)
+    return res.status(400).json({ error: "userId and gems are required" });
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE users SET gems = gems + $1 WHERE id = $2 RETURNING id, gems`,
+      [gems, userId]
+    );
+    if (rows.length === 0)
+      return res.status(404).json({ error: "User not found" });
+    return res.json({ message: "Gems granted", id: rows[0].id, gems: rows[0].gems });
+  } catch (err) {
+    console.error("Error in grantGems:", err);
+    return res.status(500).json({ error: "Failed to grant gems" });
+  }
+};
+
+export const grantCredits = async (req: Request, res: Response) => {
+  const { id, role, credits } = req.body;
+
+  if (!id || !role || credits == null)
+    return res.status(400).json({ error: "id, role, and credits are required" });
+
+  if (role !== "organizer" && role !== "boss")
+    return res.status(400).json({ error: "role must be 'organizer' or 'boss'" });
+
+  const table = role === "organizer" ? "organizers" : "bosses";
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE ${table} SET credits = credits + $1 WHERE id = $2 RETURNING id, credits`,
+      [credits, id]
+    );
+    if (rows.length === 0)
+      return res.status(404).json({ error: `${role} not found` });
+    return res.json({ message: "Credits granted", id: rows[0].id, credits: rows[0].credits });
+  } catch (err) {
+    console.error("Error in grantCredits:", err);
+    return res.status(500).json({ error: "Failed to grant credits" });
+  }
+};
+
+export const getAdventures = async (req: Request, res: Response) => {
+  const { status, limit, offset } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, name, category_id, organizer_id, boss_id, participant_ids, status, created_at
+       FROM adventures
+       WHERE ($1::text IS NULL OR status = $1)
+       ORDER BY created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [status ?? null, limit ?? 50, offset ?? 0]
+    );
+    return res.json({ adventures: rows });
+  } catch (err) {
+    console.error("Error in getAdventures:", err);
+    return res.status(500).json({ error: "Failed to fetch adventures" });
+  }
+};
+
+export const getTournaments = async (req: Request, res: Response) => {
+  const { limit, offset } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM tournaments ORDER BY id DESC LIMIT $1 OFFSET $2`,
+      [limit ?? 50, offset ?? 0]
+    );
+    return res.json({ tournaments: rows });
+  } catch (err) {
+    console.error("Error in getTournaments:", err);
+    return res.status(500).json({ error: "Failed to fetch tournaments" });
+  }
+};
+
+export const getCategories = async (req: Request, res: Response) => {
+  const { limit, offset } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM categories ORDER BY id LIMIT $1 OFFSET $2`,
+      [limit ?? 50, offset ?? 0]
+    );
+    return res.json({ categories: rows });
+  } catch (err) {
+    console.error("Error in getCategories:", err);
+    return res.status(500).json({ error: "Failed to fetch categories" });
+  }
+};
+
+export const getBadges = async (req: Request, res: Response) => {
+  const { limit, offset } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM badges ORDER BY id LIMIT $1 OFFSET $2`,
+      [limit ?? 50, offset ?? 0]
+    );
+    return res.json({ badges: rows });
+  } catch (err) {
+    console.error("Error in getBadges:", err);
+    return res.status(500).json({ error: "Failed to fetch badges" });
+  }
+};
+
 export const deactivateCompletedAdventures = async () => {
   const { rows } = await pool.query(`SELECT deactivate_completed_adventures();`);
   const ids: number[] = rows[0]?.deactivate_completed_adventures ?? [];

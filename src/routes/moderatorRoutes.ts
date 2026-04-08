@@ -1,9 +1,19 @@
 import express from "express";
-import { addBoss, addOrganizer, createNewBadge, createCategory, createTournament } from "../controllers/moderatorController.js";
+import { addBoss, addOrganizer, createNewBadge, createCategory, createTournament, verifyToken, getUsers, getOrganizers, getBosses, grantGems, grantCredits, getAdventures, getTournaments, getCategories, getBadges } from "../controllers/moderatorController.js";
 import { authSuperToken } from "../middlewares/auth.js";
 
 const router = express.Router();
 
+router.post("/verify-token", authSuperToken, verifyToken);
+router.post("/users", authSuperToken, getUsers);
+router.post("/organizers", authSuperToken, getOrganizers);
+router.post("/bosses", authSuperToken, getBosses);
+router.post("/grant-gems", authSuperToken, grantGems);
+router.post("/grant-credits", authSuperToken, grantCredits);
+router.post("/adventures", authSuperToken, getAdventures);
+router.post("/tournaments", authSuperToken, getTournaments);
+router.post("/categories", authSuperToken, getCategories);
+router.post("/badges", authSuperToken, getBadges);
 router.post("/add-boss", authSuperToken, addBoss);
 router.post("/add-organizer", authSuperToken, addOrganizer);
 router.post("/create-badge", authSuperToken, createNewBadge);
