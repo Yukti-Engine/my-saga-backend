@@ -243,15 +243,15 @@ export const grantCredits = async (req: Request, res: Response) => {
 };
 
 export const getAdventures = async (req: Request, res: Response) => {
-  const { status, limit, offset } = req.body;
+  const { isActive, limit, offset } = req.body;
   try {
     const { rows } = await pool.query(
-      `SELECT id, name, category_id, organizer_id, boss_id, participant_ids, status, created_at
+      `SELECT id, name, category_id, organizer_id, boss_id, user_ids, is_active, room_key, created_at
        FROM adventures
-       WHERE ($1::text IS NULL OR status = $1)
+       WHERE ($1::boolean IS NULL OR is_active = $1)
        ORDER BY created_at DESC
        LIMIT $2 OFFSET $3`,
-      [status ?? null, limit ?? 50, offset ?? 0]
+      [isActive ?? null, limit ?? 50, offset ?? 0]
     );
     return res.json({ adventures: rows });
   } catch (err) {

@@ -32,6 +32,6 @@ export async function sendEmail(to: string, subject: string, body: string) {
     from: process.env.GOOGLE_SENDER_EMAIL,
     to,
     subject,
-    text: body,
+    html: body,
   });
 }
