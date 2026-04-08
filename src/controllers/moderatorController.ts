@@ -1,39 +1,5 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
-import { archiveFile, deleteAdventureFiles } from "../services/bucketService.js";
-import fs from "fs";
-import path from "path";
-import os from "os";
-
-export const archiveMatchRequests = async () => {
-  const data = (
-    await pool.query(`SELECT * FROM cut_inactive_match_requests();`)
-  ).rows;
-
-  if (data.length === 0) return false;
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const fileName = `match_requests_${timestamp}.json`;
-  const tmpFile = path.join(os.tmpdir(), fileName);
-
-  fs.writeFileSync(tmpFile, JSON.stringify(data));
-  await archiveFile(tmpFile, `match_requests/${fileName}`, "application/json");
-  fs.unlinkSync(tmpFile);
-
-  return true;
-};
-
-export const cleanupExpiredPendingUsers = async () => {
-  
-    await pool.query(`SELECT cleanup_expired_pending_users();`);
-  
-};
-
-export const logoutAbsentees = async () => {
-  
-    await pool.query(`SELECT logout_absentees();`);
-  
-};
 
 export const addBoss = async (req: Request, res: Response) => {
   const { name, email, password, username, phone, dob, gender } = req.body;
@@ -288,6 +254,66 @@ export const getCategories = async (req: Request, res: Response) => {
   }
 };
 
+export const addCategoryQualification = async (req: Request, res: Response) => {
+  const { organizerId, category } = req.body;
+
+  if (!organizerId || !category)
+    return res.status(400).json({ error: "organizerId and category are required" });
+
+  try {
+    const catCheck = await pool.query(
+      `SELECT 1 FROM categories WHERE category = $1`,
+      [category]
+    );
+    if (catCheck.rows.length === 0)
+      return res.status(404).json({ error: "Category not found" });
+
+    const { rows } = await pool.query(
+      `UPDATE organizers
+       SET category_qualifications = array_append(category_qualifications, $1::varchar(30))
+       WHERE id = $2 AND NOT ($1::varchar(30) = ANY(category_qualifications))
+       RETURNING id, category_qualifications`,
+      [category, organizerId]
+    );
+    if (rows.length === 0) {
+      const existing = await pool.query(
+        `SELECT id, category_qualifications FROM organizers WHERE id = $1`,
+        [organizerId]
+      );
+      if (existing.rows.length === 0)
+        return res.status(404).json({ error: "Organizer not found" });
+      return res.json({ message: "Category already present", id: existing.rows[0].id, categoryQualifications: existing.rows[0].category_qualifications });
+    }
+    return res.json({ message: "Category added", id: rows[0].id, categoryQualifications: rows[0].category_qualifications });
+  } catch (err) {
+    console.error("Error in addCategoryQualification:", err);
+    return res.status(500).json({ error: "Failed to add category qualification" });
+  }
+};
+
+export const removeCategoryQualification = async (req: Request, res: Response) => {
+  const { organizerId, category } = req.body;
+
+  if (!organizerId || !category)
+    return res.status(400).json({ error: "organizerId and category are required" });
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE organizers
+       SET category_qualifications = array_remove(category_qualifications, $1::varchar(30))
+       WHERE id = $2
+       RETURNING id, category_qualifications`,
+      [category, organizerId]
+    );
+    if (rows.length === 0)
+      return res.status(404).json({ error: "Organizer not found" });
+    return res.json({ message: "Category removed", id: rows[0].id, categoryQualifications: rows[0].category_qualifications });
+  } catch (err) {
+    console.error("Error in removeCategoryQualification:", err);
+    return res.status(500).json({ error: "Failed to remove category qualification" });
+  }
+};
+
 export const getBadges = async (req: Request, res: Response) => {
   const { limit, offset } = req.body;
   try {
@@ -302,13 +328,3 @@ export const getBadges = async (req: Request, res: Response) => {
   }
 };
 
-export const deactivateCompletedAdventures = async () => {
-  const { rows } = await pool.query(`SELECT deactivate_completed_adventures();`);
-  const ids: number[] = rows[0]?.deactivate_completed_adventures ?? [];
-
-  if (ids.length === 0) return false;
-
-  await Promise.all(ids.map((id) => deleteAdventureFiles(id)));
-
-  return true;
-};

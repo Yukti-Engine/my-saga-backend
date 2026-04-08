@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { archiveMatchRequests, cleanupExpiredPendingUsers, deactivateCompletedAdventures, logoutAbsentees } from "../controllers/moderatorController.js";
+import { archiveMatchRequests, cleanupExpiredPendingUsers, deactivateCompletedAdventures, logoutAbsentees } from "../controllers/adminController.js";
 
 export function initSchedulers() {
   console.log("⏰ Initializing schedulers....");
