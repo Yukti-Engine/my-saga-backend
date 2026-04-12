@@ -38,15 +38,15 @@ export const addOrganizer = async (req: Request, res: Response) => {
 };
 
 export const createNewBadge = async (req: Request, res: Response) => {
-  const { title, categoryId, league, description } = req.body;
+  const { title, categoryId, league, description, icon } = req.body;
 
   if (!title)
     return res.status(400).json({ error: "title is required" });
 
   try {
     const { rows } = await pool.query(
-      `SELECT create_badge($1::text, $2::int, $3::smallint, $4::text)`,
-      [title, categoryId ?? null, league ?? null, description ?? null]
+      `SELECT create_badge($1::text, $2::int, $3::smallint, $4::text, $5::bytea)`,
+      [title, categoryId ?? null, league ?? null, description ?? null, icon ? Buffer.from(icon, "base64") : null]
     );
     return res.json({ message: "Badge created", id: rows[0].create_badge });
   } catch (err) {
@@ -321,7 +321,11 @@ export const getBadges = async (req: Request, res: Response) => {
       `SELECT * FROM badges ORDER BY id LIMIT $1 OFFSET $2`,
       [limit ?? 50, offset ?? 0]
     );
-    return res.json({ badges: rows });
+    const badges = rows.map((b) => ({
+      ...b,
+      icon: b.icon?.toString("base64") ?? null,
+    }));
+    return res.json({ badges });
   } catch (err) {
     console.error("Error in getBadges:", err);
     return res.status(500).json({ error: "Failed to fetch badges" });
