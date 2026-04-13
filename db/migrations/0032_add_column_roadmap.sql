@@ -1,0 +1,1 @@
+ALTER TABLE match_requests add COLUMN roadmap varchar(10000);

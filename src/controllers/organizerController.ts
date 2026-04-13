@@ -61,15 +61,16 @@ export const getOrganizerDashboard = async (req: Request, res: Response) => {
 };
 
 export const requestMatch = async (req: Request, res: Response) => {
-  const { oid, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, payPerHead } = req.body;
+  const { oid, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, payPerHead, roadmap } = req.body;
   const { rows } = await pool.query(`SELECT * FROM get_organizer($1::int)`, [oid]);
   const organizer = rows[0];
   const result = await pool.query(
-    `SELECT * FROM create_match_request($1::int, $2::int, $3::float8, $4::int, $5::int, $6::int, $7::float8, $8::float8, $9::float8, $10::boolean, $11::boolean)`,
+    `SELECT * FROM create_match_request($1::int, $2::int, $3::float8, $4::int, $5::int, $6::int, $7::float8, $8::float8, $9::float8, $10::boolean, $11::boolean, $12::text)`,
     [oid, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax,
      latitude, longitude, payPerHead,
      organizer.gender === "F" && organizer.setting_1 === true,
-     organizer.gender === "F" && organizer.setting_2 === true]
+     organizer.gender === "F" && organizer.setting_2 === true,
+     roadmap ?? null]
   );
   return res.json(result.rows[0]);
 };
