@@ -61,18 +61,44 @@ export const getOrganizerDashboard = async (req: Request, res: Response) => {
 };
 
 export const requestMatch = async (req: Request, res: Response) => {
-  const { oid, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, payPerHead, roadmap } = req.body;
+  const { oid, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, payPerHead, roadmap, badgeId } = req.body;
   const { rows } = await pool.query(`SELECT * FROM get_organizer($1::int)`, [oid]);
   const organizer = rows[0];
   const result = await pool.query(
-    `SELECT * FROM create_match_request($1::int, $2::int, $3::float8, $4::int, $5::int, $6::int, $7::float8, $8::float8, $9::float8, $10::boolean, $11::boolean, $12::text)`,
+    `SELECT * FROM create_match_request($1::int, $2::int, $3::float8, $4::int, $5::int, $6::int, $7::float8, $8::float8, $9::float8, $10::boolean, $11::boolean, $12::text, $13::int)`,
     [oid, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax,
      latitude, longitude, payPerHead,
      organizer.gender === "F" && organizer.setting_1 === true,
      organizer.gender === "F" && organizer.setting_2 === true,
-     roadmap ?? null]
+     roadmap ?? null, badgeId ?? null]
   );
   return res.json(result.rows[0]);
+};
+
+export const retrieveRoadmap = async (req: Request, res: Response) => {
+  const { badgeId } = req.body;
+
+  if (!badgeId)
+    return res.status(400).json({ error: "badgeId is required" });
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT roadmaps FROM badges WHERE id = $1`,
+      [badgeId]
+    );
+    if (rows.length === 0)
+      return res.status(404).json({ error: "Badge not found" });
+
+    const roadmaps: string[] = rows[0].roadmaps ?? [];
+    if (roadmaps.length === 0)
+      return res.json({ roadmap: null });
+
+    const roadmap = roadmaps[Math.floor(Math.random() * roadmaps.length)];
+    return res.json({ roadmap });
+  } catch (err) {
+    console.error("Error in retrieveRoadmap:", err);
+    return res.status(500).json({ error: "Failed to retrieve roadmap" });
+  }
 };
 
 export const logOut = async (req: Request, res: Response) => {
