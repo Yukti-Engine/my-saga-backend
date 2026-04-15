@@ -12,6 +12,7 @@ spec:
         autoscaling.knative.dev/maxScale: "10"
         run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
         run.googleapis.com/vpc-access-egress: private-ranges-only
+        run.googleapis.com/http2: "false"
     spec:
       containerConcurrency: 80
       containers:
