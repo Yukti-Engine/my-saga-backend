@@ -1,0 +1,1 @@
+ALTER TABLE organizers ADD COLUMN rating FLOAT DEFAULT 3.9;
