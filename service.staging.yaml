@@ -1,0 +1,85 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: backend-staging
+  annotations:
+    run.googleapis.com/launch-stage: BETA
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "3"
+        run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+        run.googleapis.com/http2: "false"
+    spec:
+      containerConcurrency: 80
+      containers:
+        - name: app
+          image: IMAGE_PLACEHOLDER
+          ports:
+            - containerPort: 3000
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          env:
+            - name: NODE_ENV
+              value: development
+            - name: LOG_LEVEL
+              value: info
+            - name: GOOGLE_CLIENT_ID
+              value: 37597246012-gbcbf1aq07h37ltn51fhbh51f4eui59s.apps.googleusercontent.com
+            - name: GOOGLE_SENDER_EMAIL
+              value: support@mysaga.in
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: STAGING_DATABASE_URL
+                  key: latest
+            - name: MSG91_AUTH_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: MSG91_AUTH_KEY
+                  key: latest
+            - name: RECAPTCHA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: RECAPTCHA_API_KEY
+                  key: latest
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: GOOGLE_CLIENT_SECRET
+                  key: latest
+            - name: GOOGLE_REFRESH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: GOOGLE_REFRESH_TOKEN
+                  key: latest
+            - name: SUPER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: SUPER_TOKEN
+                  key: latest
+          volumeMounts:
+            - name: sqlsocket
+              mountPath: /cloudsql
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2
+          args:
+            - "--structured-logs"
+            - "--port=5432"
+            - "--address=0.0.0.0"
+            - "feisty-audio-471914-d7:asia-south1:my-saga-data?private-ip=true"
+          resources:
+            limits:
+              cpu: "0.5"
+              memory: 128Mi
+          volumeMounts:
+            - name: sqlsocket
+              mountPath: /cloudsql
+      volumes:
+        - name: sqlsocket
+          emptyDir: {}
