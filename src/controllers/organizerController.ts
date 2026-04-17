@@ -46,6 +46,7 @@ export const updateOrganizerProfile = async (req: Request, res: Response) => {
   );
   const updatedOrganizer = updated.rows[0];
   delete updatedOrganizer.password;
+  updatedOrganizer.icon = updatedOrganizer.icon?.toString("base64") ?? null;
   return res.json(updatedOrganizer);
 };
 

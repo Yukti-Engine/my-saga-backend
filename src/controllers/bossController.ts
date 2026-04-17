@@ -47,6 +47,7 @@ export const updateBossProfile = async (req: Request, res: Response) => {
   );
   const updatedBoss = updated.rows[0];
   delete updatedBoss.password;
+  updatedBoss.icon = updatedBoss.icon?.toString("base64") ?? null;
   return res.json(updatedBoss);
 };
 

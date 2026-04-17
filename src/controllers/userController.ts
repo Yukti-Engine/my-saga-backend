@@ -11,7 +11,9 @@ export const updateUserProfile = async (req: Request, res: Response) => {
      updates.setting1 ?? null, updates.setting2 ?? null,
      updates.icon ? Buffer.from(updates.icon, "base64") : null]
   );
-  return res.json(updated.rows[0]);
+  const updatedUser = updated.rows[0];
+  updatedUser.icon = updatedUser.icon?.toString("base64") ?? null;
+  return res.json(updatedUser);
 };
 
 export const getUserQualifications = async (req: Request, res: Response) => {
