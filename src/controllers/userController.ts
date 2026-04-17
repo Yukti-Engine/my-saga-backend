@@ -29,8 +29,10 @@ export const getUserDashboard = async (req: Request, res: Response) => {
   const user = rows[0];
   return res.json({
     id: user.id, username: user.username, email: user.email,
-    level: user.level, star_score: user.star_score, penalties: user.penalties,
-    gems: user.gems,
+    level: user.level, penalties: user.penalties, gems: user.gems,
+    cognitive_index: user.cognitive_index, drive_index: user.drive_index,
+    adaptability_index: user.adaptability_index, integrity_index: user.integrity_index,
+    emotional_intellect_index: user.emotional_intellect_index, creativity_index: user.creativity_index,
     bio: user.bio, age: calculateAge(user.dob), gender: user.gender,
     setting_1: user.setting_1, setting_2: user.setting_2,
     icon: user.icon?.toString("base64")

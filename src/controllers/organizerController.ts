@@ -56,7 +56,7 @@ export const getOrganizerDashboard = async (req: Request, res: Response) => {
   return res.json({
     username: organizer.username, bio: organizer.bio, gender: organizer.gender, credits: organizer.credits,
     age: calculateAge(organizer.dob), setting_1: organizer.setting_1, setting_2: organizer.setting_2,
-    icon: organizer.icon?.toString("base64")
+    rating: organizer.rating, icon: organizer.icon?.toString("base64")
   });
 };
 
