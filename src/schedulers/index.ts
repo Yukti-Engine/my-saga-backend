@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { archiveMatchRequests, cleanupExpiredPendingUsers, deactivateCompletedAdventures, logoutAbsentees } from "../controllers/adminController.js";
+import { archiveMatchRequests, cleanupExpiredPendingUsers, deactivateCompletedAdventures, logoutAbsentees, refreshBadgeRoadmaps } from "../controllers/adminController.js";
 
 export function initSchedulers() {
   console.log("⏰ Initializing schedulers....");
@@ -41,6 +41,16 @@ export function initSchedulers() {
       console.log("deactivateCompletedAdventures completed.");
     } catch (err) {
       console.error("deactivateCompletedAdventures failed:", err);
+    }
+  });
+
+  cron.schedule("0 2 * * 0", async () => {
+    console.log("Running refreshBadgeRoadmaps....");
+    try {
+      await refreshBadgeRoadmaps();
+      console.log("refreshBadgeRoadmaps completed.");
+    } catch (err) {
+      console.error("refreshBadgeRoadmaps failed:", err);
     }
   });
 

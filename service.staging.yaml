@@ -48,6 +48,11 @@ spec:
                 secretKeyRef:
                   name: RECAPTCHA_API_KEY
                   key: latest
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ANTHROPIC_API_KEY
+                  key: latest
             - name: GOOGLE_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:

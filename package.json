@@ -25,6 +25,7 @@
   },
   "homepage": "https://github.com/Vegybin/my-saga-backend",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
     "@google-cloud/storage": "^7.19.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",

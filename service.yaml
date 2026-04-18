@@ -43,6 +43,11 @@ spec:
                 secretKeyRef:
                   name: MSG91_AUTH_KEY
                   key: latest
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ANTHROPIC_API_KEY
+                  key: latest
             - name: RECAPTCHA_API_KEY
               valueFrom:
                 secretKeyRef:
