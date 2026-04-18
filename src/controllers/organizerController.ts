@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
 import { uploadProfileIcon } from "../services/bucketService.js";
+import Anthropic from "@anthropic-ai/sdk";
 
 export const getAdventures = async (req: Request, res: Response) => {
   const { oid } = req.body;
@@ -103,6 +104,39 @@ export const retrieveRoadmap = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Error in retrieveRoadmap:", err);
     return res.status(500).json({ error: "Failed to retrieve roadmap" });
+  }
+};
+
+export const generateAdventureName = async (req: Request, res: Response) => {
+  const { roadmap } = req.body;
+
+  if (!roadmap)
+    return res.status(400).json({ error: "roadmap is required" });
+
+  try {
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const message = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 64,
+      messages: [
+        {
+          role: "user",
+          content: `Given the following group activity roadmap, generate a short, catchy, and evocative adventure title (5 words or fewer). Respond with ONLY the title, nothing else.
+
+Roadmap:
+${roadmap}`,
+        },
+      ],
+    });
+
+    const content = message.content[0];
+    if (!content || content.type !== "text")
+      return res.status(500).json({ error: "Failed to generate name" });
+
+    return res.json({ suggestion: content.text.trim() });
+  } catch (err) {
+    console.error("Error in generateAdventureName:", err);
+    return res.status(500).json({ error: "Failed to generate adventure name" });
   }
 };
 

@@ -48,50 +48,6 @@ export const getOffers = async (req: Request, res: Response) => {
 };
 
 
-export const generateAdventureName = async (req: Request, res: Response) => {
-  const { categoryId } = req.body;
-  const word3Options = [
-    "Adventure","Quest","Story","Exam","Course","Files","Case","Pursuit","Race",
-    "Problem","Challenge","Puzzle","Battle","Journey","Mission","Expedition","Trial",
-    "Test","Assignment","Task","Campaign","Investigation","Operation","Riddle","Enigma",
-    "Dilemma","Scenario","Assessment","Evaluation","Sprint","Run","Showdown","Contest",
-    "Match","Clash","Module","Lesson","Stage","Episode","Chapter","Dungeon",
-    "Conflict","Encounter","Struggle","Siege","Session","Path","Phase","Round"
-  ];
-  const word1Options = [
-    "The","A","Brave","Curious","Quirky","Swift","Mighty","Sunny","Witty","Bold",
-    "Clever","Cheerful","Lucky","Sneaky","Fierce","Gentle","Playful","Jolly","Calm",
-    "Bright","Zesty","Nimble","Cosmic","Epic","Happy","Fuzzy","Breezy","Chirpy",
-    "Spunky","Goofy","Daring","Dreamy","Magic","Rusty","Funky","Snappy","Peppy",
-    "Jazzy","Chilly","Stormy","Wavy","Glowing","Radiant","Sparkly","Bubbly",
-    "Whimsical","Fearless","Lively","Golden","Wild","Free","Silly","Charming",
-    "Crafty","Flashy","Loopy","Bouncy","Cosy","Snug","Wacky","Feisty","Moody",
-    "Speedy","Cheeky","Plucky","Shiny","Roaming","Curly","Fluffy","Frothy",
-    "Crackling","Zippy","Perky","Blissful","Jumpy","Dizzy","Groovy","Spirited",
-    "Snazzy","Sparky","Rugged","Rowdy","Twisty","Fabled","Mystic","Electric",
-    "Glitchy","Pixelated","Retro","Feral","Nebulous","Galactic","Oddball","Scrappy",
-    "Heroic","Nifty","Jovial","Kooky","Slinky","Chipper","Mellow","Fiery","Hidden",
-    "Secret","Frosty","Dusty","Crimson","Azure","Emerald","Midnight","Glassy",
-    "Echoing","Floating","Drifting","Rolling","Howling","Wandering","Restless",
-    "Sparked","Tilted","Spinning","Laughing","Skipping","Buzzing","Fluttery",
-    "Ticklish","Cheery","Lofty","Brisk","Chasing","Racing","Hopping","Dancing",
-    "Smiling","Glorious","Legendary","Mythic","Playbound","Starry","Moonlit",
-    "Sunlit","Cloudy","Windy","Stormlit"
-  ];
-
-  const result = await pool.query(`SELECT word_2s FROM get_word2s($1::int)`, [categoryId]);
-  const word2Options = result.rows[0]?.word_2s ?? [];
-
-  let word1 = word1Options[Math.floor(Math.random() * word1Options.length)];
-  const word2 = word2Options[Math.floor(Math.random() * word2Options.length)];
-  const word3 = word3Options[Math.floor(Math.random() * word3Options.length)];
-
-  if (word1 === "A" && ["A","E","I","O","U"].includes(word2[0]?.toUpperCase()))
-    word1 = "An";
-
-  return res.json({ "suggestion": `${word1} ${word2} ${word3}`});
-}
-
 
 export const findLobbies = async (req: Request, res: Response) => {
   const { id, role, categoryId, matchRadius, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;

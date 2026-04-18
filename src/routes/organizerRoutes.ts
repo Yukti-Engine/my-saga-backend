@@ -1,5 +1,5 @@
 import express from "express";
-import { updateOrganizerProfile, getOrganizerDashboard, requestMatch, logOut, currentLobby, startAdventure, getAdventures, getPastAdventures, organizeEvent, retrieveRoadmap } from "../controllers/organizerController.js";
+import { updateOrganizerProfile, getOrganizerDashboard, requestMatch, logOut, currentLobby, startAdventure, getAdventures, getPastAdventures, organizeEvent, retrieveRoadmap, generateAdventureName } from "../controllers/organizerController.js";
 import { authOrganizer } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -15,4 +15,5 @@ router.post("/current-adventures", getAdventures);
 router.post("/past-adventures", getPastAdventures);
 router.post("/organize-event", organizeEvent);
 router.post("/retrieve-roadmap", retrieveRoadmap);
+router.post("/generate-adventure-name", generateAdventureName);
 export default router;
