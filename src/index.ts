@@ -14,7 +14,7 @@ import { Server } from "socket.io";
 import roomSocket from "./controllers/adventureController.js";
 import eventRoutes from "./routes/eventRoutes.js";
 import moderatorRoutes from "./routes/moderatorRoutes.js";
-import { initSchedulers } from "./schedulers/index.js";
+import adminRoutes from "./routes/adminRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -39,11 +39,11 @@ app.use("/search", searchRoutes);
 app.use("/adventure", adventureRoutes);
 app.use("/event", eventRoutes);
 app.use("/moderator", moderatorRoutes);
+app.use("/admin", adminRoutes);
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  initSchedulers();
 });
