@@ -3,6 +3,15 @@ import { Storage } from "@google-cloud/storage";
 const storage = new Storage();
 const bucket = storage.bucket("my-saga");
 const archiveBucket = storage.bucket("my-saga-archive");
+const profilesBucket = storage.bucket("my-saga-profiles");
+
+export async function uploadProfileIcon(base64: string, role: string, id: number): Promise<string> {
+  const buffer = Buffer.from(base64, "base64");
+  const file = profilesBucket.file(`${role}/${id}`);
+  await file.save(buffer, { contentType: "image/jpeg", resumable: false });
+  await file.makePublic();
+  return `https://storage.googleapis.com/my-saga-profiles/${role}/${id}`;
+}
 export async function generateUploadUrl(
   fileName: string,
   contentType: string,

@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
+import { uploadProfileIcon } from "../services/bucketService.js";
 
 export const getAdventures = async (req: Request, res: Response) => {
   const { oid } = req.body;
@@ -39,14 +40,17 @@ export const getPastAdventures = async (req: Request, res: Response) => {
 export const updateOrganizerProfile = async (req: Request, res: Response) => {
   const { oid, updates } = req.body;
 
+  let iconUrl: string | null = null;
+  if (updates.icon)
+    iconUrl = await uploadProfileIcon(updates.icon, "organizer", oid);
+
   const updated = await pool.query(
-    `SELECT * FROM update_organizer($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::bytea)`,
+    `SELECT * FROM update_organizer($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::text)`,
     [oid, updates.username ?? null, updates.setting1 ?? null, updates.setting2 ?? null,
-     updates.bio ?? null, updates.icon ? Buffer.from(updates.icon, "base64") : null]
+     updates.bio ?? null, iconUrl]
   );
   const updatedOrganizer = updated.rows[0];
   delete updatedOrganizer.password;
-  updatedOrganizer.icon = updatedOrganizer.icon?.toString("base64") ?? null;
   return res.json(updatedOrganizer);
 };
 
@@ -57,7 +61,7 @@ export const getOrganizerDashboard = async (req: Request, res: Response) => {
   return res.json({
     username: organizer.username, bio: organizer.bio, gender: organizer.gender, credits: organizer.credits,
     age: calculateAge(organizer.dob), setting_1: organizer.setting_1, setting_2: organizer.setting_2,
-    rating: organizer.rating, icon: organizer.icon?.toString("base64")
+    rating: organizer.rating, icon: organizer.icon ?? null
   });
 };
 

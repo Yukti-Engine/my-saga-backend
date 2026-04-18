@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
+import { uploadProfileIcon } from "../services/bucketService.js";
 
 export const getAdventures = async (req: Request, res: Response) => {
   const { bid } = req.body;
@@ -40,14 +41,17 @@ export const getPastAdventures = async (req: Request, res: Response) => {
 export const updateBossProfile = async (req: Request, res: Response) => {
   const { bid, updates } = req.body;
 
+  let iconUrl: string | null = null;
+  if (updates.icon)
+    iconUrl = await uploadProfileIcon(updates.icon, "boss", bid);
+
   const updated = await pool.query(
-    `SELECT * FROM update_boss($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::bytea)`,
+    `SELECT * FROM update_boss($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::text)`,
     [bid, updates.username ?? null, updates.setting1 ?? null, updates.setting2 ?? null,
-     updates.bio ?? null, updates.icon ? Buffer.from(updates.icon, "base64") : null]
+     updates.bio ?? null, iconUrl]
   );
   const updatedBoss = updated.rows[0];
   delete updatedBoss.password;
-  updatedBoss.icon = updatedBoss.icon?.toString("base64") ?? null;
   return res.json(updatedBoss);
 };
 
@@ -61,7 +65,7 @@ export const getBossDashboard = async (req: Request, res: Response) => {
   return res.json({
     username: boss.username, gender: boss.gender, bio: boss.bio, credits: boss.credits,
     age: calculateAge(boss.dob), setting_1: boss.setting_1, setting_2: boss.setting_2,
-    icon: boss.icon?.toString("base64")
+    icon: boss.icon ?? null
   });
 };
 export const getBossQualifications = async (req: Request, res: Response) => {

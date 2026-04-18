@@ -1,19 +1,21 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
+import { uploadProfileIcon } from "../services/bucketService.js";
 
 export const updateUserProfile = async (req: Request, res: Response) => {
   const { uid, updates } = req.body;
 
+  let iconUrl: string | null = null;
+  if (updates.icon)
+    iconUrl = await uploadProfileIcon(updates.icon, "user", uid);
+
   const updated = await pool.query(
-    `SELECT update_user($1::int, $2::text, $3::text, $4::text, $5::boolean, $6::boolean, $7::bytea)`,
+    `SELECT update_user($1::int, $2::text, $3::text, $4::text, $5::boolean, $6::boolean, $7::text)`,
     [uid, updates.username ?? null, updates.bio ?? null, updates.email ?? null,
-     updates.setting1 ?? null, updates.setting2 ?? null,
-     updates.icon ? Buffer.from(updates.icon, "base64") : null]
+     updates.setting1 ?? null, updates.setting2 ?? null, iconUrl]
   );
-  const updatedUser = updated.rows[0];
-  updatedUser.icon = updatedUser.icon?.toString("base64") ?? null;
-  return res.json(updatedUser);
+  return res.json(updated.rows[0]);
 };
 
 export const getUserQualifications = async (req: Request, res: Response) => {
@@ -37,7 +39,7 @@ export const getUserDashboard = async (req: Request, res: Response) => {
     emotional_intellect_index: user.emotional_intellect_index, creativity_index: user.creativity_index,
     bio: user.bio, age: calculateAge(user.dob), gender: user.gender,
     setting_1: user.setting_1, setting_2: user.setting_2,
-    icon: user.icon?.toString("base64")
+    icon: user.icon ?? null
   });
 };
 
