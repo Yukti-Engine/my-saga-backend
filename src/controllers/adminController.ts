@@ -98,5 +98,3 @@ export const deactivateCompletedAdventures = async () => {
 
   return true;
 };
-
-refreshBadgeRoadmaps();
