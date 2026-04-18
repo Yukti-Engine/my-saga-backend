@@ -1,4 +1,5 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import { updateOrganizerProfile, getOrganizerDashboard, requestMatch, logOut, currentLobby, startAdventure, getAdventures, getPastAdventures, organizeEvent, retrieveRoadmap, generateAdventureName } from "../controllers/organizerController.js";
 import { authOrganizer } from "../middlewares/auth.js";
 
@@ -15,5 +16,13 @@ router.post("/current-adventures", getAdventures);
 router.post("/past-adventures", getPastAdventures);
 router.post("/organize-event", organizeEvent);
 router.post("/retrieve-roadmap", retrieveRoadmap);
-router.post("/generate-adventure-name", generateAdventureName);
+const generateNameLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: "Too many requests, please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post("/generate-adventure-name", generateNameLimiter, generateAdventureName);
 export default router;
