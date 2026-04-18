@@ -1,18 +1,35 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import { signupRequestOtp, signupVerifyOtp, loginRequestOtp,loginVerifyOtp, signupResendOtp, loginResendOtp, organizerLogin, bossLogin, organizerJoinRequest, bossJoinRequest } from "../controllers/authController.js";
 import { verifyRecaptcha } from "../middlewares/auth.js";
 
 const router = express.Router();
 
-router.post("/signup-request-otp", verifyRecaptcha, signupRequestOtp);
-router.post("/signup-verify-otp", signupVerifyOtp);
-router.post("/signup-resend-otp", signupResendOtp);
-router.post("/organizer-login", organizerLogin);
-router.post("/boss-login", bossLogin);
-router.post("/login-request-otp", loginRequestOtp);
-router.post("/login-verify-otp", loginVerifyOtp);
-router.post("/login-resend-otp", loginResendOtp);
-router.post("/organizer-join-request", verifyRecaptcha, organizerJoinRequest);
-router.post("/boss-join-request", verifyRecaptcha, bossJoinRequest);
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: "Too many requests, please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: "Too many login attempts, please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post("/signup-request-otp", otpLimiter, verifyRecaptcha, signupRequestOtp);
+router.post("/signup-verify-otp", otpLimiter, signupVerifyOtp);
+router.post("/signup-resend-otp", otpLimiter, signupResendOtp);
+router.post("/organizer-login", loginLimiter, organizerLogin);
+router.post("/boss-login", loginLimiter, bossLogin);
+router.post("/login-request-otp", otpLimiter, loginRequestOtp);
+router.post("/login-verify-otp", otpLimiter, loginVerifyOtp);
+router.post("/login-resend-otp", otpLimiter, loginResendOtp);
+router.post("/organizer-join-request", otpLimiter, verifyRecaptcha, organizerJoinRequest);
+router.post("/boss-join-request", otpLimiter, verifyRecaptcha, bossJoinRequest);
 
 export default router;
