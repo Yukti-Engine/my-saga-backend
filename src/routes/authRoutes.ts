@@ -1,6 +1,6 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { signupRequestOtp, signupVerifyOtp, loginRequestOtp,loginVerifyOtp, signupResendOtp, loginResendOtp, organizerLogin, bossLogin, organizerJoinRequest, bossJoinRequest } from "../controllers/authController.js";
+import { signupRequestOtp, signupVerifyOtp, loginRequestOtp,loginVerifyOtp, signupResendOtp, loginResendOtp, organizerLogin, bossLogin, organizerJoinRequest } from "../controllers/authController.js";
 import { verifyRecaptcha } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -30,6 +30,5 @@ router.post("/login-request-otp", otpLimiter, loginRequestOtp);
 router.post("/login-verify-otp", otpLimiter, loginVerifyOtp);
 router.post("/login-resend-otp", otpLimiter, loginResendOtp);
 router.post("/organizer-join-request", otpLimiter, verifyRecaptcha, organizerJoinRequest);
-router.post("/boss-join-request", otpLimiter, verifyRecaptcha, bossJoinRequest);
 
 export default router;

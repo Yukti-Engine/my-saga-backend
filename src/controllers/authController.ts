@@ -189,22 +189,6 @@ export const organizerJoinRequest = async (req: Request, res: Response) => {
   }
 };
 
-export const bossJoinRequest = async (req: Request, res: Response) => {
-  const { email, reasonToJoin } = req.body;
-
-  if (!email || !reasonToJoin)
-    return res.status(400).json({ error: "email and reasonToJoin are required" });
-
-  try {
-    const {html, subject} = joinRequestAcknowledgement("boss", reasonToJoin);
-    await sendEmail(email, subject, html);
-    return res.json({ message: "Join request submitted. Check your email for confirmation." });
-  } catch (err) {
-    console.error("Error in bossJoinRequest:", err);
-    return res.status(500).json({ error: "Failed to submit join request" });
-  }
-};
-
 
 /* ----------------- LOGIN FLOW (ORGANIZER / BOSS) ----------------- */
 export const organizerLogin = async (req: Request, res: Response) => {
