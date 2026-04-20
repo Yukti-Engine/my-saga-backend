@@ -1,7 +1,7 @@
 import express from "express";
 import type { Request, Response } from "express";
 import { authSuperToken } from "../middlewares/auth.js";
-import { archiveMatchRequests, cleanupExpiredPendingUsers, logoutAbsentees, deactivateCompletedAdventures, refreshBadgeRoadmaps } from "../controllers/adminController.js";
+import { archiveMatchRequests, cleanupExpiredPendingUsers, logoutAbsentees, deactivateCompletedAdventures, refreshBadgeRoadmaps, limitMore } from "../controllers/adminController.js";
 
 const router = express.Router();
 
@@ -28,6 +28,11 @@ router.post("/deactivate-completed-adventures", authSuperToken, async (req: Requ
 router.post("/refresh-badge-roadmaps", authSuperToken, async (req: Request, res: Response) => {
   const result = await refreshBadgeRoadmaps();
   return res.json({ success: true, updated: result });
+});
+
+router.post("/limit-more", authSuperToken, async (req: Request, res: Response) => {
+  const affected = await limitMore();
+  return res.json({ success: true, affected });
 });
 
 export default router;

@@ -88,6 +88,11 @@ Respond with ONLY the roadmap as plain text. No JSON, no lists, no extra formatt
   return true;
 };
 
+export const limitMore = async () => {
+  const { rows } = await pool.query(`SELECT limit_more() AS affected`);
+  return rows[0]?.affected ?? 0;
+};
+
 export const deactivateCompletedAdventures = async () => {
   const { rows } = await pool.query(`SELECT deactivate_completed_adventures();`);
   const ids: number[] = rows[0]?.deactivate_completed_adventures ?? [];
