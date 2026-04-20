@@ -3,6 +3,7 @@ import { randomBytes } from "crypto";
 import pool from "../db.js";
 import { sendOtp, retry, verify } from "../services/otpService.js";
 import { sendEmail } from "../services/mailerService.js";
+import { validateName, validatePhone, validateEmail, validateDob, validateGender, validateRequestId, validateOtp, validateReasonToJoin, escapeHtml, validatePassword } from "../validators.js";
 
 
 function joinRequestAcknowledgement(
@@ -18,7 +19,7 @@ function joinRequestAcknowledgement(
       <p>We have received your request to join MySaga as a <strong>${roleLabel}</strong>.</p>
       <p>Your message:</p>
       <blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #555; margin: 16px 0;">
-        "${reasonToJoin}"
+        "${escapeHtml(reasonToJoin)}"
       </blockquote>
       <p>
         Our team will carefully review your application. If we find your request worthy of further consideration,
@@ -42,12 +43,28 @@ function joinRequestAcknowledgement(
 
 /* ----------------- SIGNUP FLOW ----------------- */
 export const signupRequestOtp = async (req: Request, res: Response) => {
-  const { name, phone, email, dob, gender } = req.body;
+  const nameV = validateName(req.body.name);
+  if (!nameV.ok) return res.status(400).json({ error: nameV.error });
+  const phoneV = validatePhone(req.body.phone);
+  if (!phoneV.ok) return res.status(400).json({ error: phoneV.error });
+  const emailV = validateEmail(req.body.email, false);
+  if (!emailV.ok) return res.status(400).json({ error: emailV.error });
+  const dobV = validateDob(req.body.dob);
+  if (!dobV.ok) return res.status(400).json({ error: dobV.error });
+  const genderV = validateGender(req.body.gender);
+  if (!genderV.ok) return res.status(400).json({ error: genderV.error });
 
-  if (!name || !dob || !gender || !phone)
-    return res.status(400).json({ error: "Missing required fields" });
+  const name = nameV.value;
+  const phone = phoneV.value;
+  const email = emailV.value;
+  const dob = dobV.value;
+  const gender = genderV.value;
 
   try {
+    const existing = await pool.query(`SELECT 1 FROM find_user_by_phone($1::text)`, [phone]);
+    if (existing.rows.length > 0)
+      return res.status(409).json({ error: "An account with this phone already exists" });
+
     const requestId = await sendOtp(phone);
     await pool.query(
       `SELECT create_pending_user($1::text, $2::text, $3::text, $4::text, $5::text, $6::text)`,
@@ -61,7 +78,13 @@ export const signupRequestOtp = async (req: Request, res: Response) => {
 };
 
 export const signupVerifyOtp = async (req: Request, res: Response) => {
-  const { requestId, otp } = req.body;
+  const requestIdV = validateRequestId(req.body.requestId);
+  if (!requestIdV.ok) return res.status(400).json({ error: requestIdV.error });
+  const otpV = validateOtp(req.body.otp);
+  if (!otpV.ok) return res.status(400).json({ error: otpV.error });
+
+  const requestId = requestIdV.value;
+  const otp = otpV.value;
 
   try {
     const { rows } = await pool.query(
@@ -71,6 +94,10 @@ export const signupVerifyOtp = async (req: Request, res: Response) => {
     const pendingUser = rows[0];
     if (!pendingUser)
       return res.status(400).json({ error: "Invalid requestId" });
+
+    const taken = await pool.query(`SELECT 1 FROM find_user_by_phone($1::text)`, [pendingUser.phone]);
+    if (taken.rows.length > 0)
+      return res.status(409).json({ error: "An account with this phone already exists" });
 
     const verified = await verify(pendingUser.request_id, otp);
     if (!verified)
@@ -89,14 +116,20 @@ export const signupVerifyOtp = async (req: Request, res: Response) => {
 };
 
 export const signupResendOtp = async (req: Request, res: Response) => {
-  const { requestId } = req.body;
-
-  if (!requestId)
-    return res.status(400).json({ error: "Missing required fields" });
+  const requestIdV = validateRequestId(req.body.requestId);
+  if (!requestIdV.ok) return res.status(400).json({ error: requestIdV.error });
+  const requestId = requestIdV.value;
 
   try {
     const { rows } = await pool.query(`SELECT * FROM find_pending_user($1::text)`, [requestId]);
-    const pendingUser = rows[0]
+    const pendingUser = rows[0];
+    if (!pendingUser)
+      return res.status(404).json({ error: "No pending signup" });
+
+    const taken = await pool.query(`SELECT 1 FROM find_user_by_phone($1::text)`, [pendingUser.phone]);
+    if (taken.rows.length > 0)
+      return res.status(409).json({ error: "An account with this phone already exists" });
+
     await retry(pendingUser.request_id);
     return res.json({ message: "OTP sent" });
   } catch (err) {
@@ -108,8 +141,9 @@ export const signupResendOtp = async (req: Request, res: Response) => {
 
 /* ----------------- LOGIN FLOW ----------------- */
 export const loginRequestOtp = async (req: Request, res: Response) => {
-  const { phone } = req.body;
-  if (!phone) return res.status(400).json({ error: "Phone required" });
+  const phoneV = validatePhone(req.body.phone);
+  if (!phoneV.ok) return res.status(400).json({ error: phoneV.error });
+  const phone = phoneV.value;
 
   try {
     const { rows } = await pool.query(`SELECT * FROM find_user_by_phone($1::text)`, [phone]);
@@ -125,13 +159,15 @@ export const loginRequestOtp = async (req: Request, res: Response) => {
 };
 
 export const loginResendOtp = async (req: Request, res: Response) => {
-  const { phone } = req.body;
-  if (!phone) return res.status(400).json({ error: "Phone required" });
+  const phoneV = validatePhone(req.body.phone);
+  if (!phoneV.ok) return res.status(400).json({ error: phoneV.error });
+  const phone = phoneV.value;
 
   try {
     const { rows } = await pool.query(`SELECT * FROM find_user_by_phone($1::text)`, [phone]);
     if (!rows[0]) return res.status(404).json({ error: "User not found" });
     const requestId = rows[0].request_id;
+    if (!requestId) return res.status(400).json({ error: "Request an OTP first" });
     await retry(requestId);
     return res.json({ message: "OTP sent", phone });
   } catch (err) {
@@ -140,13 +176,20 @@ export const loginResendOtp = async (req: Request, res: Response) => {
   }
 };
 export const loginVerifyOtp = async (req: Request, res: Response) => {
-  const { phone, otp } = req.body;
+  const phoneV = validatePhone(req.body.phone);
+  if (!phoneV.ok) return res.status(400).json({ error: phoneV.error });
+  const otpV = validateOtp(req.body.otp);
+  if (!otpV.ok) return res.status(400).json({ error: otpV.error });
+  const phone = phoneV.value;
+  const otp = otpV.value;
 
   try {
     const { rows } = await pool.query(`SELECT * FROM find_user_by_phone($1::text)`, [phone]);
     const potentialUser = rows[0];
     if (!potentialUser)
       return res.status(404).json({ error: "User not found" });
+    if (!potentialUser.request_id)
+      return res.status(400).json({ error: "Request an OTP first" });
 
     const verified = await verify(potentialUser.request_id, otp);
     if (!verified)
@@ -174,10 +217,12 @@ export const loginVerifyOtp = async (req: Request, res: Response) => {
 
 /* ----------------- JOIN REQUESTS ----------------- */
 export const organizerJoinRequest = async (req: Request, res: Response) => {
-  const { email, reasonToJoin } = req.body;
-
-  if (!email || !reasonToJoin)
-    return res.status(400).json({ error: "email and reasonToJoin are required" });
+  const emailV = validateEmail(req.body.email, true);
+  if (!emailV.ok) return res.status(400).json({ error: emailV.error });
+  const reasonV = validateReasonToJoin(req.body.reasonToJoin);
+  if (!reasonV.ok) return res.status(400).json({ error: reasonV.error });
+  const email = emailV.value!;
+  const reasonToJoin = reasonV.value;
 
   try {
     const {html, subject} = joinRequestAcknowledgement("organizer", reasonToJoin);
@@ -192,17 +237,20 @@ export const organizerJoinRequest = async (req: Request, res: Response) => {
 
 /* ----------------- LOGIN FLOW (ORGANIZER / BOSS) ----------------- */
 export const organizerLogin = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const emailV = validateEmail(req.body.email, true);
+  if (!emailV.ok) return res.status(400).json({ error: emailV.error });
+  const passwordV = validatePassword(req.body.password);
+  if (!passwordV.ok) return res.status(400).json({ error: passwordV.error });
+  const email = emailV.value!;
+  const password = passwordV.value;
+
   const encode = (text: string) => Buffer.from(text, "utf8").toString("base64");
 
   const { rows } = await pool.query(`SELECT * FROM get_organizer_by_email($1::text)`, [email]);
   const organizer = rows[0];
 
-  if (!organizer)
-    return res.status(500).json({ error: "No such organizer" });
-
-  if (organizer.password !== encode(password))
-    return res.status(500).json({ error: "Password does not match" });
+  if (!organizer || organizer.password !== encode(password))
+    return res.status(401).json({ error: "Invalid email or password" });
 
   let accessToken;
   if (organizer.access_token)
@@ -222,17 +270,20 @@ export const organizerLogin = async (req: Request, res: Response) => {
 };
 
 export const bossLogin = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const emailV = validateEmail(req.body.email, true);
+  if (!emailV.ok) return res.status(400).json({ error: emailV.error });
+  const passwordV = validatePassword(req.body.password);
+  if (!passwordV.ok) return res.status(400).json({ error: passwordV.error });
+  const email = emailV.value!;
+  const password = passwordV.value;
+
   const encode = (text: string) => Buffer.from(text, "utf8").toString("base64");
 
   const { rows } = await pool.query(`SELECT * FROM get_boss_by_email($1::text)`, [email]);
   const boss = rows[0];
 
-  if (!boss)
-    return res.status(500).json({ error: "No such boss" });
-
-  if (boss.password !== encode(password))
-    return res.status(500).json({ error: "Password does not match" });
+  if (!boss || boss.password !== encode(password))
+    return res.status(401).json({ error: "Invalid email or password" });
 
   let accessToken;
   if (boss.access_token)

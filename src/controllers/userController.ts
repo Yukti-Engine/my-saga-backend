@@ -2,20 +2,63 @@ import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
 import { uploadProfileIcon } from "../services/bucketService.js";
+import { validateUsername, validateBio, validateEmail, validateBoolean } from "../validators.js";
 
 export const updateUserProfile = async (req: Request, res: Response) => {
   const { uid, updates } = req.body;
+  if (!updates || typeof updates !== "object")
+    return res.status(400).json({ error: "Missing updates" });
+
+  let username: string | null = null;
+  if (updates.username !== undefined) {
+    const v = validateUsername(updates.username);
+    if (!v.ok) return res.status(400).json({ error: v.error });
+    username = v.value;
+  }
+
+  let bio: string | null = null;
+  if (updates.bio !== undefined) {
+    const v = validateBio(updates.bio);
+    if (!v.ok) return res.status(400).json({ error: v.error });
+    bio = v.value;
+  }
+
+  let email: string | null = null;
+  if (updates.email !== undefined) {
+    const v = validateEmail(updates.email, false);
+    if (!v.ok) return res.status(400).json({ error: v.error });
+    email = v.value;
+  }
+
+  let setting1: boolean | null = null;
+  if (updates.setting1 !== undefined) {
+    const v = validateBoolean(updates.setting1, "setting1");
+    if (!v.ok) return res.status(400).json({ error: v.error });
+    setting1 = v.value;
+  }
+
+  let setting2: boolean | null = null;
+  if (updates.setting2 !== undefined) {
+    const v = validateBoolean(updates.setting2, "setting2");
+    if (!v.ok) return res.status(400).json({ error: v.error });
+    setting2 = v.value;
+  }
 
   let iconUrl: string | null = null;
   if (updates.icon)
     iconUrl = await uploadProfileIcon(updates.icon, "user", uid);
 
-  const updated = await pool.query(
-    `SELECT update_user($1::int, $2::text, $3::text, $4::text, $5::boolean, $6::boolean, $7::text)`,
-    [uid, updates.username ?? null, updates.bio ?? null, updates.email ?? null,
-     updates.setting1 ?? null, updates.setting2 ?? null, iconUrl]
-  );
-  return res.json(updated.rows[0]);
+  try {
+    const updated = await pool.query(
+      `SELECT update_user($1::int, $2::text, $3::text, $4::text, $5::boolean, $6::boolean, $7::text)`,
+      [uid, username, bio, email, setting1, setting2, iconUrl]
+    );
+    return res.json(updated.rows[0]);
+  } catch (err: any) {
+    if (err?.code === "23505")
+      return res.status(409).json({ error: "Username already taken" });
+    throw err;
+  }
 };
 
 export const getUserQualifications = async (req: Request, res: Response) => {
@@ -52,6 +95,8 @@ export const getAdventures = async (req: Request, res: Response) => {
 
 export const getPastAdventures = async (req: Request, res: Response) => {
   const { uid, a, b } = req.body;
+  if (!Number.isInteger(a) || !Number.isInteger(b) || a >= b)
+    return res.status(400).json({ error: "Invalid pagination: a and b must be integers with a < b" });
 
   const result = await pool.query(`SELECT * FROM get_inactive_adventures($1::int, $2::text, $3::int, $4::int)`, [uid, "user", a, b]);
   return res.json(result.rows);
@@ -59,6 +104,10 @@ export const getPastAdventures = async (req: Request, res: Response) => {
 
 export const joinAdventure = async (req: Request, res: Response) => {
   const { uid,  matchRequest, ageRangeMin, ageRangeMax } = req.body;
+
+  if (!Number.isInteger(ageRangeMin) || !Number.isInteger(ageRangeMax)
+      || ageRangeMin < 18 || ageRangeMax > 100 || ageRangeMin > ageRangeMax)
+    return res.status(400).json({ error: "Invalid age range" });
 
   const matched = await pool.query(
 `SELECT match_request(

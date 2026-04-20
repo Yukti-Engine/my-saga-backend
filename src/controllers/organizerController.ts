@@ -3,6 +3,11 @@ import pool from "../db.js";
 import { calculateAge } from "../utils.js";
 import { uploadProfileIcon } from "../services/bucketService.js";
 import Anthropic from "@anthropic-ai/sdk";
+import {
+  validateUsername, validateBio, validateBoolean,
+  validateBoundedText, validateHttpUrl, validateFutureTimestamp,
+  validatePositiveInt, validateIntRange, validateFloatRange
+} from "../validators.js";
 
 export const getAdventures = async (req: Request, res: Response) => {
   const { oid } = req.body;
@@ -21,27 +26,38 @@ export const getOrganizerQualifications = async (req: Request, res: Response) =>
 };
 
 export const organizeEvent = async (req: Request, res: Response) => {
-  const { oid, activity, timing, venue, venueLink, adventureId, instruction } = req.body;
+  const { oid } = req.body;
+  const activityV = validateBoundedText(req.body.activity, "activity", 20, 400);
+  if (!activityV.ok) return res.status(400).json({ error: activityV.error });
+  const timingV = validateFutureTimestamp(req.body.timing, "timing");
+  if (!timingV.ok) return res.status(400).json({ error: timingV.error });
+  const venueV = validateBoundedText(req.body.venue, "venue", 10, 200);
+  if (!venueV.ok) return res.status(400).json({ error: venueV.error });
+  const venueLinkV = validateHttpUrl(req.body.venueLink, "venueLink", 100);
+  if (!venueLinkV.ok) return res.status(400).json({ error: venueLinkV.error });
+  const instructionV = validateBoundedText(req.body.instruction, "instruction", 20, 200, { allowNewlines: true });
+  if (!instructionV.ok) return res.status(400).json({ error: instructionV.error });
+  const adventureIdV = validatePositiveInt(req.body.adventureId, "adventureId");
+  if (!adventureIdV.ok) return res.status(400).json({ error: adventureIdV.error });
 
-  
-    const check = await pool.query(
-      `SELECT is_related_to_adventure($1::int, 'organizer', $2::int) AS ok`,
-      [oid, adventureId]
-    );
-    if (check.rows[0].ok) {
-      const queryResult = await pool.query(
-        `SELECT create_event($1::text, $2::timestamptz, $3::text, $4::text, $5::int, $6::text, false)`,
-        [activity, timing, venue, venueLink, adventureId, instruction]
-      );
-      return res.json({ success: true, eventId: queryResult.rows[0].create_event });
-      
-    }
-    return res.json({ success: false });
+  const check = await pool.query(
+    `SELECT is_related_to_adventure($1::int, 'organizer', $2::int) AS ok`,
+    [oid, adventureIdV.value]
+  );
+  if (!check.rows[0].ok)
+    return res.status(403).json({ success: false });
 
+  const queryResult = await pool.query(
+    `SELECT create_event($1::text, $2::timestamptz, $3::text, $4::text, $5::int, $6::text, false)`,
+    [activityV.value, timingV.value, venueV.value, venueLinkV.value, adventureIdV.value, instructionV.value]
+  );
+  return res.json({ success: true, eventId: queryResult.rows[0].create_event });
 };
 
 export const getPastAdventures = async (req: Request, res: Response) => {
   const { oid, a, b } = req.body;
+  if (!Number.isInteger(a) || !Number.isInteger(b) || a >= b)
+    return res.status(400).json({ error: "Invalid pagination: a and b must be integers with a < b" });
 
   const result = await pool.query(`SELECT * FROM get_inactive_adventures($1::int, $2::text, $3::int, $4::int)`, [oid, "organizer", a, b]);
   return res.json(result.rows);
@@ -49,19 +65,54 @@ export const getPastAdventures = async (req: Request, res: Response) => {
 
 export const updateOrganizerProfile = async (req: Request, res: Response) => {
   const { oid, updates } = req.body;
+  if (!updates || typeof updates !== "object")
+    return res.status(400).json({ error: "Missing updates" });
+
+  let username: string | null = null;
+  if (updates.username !== undefined) {
+    const v = validateUsername(updates.username);
+    if (!v.ok) return res.status(400).json({ error: v.error });
+    username = v.value;
+  }
+
+  let bio: string | null = null;
+  if (updates.bio !== undefined) {
+    const v = validateBio(updates.bio);
+    if (!v.ok) return res.status(400).json({ error: v.error });
+    bio = v.value;
+  }
+
+  let setting1: boolean | null = null;
+  if (updates.setting1 !== undefined) {
+    const v = validateBoolean(updates.setting1, "setting1");
+    if (!v.ok) return res.status(400).json({ error: v.error });
+    setting1 = v.value;
+  }
+
+  let setting2: boolean | null = null;
+  if (updates.setting2 !== undefined) {
+    const v = validateBoolean(updates.setting2, "setting2");
+    if (!v.ok) return res.status(400).json({ error: v.error });
+    setting2 = v.value;
+  }
 
   let iconUrl: string | null = null;
   if (updates.icon)
     iconUrl = await uploadProfileIcon(updates.icon, "organizer", oid);
 
-  const updated = await pool.query(
-    `SELECT * FROM update_organizer($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::text)`,
-    [oid, updates.username ?? null, updates.setting1 ?? null, updates.setting2 ?? null,
-     updates.bio ?? null, iconUrl]
-  );
-  const updatedOrganizer = updated.rows[0];
-  delete updatedOrganizer.password;
-  return res.json(updatedOrganizer);
+  try {
+    const updated = await pool.query(
+      `SELECT * FROM update_organizer($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::text)`,
+      [oid, username, setting1, setting2, bio, iconUrl]
+    );
+    const updatedOrganizer = updated.rows[0];
+    delete updatedOrganizer.password;
+    return res.json(updatedOrganizer);
+  } catch (err: any) {
+    if (err?.code === "23505")
+      return res.status(409).json({ error: "Username already taken" });
+    throw err;
+  }
 };
 
 export const getOrganizerDashboard = async (req: Request, res: Response) => {
@@ -76,25 +127,57 @@ export const getOrganizerDashboard = async (req: Request, res: Response) => {
 };
 
 export const requestMatch = async (req: Request, res: Response) => {
-  const { oid, categoryId, matchRadius, ageRangeMin, ageRangeMax, latitude, longitude, payPerHead, roadmap, badgeId } = req.body;
+  const { oid } = req.body;
+
+  const categoryIdV = validatePositiveInt(req.body.categoryId, "categoryId");
+  if (!categoryIdV.ok) return res.status(400).json({ error: categoryIdV.error });
+  const badgeIdV = validatePositiveInt(req.body.badgeId, "badgeId");
+  if (!badgeIdV.ok) return res.status(400).json({ error: badgeIdV.error });
+  const matchRadiusV = validateIntRange(req.body.matchRadius, "matchRadius", 10, 20);
+  if (!matchRadiusV.ok) return res.status(400).json({ error: matchRadiusV.error });
+  const ageMinV = validateIntRange(req.body.ageRangeMin, "ageRangeMin", 18, 100);
+  if (!ageMinV.ok) return res.status(400).json({ error: ageMinV.error });
+  const ageMaxV = validateIntRange(req.body.ageRangeMax, "ageRangeMax", 18, 100);
+  if (!ageMaxV.ok) return res.status(400).json({ error: ageMaxV.error });
+  if (ageMinV.value > ageMaxV.value)
+    return res.status(400).json({ error: "ageRangeMin must be <= ageRangeMax" });
+  const latV = validateFloatRange(req.body.latitude, "latitude", -90, 90);
+  if (!latV.ok) return res.status(400).json({ error: latV.error });
+  const lngV = validateFloatRange(req.body.longitude, "longitude", -180, 180);
+  if (!lngV.ok) return res.status(400).json({ error: lngV.error });
+  const payV = validateIntRange(req.body.payPerHead, "payPerHead", 500, 3000);
+  if (!payV.ok) return res.status(400).json({ error: payV.error });
+  const roadmapV = validateBoundedText(req.body.roadmap, "roadmap", 1, 5000, { allowNewlines: true });
+  if (!roadmapV.ok) return res.status(400).json({ error: roadmapV.error });
+
+  const quals = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS category_id`, [oid, "organizer"]);
+  const qualifiedCategoryIds = new Set(quals.rows.map((r: any) => r.category_id));
+  if (!qualifiedCategoryIds.has(categoryIdV.value))
+    return res.status(403).json({ error: "Not qualified for this category" });
+
+  const badgeRow = await pool.query(`SELECT category_id FROM badges WHERE id = $1::int`, [badgeIdV.value]);
+  if (badgeRow.rows.length === 0)
+    return res.status(404).json({ error: "Badge not found" });
+  if (badgeRow.rows[0].category_id !== categoryIdV.value)
+    return res.status(400).json({ error: "Badge does not belong to given category" });
+
   const { rows } = await pool.query(`SELECT * FROM get_organizer($1::int)`, [oid]);
   const organizer = rows[0];
   const result = await pool.query(
     `SELECT * FROM create_match_request($1::int, $2::int, $3::float8, $4::int, $5::int, $6::float8, $7::float8, $8::float8, $9::boolean, $10::boolean, $11::text, $12::int)`,
-    [oid, categoryId, matchRadius, ageRangeMin, ageRangeMax,
-     latitude, longitude, payPerHead,
+    [oid, categoryIdV.value, matchRadiusV.value, ageMinV.value, ageMaxV.value,
+     latV.value, lngV.value, payV.value,
      organizer.gender === "F" && organizer.setting_1 === true,
      organizer.gender === "F" && organizer.setting_2 === true,
-     roadmap ?? null, badgeId ?? null]
+     roadmapV.value, badgeIdV.value]
   );
   return res.json(result.rows[0]);
 };
 
 export const retrieveRoadmap = async (req: Request, res: Response) => {
-  const { badgeId } = req.body;
-
-  if (!badgeId)
-    return res.status(400).json({ error: "badgeId is required" });
+  const badgeIdV = validatePositiveInt(req.body.badgeId, "badgeId");
+  if (!badgeIdV.ok) return res.status(400).json({ error: badgeIdV.error });
+  const badgeId = badgeIdV.value;
 
   try {
     const { rows } = await pool.query(
@@ -117,10 +200,9 @@ export const retrieveRoadmap = async (req: Request, res: Response) => {
 };
 
 export const generateAdventureName = async (req: Request, res: Response) => {
-  const { roadmap } = req.body;
-
-  if (!roadmap)
-    return res.status(400).json({ error: "roadmap is required" });
+  const roadmapV = validateBoundedText(req.body.roadmap, "roadmap", 1, 5000, { allowNewlines: true });
+  if (!roadmapV.ok) return res.status(400).json({ error: roadmapV.error });
+  const roadmap = roadmapV.value;
 
   try {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
