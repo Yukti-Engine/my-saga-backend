@@ -1057,20 +1057,6 @@ Get badge(s) by category or by ID. Pass **one** of `categoryId` or `badgeId`.
 
 ---
 
-#### `POST /search/offers`
-
-Get all current offers. **User only** (`authUser`).
-
-**Request body:**
-```json
-{
-  "uid": "number",
-  "accessToken": "string"
-}
-```
-
----
-
 #### `POST /search/lobbies`
 
 Find compatible match lobbies. Two-way compatibility check is performed.

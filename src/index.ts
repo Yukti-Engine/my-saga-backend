@@ -43,6 +43,12 @@ app.use("/admin", adminRoutes);
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
+app.get('/min-frontend-version', (req, res) => {
+  res.status(200).json({ minVersion: '1.0.0' });
+});
+app.get('/', (req, res) => {
+  res.status(200).json({ name: 'my-saga-api', version: '1.0.0' });
+});
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);

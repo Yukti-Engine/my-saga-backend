@@ -150,6 +150,10 @@ export const requestMatch = async (req: Request, res: Response) => {
   const roadmapV = validateBoundedText(req.body.roadmap, "roadmap", 1, 5000, { allowNewlines: true });
   if (!roadmapV.ok) return res.status(400).json({ error: roadmapV.error });
 
+  const existing = await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [oid, "organizer"]);
+  if (existing.rows.length > 0)
+    return res.status(409).json({ error: "Already in an active lobby" });
+
   const quals = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS category_id`, [oid, "organizer"]);
   const qualifiedCategoryIds = new Set(quals.rows.map((r: any) => r.category_id));
   if (!qualifiedCategoryIds.has(categoryIdV.value))
@@ -251,6 +255,42 @@ export const getLimitation = async (req: Request, res: Response) => {
   return res.json(rows[0]);
 };
 
+export const dismissLobby = async (req: Request, res: Response) => {
+  const { oid } = req.body;
+  const { rows } = await pool.query(`SELECT dismiss_match_request($1::int) AS id`, [oid]);
+  if (rows.length === 0 || rows[0].id === null)
+    return res.status(404).json({ error: "No active lobby" });
+  return res.json({ success: true, dismissedId: rows[0].id });
+};
+
+export const reportUser = async (req: Request, res: Response) => {
+  const { oid } = req.body;
+  const targetV = validatePositiveInt(req.body.userId, "userId");
+  if (!targetV.ok) return res.status(400).json({ error: targetV.error });
+  const reasonV = validateBoundedText(req.body.reason, "reason", 20, 1000, { allowNewlines: true });
+  if (!reasonV.ok) return res.status(400).json({ error: reasonV.error });
+
+  const inserted = await pool.query(
+    `INSERT INTO tickets (type, payload) VALUES ('report_user', $1::jsonb) RETURNING id`,
+    [JSON.stringify({ reporterId: oid, reporterRole: "organizer", userId: targetV.value, reason: reasonV.value })]
+  );
+  return res.json({ ticketId: inserted.rows[0].id });
+};
+
+export const reportBoss = async (req: Request, res: Response) => {
+  const { oid } = req.body;
+  const targetV = validatePositiveInt(req.body.bossId, "bossId");
+  if (!targetV.ok) return res.status(400).json({ error: targetV.error });
+  const reasonV = validateBoundedText(req.body.reason, "reason", 20, 1000, { allowNewlines: true });
+  if (!reasonV.ok) return res.status(400).json({ error: reasonV.error });
+
+  const inserted = await pool.query(
+    `INSERT INTO tickets (type, payload) VALUES ('report_boss', $1::jsonb) RETURNING id`,
+    [JSON.stringify({ reporterId: oid, reporterRole: "organizer", bossId: targetV.value, reason: reasonV.value })]
+  );
+  return res.json({ ticketId: inserted.rows[0].id });
+};
+
 export const startAdventure = async (req: Request, res: Response) => {
   const { oid, name } = req.body;
 
@@ -258,6 +298,7 @@ export const startAdventure = async (req: Request, res: Response) => {
   const matchId = lobby.id;
   if (lobby.boss_id && lobby.user_ids.length >= 6){
     const result = await pool.query(`SELECT * FROM complete_match($1::text, $2::int)`, [name, matchId]);
+    await pool.query(`SELECT bump_limitation($1::int)`, [oid]);
     return res.json(result.rows[0]);
   }
   return res.json({success:false})

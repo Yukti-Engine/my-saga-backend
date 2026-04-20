@@ -3,6 +3,18 @@ import pool from "../db.js";
 import { calculateAge } from "../utils.js";
 import { validatePositiveInt, validateIntRange, validateFloatRange, validateBoundedText } from "../validators.js";
 
+export const getTicketStatus = async (req: Request, res: Response) => {
+  const ticketV = validatePositiveInt(req.body.ticketId, "ticketId");
+  if (!ticketV.ok) return res.status(400).json({ error: ticketV.error });
+
+  const { rows } = await pool.query(
+    `SELECT id, type, status, created_at, updated_at, resolved_at FROM tickets WHERE id = $1::int`,
+    [ticketV.value]
+  );
+  if (rows.length === 0) return res.status(404).json({ error: "Ticket not found" });
+  return res.json(rows[0]);
+};
+
 export const getCategories = async (req: Request, res: Response) => {
   const result = await pool.query(`SELECT * FROM get_all_categories()`);
   return res.json(result.rows);

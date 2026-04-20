@@ -1,5 +1,5 @@
 import express from "express";
-import { updateUserProfile, getUserDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, getUserQualifications } from "../controllers/userController.js";
+import { updateUserProfile, getUserDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, getUserQualifications, reportOrganizer } from "../controllers/userController.js";
 import { authUser } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -13,4 +13,5 @@ router.post("/lobby", currentLobby);
 router.post("/current-adventures", getAdventures);
 router.post("/past-adventures", getPastAdventures);
 router.post("/qualifications", getUserQualifications);
+router.post("/report-organizer", reportOrganizer);
 export default router;

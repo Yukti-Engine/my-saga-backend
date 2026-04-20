@@ -189,9 +189,46 @@ export async function getPoll(req: any, res: any) {
 }
 
 
-export async function insertResult(req: any, res: any) {
-  const { adventureId, userIds, starScores, remarks, badgeIds } = req.body;
-  const resultQuery = await pool.query(`SELECT insert_result($1::int, $2::int[], $3::int[], $4::int[], $5::text[]) AS result_number`, [adventureId, badgeIds, userIds, starScores, remarks]);
+export async function insertResult(req: Request, res: Response) {
+  const { id } = req.body;
+  const advV = validatePositiveInt(req.body.adventureId, "adventureId");
+  if (!advV.ok) return res.status(400).json({ error: advV.error });
+
+  const { userIds, starScores, remarks } = req.body;
+  if (!Array.isArray(userIds) || !Array.isArray(starScores) || !Array.isArray(remarks))
+    return res.status(400).json({ error: "userIds, starScores, remarks must be arrays" });
+  const n = userIds.length;
+  if (n === 0) return res.status(400).json({ error: "userIds must be non-empty" });
+  if (n > 20) return res.status(400).json({ error: "arrays exceed max length 20" });
+  if (starScores.length !== n || remarks.length !== n)
+    return res.status(400).json({ error: "userIds, starScores, remarks must be same length" });
+
+  for (const uid of userIds) {
+    if (!Number.isInteger(uid) || uid <= 0)
+      return res.status(400).json({ error: "userIds must be positive integers" });
+  }
+  for (const s of starScores) {
+    if (!Number.isInteger(s) || s < 0 || s > 100)
+      return res.status(400).json({ error: "starScores must be integers 0-100" });
+  }
+  const trimmedRemarks: string[] = [];
+  for (const r of remarks) {
+    if (typeof r !== "string") return res.status(400).json({ error: "remarks must be strings" });
+    const t = r.trim();
+    if (t.length > 100) return res.status(400).json({ error: "each remark must be <= 100 chars" });
+    trimmedRemarks.push(t);
+  }
+
+  const check = await pool.query(
+    `SELECT is_related_to_adventure($1::int, 'boss', $2::int) AS ok`,
+    [id, advV.value]
+  );
+  if (!check.rows[0].ok) return res.status(403).json({ success: false });
+
+  const resultQuery = await pool.query(
+    `SELECT insert_result($1::int, $2::int[], $3::int[], $4::text[]) AS result_number`,
+    [advV.value, userIds, starScores, trimmedRemarks]
+  );
   return res.json({ resultNumber: resultQuery.rows[0].result_number });
 }
 export async function getResult(req: any, res: any) {
@@ -202,4 +239,43 @@ export async function getResult(req: any, res: any) {
   const result = await pool.query(`SELECT * FROM get_result($1::int, $2::int)`, [advV.value, resV.value]);
   return res.json(result.rows[0]);
 }
+
+export const getUploadFileUrl = async (req: Request, res: Response) => {
+  const { id, role } = req.body;
+  const advV = validatePositiveInt(req.body.adventureId, "adventureId");
+  if (!advV.ok) return res.status(400).json({ error: advV.error });
+  const fileNameV = validateBoundedText(req.body.fileName, "fileName", 1, 200);
+  if (!fileNameV.ok) return res.status(400).json({ error: fileNameV.error });
+  const contentTypeV = validateBoundedText(req.body.contentType, "contentType", 1, 100);
+  if (!contentTypeV.ok) return res.status(400).json({ error: contentTypeV.error });
+
+  const check = await pool.query(
+    `SELECT is_related_to_adventure($1::int, $2::text, $3::int) AS ok`,
+    [id, role, advV.value]
+  );
+  if (!check.rows[0].ok) return res.status(403).json({ success: false });
+
+  const countRes = await pool.query(`SELECT file_count($1::int) AS count`, [advV.value]);
+  const data = await generateUploadUrl(fileNameV.value, contentTypeV.value, advV.value, Number(countRes.rows[0].count) + 1);
+  return res.json(data);
+};
+
+export const getDownloadFileUrl = async (req: Request, res: Response) => {
+  const { id, role } = req.body;
+  const advV = validatePositiveInt(req.body.adventureId, "adventureId");
+  if (!advV.ok) return res.status(400).json({ error: advV.error });
+  const fileNumberV = validatePositiveInt(req.body.fileNumber, "fileNumber");
+  if (!fileNumberV.ok) return res.status(400).json({ error: fileNumberV.error });
+  const fileNameV = validateBoundedText(req.body.fileName, "fileName", 1, 200);
+  if (!fileNameV.ok) return res.status(400).json({ error: fileNameV.error });
+
+  const check = await pool.query(
+    `SELECT is_related_to_adventure($1::int, $2::text, $3::int) AS ok`,
+    [id, role, advV.value]
+  );
+  if (!check.rows[0].ok) return res.status(403).json({ success: false });
+
+  const data = await generateDownloadUrl(fileNameV.value, advV.value, fileNumberV.value);
+  return res.json({ data });
+};
 

@@ -136,6 +136,10 @@ export const joinAdventure = async (req: Request, res: Response) => {
   if (!matchRequest || !Number.isInteger(matchRequest.badge_id))
     return res.status(400).json({ error: "Lobby has no badge; boss cannot join" });
 
+  const existing = await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [bid, "boss"]);
+  if (existing.rows.length > 0)
+    return res.status(409).json({ error: "Already in an active lobby" });
+
   const quals = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS badge_id`, [bid, "boss"]);
   const qualifiedBadgeIds = new Set(quals.rows.map((r: any) => r.badge_id));
   if (!qualifiedBadgeIds.has(matchRequest.badge_id))
@@ -164,4 +168,18 @@ export const currentLobby = async (req: Request, res: Response) => {
 
   const result = await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [bid, "boss"]);
   return res.json(result.rows);
+};
+
+export const reportOrganizer = async (req: Request, res: Response) => {
+  const { bid } = req.body;
+  const targetV = validatePositiveInt(req.body.organizerId, "organizerId");
+  if (!targetV.ok) return res.status(400).json({ error: targetV.error });
+  const reasonV = validateBoundedText(req.body.reason, "reason", 20, 1000, { allowNewlines: true });
+  if (!reasonV.ok) return res.status(400).json({ error: reasonV.error });
+
+  const inserted = await pool.query(
+    `INSERT INTO tickets (type, payload) VALUES ('report_organizer', $1::jsonb) RETURNING id`,
+    [JSON.stringify({ reporterId: bid, reporterRole: "boss", organizerId: targetV.value, reason: reasonV.value })]
+  );
+  return res.json({ ticketId: inserted.rows[0].id });
 };

@@ -1,6 +1,6 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { updateOrganizerProfile, getOrganizerDashboard, requestMatch, logOut, currentLobby, startAdventure, getAdventures, getPastAdventures, organizeEvent, retrieveRoadmap, generateAdventureName, getOrganizerQualifications, getLimitation } from "../controllers/organizerController.js";
+import { updateOrganizerProfile, getOrganizerDashboard, requestMatch, logOut, currentLobby, startAdventure, getAdventures, getPastAdventures, organizeEvent, retrieveRoadmap, generateAdventureName, getOrganizerQualifications, getLimitation, reportUser, reportBoss, dismissLobby } from "../controllers/organizerController.js";
 import { authOrganizer } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -18,6 +18,9 @@ router.post("/organize-event", organizeEvent);
 router.post("/retrieve-roadmap", retrieveRoadmap);
 router.post("/get-qualifications", getOrganizerQualifications);
 router.post("/limitation", getLimitation);
+router.post("/report-user", reportUser);
+router.post("/report-boss", reportBoss);
+router.post("/dismiss-lobby", dismissLobby);
 
 const generateNameLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

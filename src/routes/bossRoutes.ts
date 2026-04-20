@@ -1,5 +1,5 @@
 import express from "express";
-import { updateBossProfile, getBossDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, organizeExam, getBossQualifications } from "../controllers/bossController.js";
+import { updateBossProfile, getBossDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, organizeExam, getBossQualifications, reportOrganizer } from "../controllers/bossController.js";
 import { authBoss } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -14,4 +14,5 @@ router.post("/current-adventures", getAdventures);
 router.post("/past-adventures", getPastAdventures);
 router.post("/organize-exam", organizeExam);
 router.post("/qualifications", getBossQualifications);
+router.post("/report-organizer", reportOrganizer);
 export default router;

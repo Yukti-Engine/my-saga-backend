@@ -225,9 +225,13 @@ export const organizerJoinRequest = async (req: Request, res: Response) => {
   const reasonToJoin = reasonV.value;
 
   try {
+    const inserted = await pool.query(
+      `INSERT INTO tickets (type, payload) VALUES ('organizer_join_request', $1::jsonb) RETURNING id`,
+      [JSON.stringify({ email, reasonToJoin })]
+    );
     const {html, subject} = joinRequestAcknowledgement("organizer", reasonToJoin);
     await sendEmail(email, subject, html);
-    return res.json({ message: "Join request submitted. Check your email for confirmation." });
+    return res.json({ message: "Join request submitted. Check your email for confirmation.", ticketId: inserted.rows[0].id });
   } catch (err) {
     console.error("Error in organizerJoinRequest:", err);
     return res.status(500).json({ error: "Failed to submit join request" });

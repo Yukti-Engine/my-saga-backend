@@ -1,5 +1,5 @@
 import express from "express";
-import { count, updatePollAddVote, updatePollRemoveVote, createPoll, getEvent, getMessages, getPoll, insertResult, getResult } from "../controllers/adventureController.js";
+import { count, updatePollAddVote, updatePollRemoveVote, createPoll, getEvent, getMessages, getPoll, insertResult, getResult, getUploadFileUrl, getDownloadFileUrl } from "../controllers/adventureController.js";
 import { authAny, authBoss } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -13,4 +13,6 @@ router.post("/update-poll-remove-vote", authAny, updatePollRemoveVote);
 router.post("/get-poll", authAny, getPoll);
 router.post("/insert-result", authBoss, insertResult);
 router.post("/get-result", authBoss, getResult);
+router.post("/upload-url", authAny, getUploadFileUrl);
+router.post("/download-url", authAny, getDownloadFileUrl);
 export default router;

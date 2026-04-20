@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
 import { uploadProfileIcon } from "../services/bucketService.js";
-import { validateUsername, validateBio, validateEmail, validateBoolean } from "../validators.js";
+import { validateUsername, validateBio, validateEmail, validateBoolean, validatePositiveInt, validateBoundedText } from "../validators.js";
 
 export const updateUserProfile = async (req: Request, res: Response) => {
   const { uid, updates } = req.body;
@@ -109,6 +109,10 @@ export const joinAdventure = async (req: Request, res: Response) => {
       || ageRangeMin < 18 || ageRangeMax > 100 || ageRangeMin > ageRangeMax)
     return res.status(400).json({ error: "Invalid age range" });
 
+  const existing = await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [uid, "user"]);
+  if (existing.rows.length > 0)
+    return res.status(409).json({ error: "Already in an active lobby" });
+
   const matched = await pool.query(
 `SELECT match_request(
 $1::int,
@@ -170,4 +174,18 @@ export const currentLobby = async (req: Request, res: Response) => {
 
   const result = await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [uid, "user"]);
   return res.json(result.rows);
+};
+
+export const reportOrganizer = async (req: Request, res: Response) => {
+  const { uid } = req.body;
+  const targetV = validatePositiveInt(req.body.organizerId, "organizerId");
+  if (!targetV.ok) return res.status(400).json({ error: targetV.error });
+  const reasonV = validateBoundedText(req.body.reason, "reason", 20, 1000, { allowNewlines: true });
+  if (!reasonV.ok) return res.status(400).json({ error: reasonV.error });
+
+  const inserted = await pool.query(
+    `INSERT INTO tickets (type, payload) VALUES ('report_organizer', $1::jsonb) RETURNING id`,
+    [JSON.stringify({ reporterId: uid, reporterRole: "user", organizerId: targetV.value, reason: reasonV.value })]
+  );
+  return res.json({ ticketId: inserted.rows[0].id });
 };
