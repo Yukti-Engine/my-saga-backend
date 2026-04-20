@@ -163,6 +163,12 @@ export const currentLobby = async (req: Request, res: Response) => {
   return res.json(result.rows);
 };
 
+export const getLimitation = async (req: Request, res: Response) => {
+  const { oid } = req.body;
+  const { rows } = await pool.query(`SELECT get_limitation($1::int) AS max_team_members`, [oid]);
+  return res.json(rows[0]);
+};
+
 export const startAdventure = async (req: Request, res: Response) => {
   const { oid, name } = req.body;
 
