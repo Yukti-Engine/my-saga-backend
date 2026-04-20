@@ -47,7 +47,7 @@ Title: ${badge.title}
 Description: ${badge.description ?? "N/A"}
 League (difficulty, 1=hardest, 100=easiest): ${badge.league ?? "N/A"}
 
-Create a roadmap with exactly 7 to 8 checkpoints. Rules:
+Create a roadmap with exactly 6 to 7 checkpoints. Rules:
 - Every checkpoint must be a group activity — something the whole group does together, not individually
 - Activities should build progressively towards earning the badge
 - The final checkpoint must be a climactic finale that represents earning the badge
