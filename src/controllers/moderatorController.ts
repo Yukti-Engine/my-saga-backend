@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
+import { generateKycDownloadUrl, listKycFiles} from "../services/bucketService.js";
 
 export const addBoss = async (req: Request, res: Response) => {
   const { name, email, password, username, phone, dob, gender } = req.body;
@@ -9,8 +10,8 @@ export const addBoss = async (req: Request, res: Response) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT create_boss($1::text, $2::text, $3::text, $4::text, $5::text, $6::date, $7::text)`,
-      [name, email, password, username, phone ?? null, dob ?? null, gender ?? null]
+      `SELECT create_boss($1::text, $2::text, $3::text, $4::text, $5::text, $6::date, $7::text, $8::text)`,
+      [name, email, password, username, phone ?? null, dob ?? null, gender ?? null, req.body.kycFolder ?? null]
     );
     return res.json({ message: "Boss created", id: rows[0].create_boss });
   } catch (err) {
@@ -27,8 +28,8 @@ export const addOrganizer = async (req: Request, res: Response) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT create_organizer($1::text, $2::text, $3::text, $4::text, $5::text, $6::date, $7::text)`,
-      [name, email, password, username, phone ?? null, dob ?? null, gender ?? null]
+      `SELECT create_organizer($1::text, $2::text, $3::text, $4::text, $5::text, $6::date, $7::text, $8::text)`,
+      [name, email, password, username, phone ?? null, dob ?? null, gender ?? null, req.body.kycFolder ?? null]
     );
     return res.json({ message: "Organizer created", id: rows[0].create_organizer });
   } catch (err) {
@@ -113,11 +114,7 @@ export const getUsers = async (req: Request, res: Response) => {
   const { search, limit, offset } = req.body;
   try {
     const { rows } = await pool.query(
-      `SELECT id, name, username, email, phone, gender, level, star_score, penalties, gems
-       FROM users
-       WHERE ($1::text IS NULL OR name ILIKE '%' || $1 || '%' OR username ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%')
-       ORDER BY id
-       LIMIT $2 OFFSET $3`,
+      `SELECT * FROM mod_search_users($1::text, $2::int, $3::int)`,
       [search ?? null, limit ?? 50, offset ?? 0]
     );
     return res.json({ users: rows });
@@ -131,11 +128,7 @@ export const getOrganizers = async (req: Request, res: Response) => {
   const { search, limit, offset } = req.body;
   try {
     const { rows } = await pool.query(
-      `SELECT id, name, username, email, phone, gender, credits
-       FROM organizers
-       WHERE ($1::text IS NULL OR name ILIKE '%' || $1 || '%' OR username ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%')
-       ORDER BY id
-       LIMIT $2 OFFSET $3`,
+      `SELECT * FROM mod_search_organizers($1::text, $2::int, $3::int)`,
       [search ?? null, limit ?? 50, offset ?? 0]
     );
     return res.json({ organizers: rows });
@@ -149,11 +142,7 @@ export const getBosses = async (req: Request, res: Response) => {
   const { search, limit, offset } = req.body;
   try {
     const { rows } = await pool.query(
-      `SELECT id, name, username, email, phone, gender, credits
-       FROM bosses
-       WHERE ($1::text IS NULL OR name ILIKE '%' || $1 || '%' OR username ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%')
-       ORDER BY id
-       LIMIT $2 OFFSET $3`,
+      `SELECT * FROM mod_search_bosses($1::text, $2::int, $3::int)`,
       [search ?? null, limit ?? 50, offset ?? 0]
     );
     return res.json({ bosses: rows });
@@ -171,12 +160,12 @@ export const grantGems = async (req: Request, res: Response) => {
 
   try {
     const { rows } = await pool.query(
-      `UPDATE users SET gems = gems + $1 WHERE id = $2 RETURNING id, gems`,
-      [gems, userId]
+      `SELECT mod_grant_gems($1::int, $2::int) AS gems`,
+      [userId, gems]
     );
-    if (rows.length === 0)
+    if (rows[0].gems === null)
       return res.status(404).json({ error: "User not found" });
-    return res.json({ message: "Gems granted", id: rows[0].id, gems: rows[0].gems });
+    return res.json({ message: "Gems granted", id: userId, gems: rows[0].gems });
   } catch (err) {
     console.error("Error in grantGems:", err);
     return res.status(500).json({ error: "Failed to grant gems" });
@@ -192,16 +181,14 @@ export const grantCredits = async (req: Request, res: Response) => {
   if (role !== "organizer" && role !== "boss")
     return res.status(400).json({ error: "role must be 'organizer' or 'boss'" });
 
-  const table = role === "organizer" ? "organizers" : "bosses";
-
   try {
     const { rows } = await pool.query(
-      `UPDATE ${table} SET credits = credits + $1 WHERE id = $2 RETURNING id, credits`,
-      [credits, id]
+      `SELECT mod_grant_credits($1::int, $2::text, $3::int) AS credits`,
+      [id, role, credits]
     );
-    if (rows.length === 0)
+    if (rows[0].credits === null)
       return res.status(404).json({ error: `${role} not found` });
-    return res.json({ message: "Credits granted", id: rows[0].id, credits: rows[0].credits });
+    return res.json({ message: "Credits granted", id, credits: rows[0].credits });
   } catch (err) {
     console.error("Error in grantCredits:", err);
     return res.status(500).json({ error: "Failed to grant credits" });
@@ -212,11 +199,7 @@ export const getAdventures = async (req: Request, res: Response) => {
   const { isActive, limit, offset } = req.body;
   try {
     const { rows } = await pool.query(
-      `SELECT id, name, category_id, organizer_id, boss_id, user_ids, is_active, room_key, created_at
-       FROM adventures
-       WHERE ($1::boolean IS NULL OR is_active = $1)
-       ORDER BY created_at DESC
-       LIMIT $2 OFFSET $3`,
+      `SELECT * FROM mod_list_adventures($1::boolean, $2::int, $3::int)`,
       [isActive ?? null, limit ?? 50, offset ?? 0]
     );
     return res.json({ adventures: rows });
@@ -230,7 +213,7 @@ export const getTournaments = async (req: Request, res: Response) => {
   const { limit, offset } = req.body;
   try {
     const { rows } = await pool.query(
-      `SELECT * FROM tournaments ORDER BY id DESC LIMIT $1 OFFSET $2`,
+      `SELECT * FROM mod_list_tournaments($1::int, $2::int)`,
       [limit ?? 50, offset ?? 0]
     );
     return res.json({ tournaments: rows });
@@ -244,7 +227,7 @@ export const getCategories = async (req: Request, res: Response) => {
   const { limit, offset } = req.body;
   try {
     const { rows } = await pool.query(
-      `SELECT * FROM categories ORDER BY id LIMIT $1 OFFSET $2`,
+      `SELECT * FROM mod_list_categories($1::int, $2::int)`,
       [limit ?? 50, offset ?? 0]
     );
     return res.json({ categories: rows });
@@ -261,31 +244,16 @@ export const addCategoryQualification = async (req: Request, res: Response) => {
     return res.status(400).json({ error: "organizerId and category are required" });
 
   try {
-    const catCheck = await pool.query(
-      `SELECT 1 FROM categories WHERE category = $1`,
-      [category]
-    );
-    if (catCheck.rows.length === 0)
-      return res.status(404).json({ error: "Category not found" });
-
     const { rows } = await pool.query(
-      `UPDATE organizers
-       SET category_qualifications = array_append(category_qualifications, $1::varchar(30))
-       WHERE id = $2 AND NOT ($1::varchar(30) = ANY(category_qualifications))
-       RETURNING id, category_qualifications`,
-      [category, organizerId]
+      `SELECT mod_add_category_qualification($1::int, $2::text) AS added`,
+      [organizerId, category]
     );
-    if (rows.length === 0) {
-      const existing = await pool.query(
-        `SELECT id, category_qualifications FROM organizers WHERE id = $1`,
-        [organizerId]
-      );
-      if (existing.rows.length === 0)
-        return res.status(404).json({ error: "Organizer not found" });
-      return res.json({ message: "Category already present", id: existing.rows[0].id, categoryQualifications: existing.rows[0].category_qualifications });
-    }
-    return res.json({ message: "Category added", id: rows[0].id, categoryQualifications: rows[0].category_qualifications });
-  } catch (err) {
+    return res.json({ message: rows[0].added ? "Category added" : "Category already present", id: organizerId });
+  } catch (err: any) {
+    if (typeof err?.message === "string" && err.message.includes("Category not found"))
+      return res.status(404).json({ error: "Category not found" });
+    if (typeof err?.message === "string" && err.message.includes("Organizer not found"))
+      return res.status(404).json({ error: "Organizer not found" });
     console.error("Error in addCategoryQualification:", err);
     return res.status(500).json({ error: "Failed to add category qualification" });
   }
@@ -299,16 +267,15 @@ export const removeCategoryQualification = async (req: Request, res: Response) =
 
   try {
     const { rows } = await pool.query(
-      `UPDATE organizers
-       SET category_qualifications = array_remove(category_qualifications, $1::varchar(30))
-       WHERE id = $2
-       RETURNING id, category_qualifications`,
-      [category, organizerId]
+      `SELECT mod_remove_category_qualification($1::int, $2::text) AS removed`,
+      [organizerId, category]
     );
-    if (rows.length === 0)
-      return res.status(404).json({ error: "Organizer not found" });
-    return res.json({ message: "Category removed", id: rows[0].id, categoryQualifications: rows[0].category_qualifications });
-  } catch (err) {
+    if (!rows[0].removed)
+      return res.status(404).json({ error: "Qualification not present" });
+    return res.json({ message: "Category removed", id: organizerId });
+  } catch (err: any) {
+    if (typeof err?.message === "string" && err.message.includes("Category not found"))
+      return res.status(404).json({ error: "Category not found" });
     console.error("Error in removeCategoryQualification:", err);
     return res.status(500).json({ error: "Failed to remove category qualification" });
   }
@@ -318,7 +285,7 @@ export const getBadges = async (req: Request, res: Response) => {
   const { limit, offset } = req.body;
   try {
     const { rows } = await pool.query(
-      `SELECT * FROM badges ORDER BY id LIMIT $1 OFFSET $2`,
+      `SELECT * FROM mod_list_badges($1::int, $2::int)`,
       [limit ?? 50, offset ?? 0]
     );
     const badges = rows.map((b) => ({
@@ -330,5 +297,37 @@ export const getBadges = async (req: Request, res: Response) => {
     console.error("Error in getBadges:", err);
     return res.status(500).json({ error: "Failed to fetch badges" });
   }
+};
+
+export const listKyc = async (req: Request, res: Response) => {
+  const { role, id } = req.body;
+  if (role !== "organizer" && role !== "boss")
+    return res.status(400).json({ error: "role must be organizer or boss" });
+  if (!Number.isInteger(id) || id <= 0)
+    return res.status(400).json({ error: "id must be a positive integer" });
+
+  const { rows } = await pool.query(`SELECT get_kyc_folder($1::int, $2::text) AS folder`, [id, role]);
+  const folder: string | null = rows[0]?.folder ?? null;
+  if (!folder) return res.json({ files: [] });
+
+  const files = await listKycFiles(folder);
+  return res.json({ folder, files });
+};
+
+export const kycDownloadUrl = async (req: Request, res: Response) => {
+  const { role, id, fileName } = req.body;
+  if (role !== "organizer" && role !== "boss")
+    return res.status(400).json({ error: "role must be organizer or boss" });
+  if (!Number.isInteger(id) || id <= 0)
+    return res.status(400).json({ error: "id must be a positive integer" });
+  if (typeof fileName !== "string" || fileName.length === 0 || fileName.length > 200)
+    return res.status(400).json({ error: "fileName must be 1-200 chars" });
+
+  const { rows } = await pool.query(`SELECT get_kyc_folder($1::int, $2::text) AS folder`, [id, role]);
+  const folder: string | null = rows[0]?.folder ?? null;
+  if (!folder) return res.status(404).json({ error: "KYC folder not found" });
+
+  const url = await generateKycDownloadUrl(folder, fileName);
+  return res.json({ url });
 };
 

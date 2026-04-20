@@ -85,14 +85,16 @@ export const updateBossProfile = async (req: Request, res: Response) => {
     setting2 = v.value;
   }
 
-  let iconUrl: string | null = null;
-  if (updates.icon)
-    iconUrl = await uploadProfileIcon(updates.icon, "boss", bid);
+  let bumpIcon = false;
+  if (updates.icon) {
+    await uploadProfileIcon(updates.icon, "boss", bid);
+    bumpIcon = true;
+  }
 
   try {
     const updated = await pool.query(
-      `SELECT * FROM update_boss($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::text)`,
-      [bid, username, setting1, setting2, bio, iconUrl]
+      `SELECT * FROM update_boss($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::boolean)`,
+      [bid, username, setting1, setting2, bio, bumpIcon]
     );
     const updatedBoss = updated.rows[0];
     delete updatedBoss.password;
@@ -114,7 +116,7 @@ export const getBossDashboard = async (req: Request, res: Response) => {
   return res.json({
     username: boss.username, gender: boss.gender, bio: boss.bio, credits: boss.credits,
     age: calculateAge(boss.dob), setting_1: boss.setting_1, setting_2: boss.setting_2,
-    icon: boss.icon ?? null
+    icon_version: boss.icon_version ?? 0
   });
 };
 export const getBossQualifications = async (req: Request, res: Response) => {

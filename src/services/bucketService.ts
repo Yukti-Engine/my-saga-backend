@@ -4,6 +4,41 @@ const storage = new Storage();
 const bucket = storage.bucket("my-saga");
 const archiveBucket = storage.bucket("my-saga-archive");
 const profilesBucket = storage.bucket("my-saga-profiles");
+const kycBucket = storage.bucket("my-saga-kyc");
+
+export async function generateKycUploadUrl(
+  kycFolder: string,
+  fileName: string,
+  contentType: string,
+) {
+  const file = kycBucket.file(`${kycFolder}/${fileName}`);
+  const [url] = await file.getSignedUrl({
+    version: "v4",
+    action: "write",
+    expires: Date.now() + 10 * 60 * 1000,
+    contentType,
+  });
+  return { uploadUrl: url, filePath: file.name };
+}
+
+export async function generateKycDownloadUrl(
+  kycFolder: string,
+  fileName: string,
+) {
+  const file = kycBucket.file(`${kycFolder}/${fileName}`);
+  const [url] = await file.getSignedUrl({
+    version: "v4",
+    action: "read",
+    expires: Date.now() + 5 * 60 * 1000,
+    responseDisposition: `attachment; filename="${fileName}"`,
+  });
+  return url;
+}
+
+export async function listKycFiles(kycFolder: string): Promise<string[]> {
+  const [files] = await kycBucket.getFiles({ prefix: `${kycFolder}/` });
+  return files.map((f: { name: string }) => f.name);
+}
 
 export async function uploadProfileIcon(base64: string, role: string, id: number): Promise<string> {
   const buffer = Buffer.from(base64, "base64");

@@ -44,14 +44,16 @@ export const updateUserProfile = async (req: Request, res: Response) => {
     setting2 = v.value;
   }
 
-  let iconUrl: string | null = null;
-  if (updates.icon)
-    iconUrl = await uploadProfileIcon(updates.icon, "user", uid);
+  let bumpIcon = false;
+  if (updates.icon) {
+    await uploadProfileIcon(updates.icon, "user", uid);
+    bumpIcon = true;
+  }
 
   try {
     const updated = await pool.query(
-      `SELECT update_user($1::int, $2::text, $3::text, $4::text, $5::boolean, $6::boolean, $7::text)`,
-      [uid, username, bio, email, setting1, setting2, iconUrl]
+      `SELECT update_user($1::int, $2::text, $3::text, $4::text, $5::boolean, $6::boolean, $7::boolean)`,
+      [uid, username, bio, email, setting1, setting2, bumpIcon]
     );
     return res.json(updated.rows[0]);
   } catch (err: any) {
@@ -82,7 +84,7 @@ export const getUserDashboard = async (req: Request, res: Response) => {
     emotional_intellect_index: user.emotional_intellect_index, creativity_index: user.creativity_index,
     bio: user.bio, age: calculateAge(user.dob), gender: user.gender,
     setting_1: user.setting_1, setting_2: user.setting_2,
-    icon: user.icon ?? null
+    icon_version: user.icon_version ?? 0
   });
 };
 

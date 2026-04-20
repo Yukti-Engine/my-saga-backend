@@ -96,14 +96,16 @@ export const updateOrganizerProfile = async (req: Request, res: Response) => {
     setting2 = v.value;
   }
 
-  let iconUrl: string | null = null;
-  if (updates.icon)
-    iconUrl = await uploadProfileIcon(updates.icon, "organizer", oid);
+  let bumpIcon = false;
+  if (updates.icon) {
+    await uploadProfileIcon(updates.icon, "organizer", oid);
+    bumpIcon = true;
+  }
 
   try {
     const updated = await pool.query(
-      `SELECT * FROM update_organizer($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::text)`,
-      [oid, username, setting1, setting2, bio, iconUrl]
+      `SELECT * FROM update_organizer($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::boolean)`,
+      [oid, username, setting1, setting2, bio, bumpIcon]
     );
     const updatedOrganizer = updated.rows[0];
     delete updatedOrganizer.password;
@@ -122,7 +124,7 @@ export const getOrganizerDashboard = async (req: Request, res: Response) => {
   return res.json({
     username: organizer.username, bio: organizer.bio, gender: organizer.gender, credits: organizer.credits,
     age: calculateAge(organizer.dob), setting_1: organizer.setting_1, setting_2: organizer.setting_2,
-    rating: organizer.rating, icon: organizer.icon ?? null
+    rating: organizer.rating, icon_version: organizer.icon_version ?? 0
   });
 };
 

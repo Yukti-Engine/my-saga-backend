@@ -3,7 +3,8 @@ import { randomBytes } from "crypto";
 import pool from "../db.js";
 import { sendOtp, retry, verify } from "../services/otpService.js";
 import { sendEmail } from "../services/mailerService.js";
-import { validateName, validatePhone, validateEmail, validateDob, validateGender, validateRequestId, validateOtp, validateReasonToJoin, escapeHtml, validatePassword } from "../validators.js";
+import { generateKycUploadUrl } from "../services/bucketService.js";
+import { validateName, validatePhone, validateEmail, validateDob, validateGender, validateRequestId, validateOtp, validateReasonToJoin, escapeHtml, validatePassword, validateUsername, validateBoundedText } from "../validators.js";
 
 
 function joinRequestAcknowledgement(
@@ -304,4 +305,77 @@ export const bossLogin = async (req: Request, res: Response) => {
     accessToken,
     bid: boss.id,
   });
+};
+
+/* ----------------- SIGNUP LINK FLOW ----------------- */
+export const generateSignupLink = async (req: Request, res: Response) => {
+  const role = req.body.role;
+  if (role !== "organizer" && role !== "boss")
+    return res.status(400).json({ error: "role must be organizer or boss" });
+  const emailV = validateEmail(req.body.email, true);
+  if (!emailV.ok) return res.status(400).json({ error: emailV.error });
+
+  const token = randomBytes(24).toString("hex");
+  const kycFolder = `${role}/${randomBytes(16).toString("hex")}`;
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  await pool.query(
+    `INSERT INTO signup_links (token, role, email, expires_at, kyc_folder) VALUES ($1::text, $2::text, $3::text, $4::timestamptz, $5::text)`,
+    [token, role, emailV.value, expiresAt, kycFolder]
+  );
+  return res.json({ token, expiresAt: expiresAt.toISOString() });
+};
+
+export const getKycUploadUrlForSignup = async (req: Request, res: Response) => {
+  const tokenV = validateBoundedText(req.body.token, "token", 10, 128);
+  if (!tokenV.ok) return res.status(400).json({ error: tokenV.error });
+  const fileNameV = validateBoundedText(req.body.fileName, "fileName", 1, 200);
+  if (!fileNameV.ok) return res.status(400).json({ error: fileNameV.error });
+  const contentTypeV = validateBoundedText(req.body.contentType, "contentType", 1, 100);
+  if (!contentTypeV.ok) return res.status(400).json({ error: contentTypeV.error });
+
+  const { rows } = await pool.query(
+    `SELECT get_signup_link_kyc_folder($1::text) AS folder`,
+    [tokenV.value]
+  );
+  const folder: string | null = rows[0]?.folder ?? null;
+  if (!folder) return res.status(400).json({ error: "Invalid, expired, or used link" });
+
+  const data = await generateKycUploadUrl(folder, fileNameV.value, contentTypeV.value);
+  return res.json(data);
+};
+
+export const signupViaLink = async (req: Request, res: Response) => {
+  const tokenV = validateBoundedText(req.body.token, "token", 10, 128);
+  if (!tokenV.ok) return res.status(400).json({ error: tokenV.error });
+  const nameV = validateName(req.body.name);
+  if (!nameV.ok) return res.status(400).json({ error: nameV.error });
+  const phoneV = validatePhone(req.body.phone);
+  if (!phoneV.ok) return res.status(400).json({ error: phoneV.error });
+  const dobV = validateDob(req.body.dob);
+  if (!dobV.ok) return res.status(400).json({ error: dobV.error });
+  const genderV = validateGender(req.body.gender);
+  if (!genderV.ok) return res.status(400).json({ error: genderV.error });
+  const passV = validatePassword(req.body.password);
+  if (!passV.ok) return res.status(400).json({ error: passV.error });
+  const userV = validateUsername(req.body.username);
+  if (!userV.ok) return res.status(400).json({ error: userV.error });
+
+  const consumed = await pool.query(`SELECT * FROM consume_signup_link($1::text)`, [tokenV.value]);
+  if (consumed.rows.length === 0)
+    return res.status(400).json({ error: "Invalid, expired, or already used link" });
+  const { role, email, kyc_folder: kycFolder } = consumed.rows[0];
+
+  try {
+    const fn = role === "organizer" ? "create_organizer" : "create_boss";
+    const { rows } = await pool.query(
+      `SELECT ${fn}($1::text, $2::text, $3::text, $4::text, $5::text, $6::date, $7::text, $8::text) AS id`,
+      [nameV.value, email, passV.value, userV.value, phoneV.value, dobV.value, genderV.value, kycFolder]
+    );
+    return res.json({ role, id: rows[0].id });
+  } catch (err: any) {
+    if (err?.code === "23505")
+      return res.status(409).json({ error: "Username or email already taken" });
+    console.error("Error in signupViaLink:", err);
+    return res.status(500).json({ error: "Signup failed" });
+  }
 };

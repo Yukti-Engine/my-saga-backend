@@ -1,6 +1,7 @@
 import express from "express";
-import { addBoss, addOrganizer, createNewBadge, createCategory, createTournament, verifyToken, getUsers, getOrganizers, getBosses, grantGems, grantCredits, getAdventures, getTournaments, getCategories, getBadges, addCategoryQualification, removeCategoryQualification } from "../controllers/moderatorController.js";
+import { addBoss, addOrganizer, createNewBadge, createCategory, createTournament, verifyToken, getUsers, getOrganizers, getBosses, grantGems, grantCredits, getAdventures, getTournaments, getCategories, getBadges, addCategoryQualification, removeCategoryQualification, listKyc, kycDownloadUrl } from "../controllers/moderatorController.js";
 import { authSuperToken } from "../middlewares/auth.js";
+import { generateSignupLink } from "../controllers/authController.js";
 
 const router = express.Router();
 
@@ -21,5 +22,8 @@ router.post("/add-organizer", authSuperToken, addOrganizer);
 router.post("/create-badge", authSuperToken, createNewBadge);
 router.post("/create-category", authSuperToken, createCategory);
 router.post("/create-tournament", authSuperToken, createTournament);
+router.post("/generate-signup-link", authSuperToken, generateSignupLink);
+router.post("/list-kyc", authSuperToken, listKyc);
+router.post("/kyc-download-url", authSuperToken, kycDownloadUrl);
 
 export default router;
