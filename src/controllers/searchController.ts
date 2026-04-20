@@ -50,7 +50,7 @@ export const getOffers = async (req: Request, res: Response) => {
 
 
 export const findLobbies = async (req: Request, res: Response) => {
-  const { id, role, categoryId, matchRadius, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
+  const { id, role, categoryId, badgeIds, matchRadius, ageRangeMin, ageRangeMax, latitude, longitude } = req.body;
   let rows;
   if (role == "boss"){
     rows = (await pool.query(`SELECT * FROM get_boss($1::int)`, [id])).rows;
@@ -62,8 +62,8 @@ export const findLobbies = async (req: Request, res: Response) => {
   const person = rows[0];
   const age = calculateAge(person.dob);
   const compatible = await pool.query(
-    `SELECT * FROM get_compatible_requests($1::text, $2::int, $3::int, $4::float8, $5::float8, $6::text)`,
-    [role, categoryId, age, latitude, longitude, person.gender]
+    `SELECT * FROM get_compatible_requests($1::text, $2::int, $3::int[], $4::int, $5::float8, $6::float8, $7::text)`,
+    [role, role === 'boss' ? null : categoryId, role === 'boss' ? badgeIds : null, age, latitude, longitude, person.gender]
   );
 
   const potentialAdventures: any[] = [];
