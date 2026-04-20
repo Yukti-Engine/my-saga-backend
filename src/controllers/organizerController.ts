@@ -76,12 +76,12 @@ export const getOrganizerDashboard = async (req: Request, res: Response) => {
 };
 
 export const requestMatch = async (req: Request, res: Response) => {
-  const { oid, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax, latitude, longitude, payPerHead, roadmap, badgeId } = req.body;
+  const { oid, categoryId, matchRadius, ageRangeMin, ageRangeMax, latitude, longitude, payPerHead, roadmap, badgeId } = req.body;
   const { rows } = await pool.query(`SELECT * FROM get_organizer($1::int)`, [oid]);
   const organizer = rows[0];
   const result = await pool.query(
-    `SELECT * FROM create_match_request($1::int, $2::int, $3::float8, $4::int, $5::int, $6::int, $7::float8, $8::float8, $9::float8, $10::boolean, $11::boolean, $12::text, $13::int)`,
-    [oid, categoryId, matchRadius, minTeamMembers, ageRangeMin, ageRangeMax,
+    `SELECT * FROM create_match_request($1::int, $2::int, $3::float8, $4::int, $5::int, $6::float8, $7::float8, $8::float8, $9::boolean, $10::boolean, $11::text, $12::int)`,
+    [oid, categoryId, matchRadius, ageRangeMin, ageRangeMax,
      latitude, longitude, payPerHead,
      organizer.gender === "F" && organizer.setting_1 === true,
      organizer.gender === "F" && organizer.setting_2 === true,
@@ -174,7 +174,7 @@ export const startAdventure = async (req: Request, res: Response) => {
 
   const lobby = (await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [oid, "organizer"])).rows[0];
   const matchId = lobby.id;
-  if (lobby.boss_id && lobby.user_ids.length >= lobby.min_team_members){
+  if (lobby.boss_id && lobby.user_ids.length >= 6){
     const result = await pool.query(`SELECT * FROM complete_match($1::text, $2::int)`, [name, matchId]);
     return res.json(result.rows[0]);
   }

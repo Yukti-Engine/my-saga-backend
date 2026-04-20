@@ -78,13 +78,13 @@ export const getBossQualifications = async (req: Request, res: Response) => {
 };
 
 export const joinAdventure = async (req: Request, res: Response) => {
-  const { bid, matchRequest, minTeamMembers, ageRangeMin, ageRangeMax} = req.body;
+  const { bid, matchRequest, ageRangeMin, ageRangeMax} = req.body;
 
   const result = await pool.query(
-    `SELECT match_request($1::int, $2::text, $3::int, $4::int, $5::int, $6::int, $7::int, $8::int, $9::int, $10::float8, $11::int, $12::int, $13::int, $14::float8, $15::float8, $16::float8, $17::boolean, $18::boolean) AS result`,
-    [bid, "boss", minTeamMembers, ageRangeMin, ageRangeMax,
+    `SELECT match_request($1::int, $2::text, $3::int, $4::int, $5::int, $6::int, $7::int, $8::int, $9::float8, $10::int, $11::int, $12::float8, $13::float8, $14::float8, $15::boolean, $16::boolean) AS result`,
+    [bid, "boss", ageRangeMin, ageRangeMax,
      matchRequest.id, matchRequest.boss_id, matchRequest.org_id, matchRequest.category_id,
-     matchRequest.match_radius, matchRequest.min_team_members, matchRequest.age_range_min,
+     matchRequest.match_radius, matchRequest.age_range_min,
      matchRequest.age_range_max, matchRequest.latitude, matchRequest.longitude,
      matchRequest.pay_per_head, matchRequest.all_girls, matchRequest.half_girls]
   );
