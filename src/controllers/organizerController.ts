@@ -11,6 +11,15 @@ export const getAdventures = async (req: Request, res: Response) => {
   return res.json(result.rows);
 };
 
+export const getOrganizerQualifications = async (req: Request, res: Response) => {
+  const { oid } = req.body;
+
+
+  const { rows } = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS badge_id`, [oid, "organizer"]);
+
+  return res.json(rows);
+};
+
 export const organizeEvent = async (req: Request, res: Response) => {
   const { oid, activity, timing, venue, venueLink, adventureId, instruction } = req.body;
 
