@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
-import { generateKycDownloadUrl, listKycFiles} from "../services/bucketService.js";
+import { generateKycDownloadUrl, listKycFiles, uploadBadgeIcon } from "../services/bucketService.js";
 
 export const addBoss = async (req: Request, res: Response) => {
   const { name, email, password, username, phone, dob, gender } = req.body;
@@ -46,10 +46,15 @@ export const createNewBadge = async (req: Request, res: Response) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT create_badge($1::text, $2::int, $3::smallint, $4::text, $5::bytea)`,
-      [title, categoryId ?? null, league ?? null, description ?? null, icon ? Buffer.from(icon, "base64") : null]
+      `SELECT create_badge($1::text, $2::int, $3::smallint, $4::text)`,
+      [title, categoryId ?? null, league ?? null, description ?? null]
     );
-    return res.json({ message: "Badge created", id: rows[0].create_badge });
+    const badgeId: number = rows[0].create_badge;
+
+    let iconUrl: string | null = null;
+    if (icon) iconUrl = await uploadBadgeIcon(icon, badgeId);
+
+    return res.json({ message: "Badge created", id: badgeId, iconUrl });
   } catch (err) {
     console.error("Error in createNewBadge:", err);
     return res.status(500).json({ error: "Failed to create badge" });
@@ -288,11 +293,7 @@ export const getBadges = async (req: Request, res: Response) => {
       `SELECT * FROM mod_list_badges($1::int, $2::int)`,
       [limit ?? 50, offset ?? 0]
     );
-    const badges = rows.map((b) => ({
-      ...b,
-      icon: b.icon?.toString("base64") ?? null,
-    }));
-    return res.json({ badges });
+    return res.json({ badges: rows });
   } catch (err) {
     console.error("Error in getBadges:", err);
     return res.status(500).json({ error: "Failed to fetch badges" });

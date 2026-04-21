@@ -5,6 +5,16 @@ const bucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"m
 const archiveBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-archive");
 const profilesBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-profiles");
 const kycBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-kyc");
+const badgeIconsBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-badge-icons");
+
+export async function uploadBadgeIcon(base64: string, badgeId: number): Promise<string> {
+  const buffer = Buffer.from(base64, "base64");
+  const prefix = process.env.NODE_ENV === "staging" ? "staging-" : "";
+  const file = badgeIconsBucket.file(`${badgeId}`);
+  await file.save(buffer, { contentType: "image/png", resumable: false });
+  await file.makePublic();
+  return `https://storage.googleapis.com/${prefix}my-saga-badge-icons/${badgeId}`;
+}
 
 export async function generateKycUploadUrl(
   kycFolder: string,
