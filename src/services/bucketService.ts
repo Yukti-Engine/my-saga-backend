@@ -1,7 +1,7 @@
 import { Storage } from "@google-cloud/storage";
 
 const storage = new Storage();
-const bucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga");
+const bucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-adventures");
 const archiveBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-archive");
 const profilesBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-profiles");
 const kycBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-kyc");

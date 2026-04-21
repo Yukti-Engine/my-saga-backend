@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import pool from "../db.js";
-import axios from "axios";
+import { verifyRecaptchaToken } from "../services/captchaService.js";
 
 export const authUser = async (req: Request, res: Response, next: NextFunction) => {
   const { uid, accessToken } = req.body;
@@ -41,20 +41,9 @@ export const verifyRecaptcha = async (req: Request, res: Response, next: NextFun
     return res.status(400).json({ error: "reCAPTCHA token missing" });
 
   try {
-    const { data } = await axios.post(
-      `https://www.google.com/recaptcha/api/siteverify`,
-      null,
-      {
-        params: {
-          secret: process.env.RECAPTCHA_API_KEY,
-          response: recaptchaToken,
-        },
-      }
-    );
-
-    if (!data.success || data.score < 0.5)
+    const passed = await verifyRecaptchaToken(recaptchaToken);
+    if (!passed)
       return res.status(403).json({ error: "reCAPTCHA verification failed" });
-
     next();
   } catch (err) {
     console.error("reCAPTCHA error:", err);

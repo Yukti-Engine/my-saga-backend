@@ -3,7 +3,7 @@ import { archiveFile, deleteAdventureFiles } from "../services/bucketService.js"
 import fs from "fs";
 import path from "path";
 import os from "os";
-import Anthropic from "@anthropic-ai/sdk";
+import { generateBadgeRoadmap } from "../services/llmService.js";
 
 export const archiveMatchRequests = async () => {
   const data = (
@@ -32,46 +32,19 @@ export const logoutAbsentees = async () => {
 };
 
 export const refreshBadgeRoadmaps = async () => {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
   const { rows: badges } = await pool.query(
     `SELECT id, title, description, league FROM badges`
   );
 
   if (badges.length === 0) return false;
 
-  const prompt = (badge: { title: string; description: string | null; league: number | null }) =>
-    `You are designing a group activity roadmap for 4 to 20 people working together to earn the following badge:
-
-Title: ${badge.title}
-Description: ${badge.description ?? "N/A"}
-League (difficulty, 1=hardest, 100=easiest): ${badge.league ?? "N/A"}
-
-Create a roadmap with exactly 6 to 7 checkpoints. Rules:
-- Every checkpoint must be a group activity — something the whole group does together, not individually
-- Activities should build progressively towards earning the badge
-- The final checkpoint must be a climactic finale that represents earning the badge
-- Be specific and creative — no generic advice
-
-Respond with ONLY the roadmap as plain text. No JSON, no lists, no extra formatting. Just write the roadmap directly.`;
-
   for (const badge of badges) {
     const roadmaps: string[] = [];
 
     for (let i = 0; i < 10; i++) {
       try {
-        const message = await client.messages.create({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 1024,
-          messages: [{ role: "user", content: prompt(badge) }],
-        });
-
-        const content = message.content[0];
-        if (!content || content.type !== "text") continue;
-
-        const text = content.text.trim();
-        if (text.length > 0)
-          roadmaps.push(text);
+        const text = await generateBadgeRoadmap(badge);
+        if (text) roadmaps.push(text);
       } catch {
         continue;
       }
