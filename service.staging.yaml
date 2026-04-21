@@ -64,7 +64,10 @@ spec:
                   name: GOOGLE_REFRESH_TOKEN
                   key: latest
             - name: SUPER_TOKEN
-              value: DISABLED
+              valueFrom:
+                secretKeyRef:
+                  name: SUPER_TOKEN
+                  key: latest
           volumeMounts:
             - name: sqlsocket
               mountPath: /cloudsql

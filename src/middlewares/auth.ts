@@ -53,7 +53,7 @@ export const verifyRecaptcha = async (req: Request, res: Response, next: NextFun
 
 export const authSuperToken = (req: Request, res: Response, next: NextFunction) => {
   const { superToken } = req.body;
-  if (!superToken || superToken !== process.env.SUPER_TOKEN || process.env.SUPER_TOKEN == "DISABLED")
+  if (!superToken || superToken !== process.env.SUPER_TOKEN)
     return res.status(401).json({ error: "Unauthorized" });
   next();
 };
