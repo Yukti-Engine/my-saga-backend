@@ -359,7 +359,7 @@ export const generateSignupLink = async (req: Request, res: Response) => {
     [token, role, emailV.value, expiresAt, kycFolder]
   );
 
-  if (role === "organizer") {
+  if (role === "organizer" && emailV.value) {
     const signupUrl = `https://myguild.in/join?token=${token}`;
     const { subject, html } = signupInviteEmail(role, signupUrl);
     sendEmail(emailV.value, subject, html).catch((e) =>
