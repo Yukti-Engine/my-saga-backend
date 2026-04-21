@@ -28,6 +28,8 @@ export async function sendEmail(to: string, subject: string, body: string) {
     },
   } as any);
 
+  subject = (process.env.NODE_ENV=="staging"?"(test) ":"")+subject
+
   await transporter.sendMail({
     from: process.env.GOOGLE_SENDER_EMAIL,
     to,
