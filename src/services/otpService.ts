@@ -12,7 +12,7 @@ export async function sendOtp(phone: string): Promise<string> {
     method: 'POST',
     url: 'https://api.msg91.com/api/v5/widget/sendOtp',
     headers: {'content-type': 'application/json'},
-    data: `{\n  "widgetId": "36636c745178333137343435",\n  "identifier": "${phone}", "tokenAuth":"${msg91_api}"\n}\n`
+    data: `{\n  "widgetId": "366475304c4c343234373730",\n  "identifier": "${phone}", "tokenAuth":"${msg91_api}"\n}\n`
   };
 
   try {
