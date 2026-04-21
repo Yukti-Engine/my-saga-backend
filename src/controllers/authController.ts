@@ -307,6 +307,42 @@ export const bossLogin = async (req: Request, res: Response) => {
   });
 };
 
+function signupInviteEmail(role: "organizer" | "boss", signupUrl: string) {
+  const roleLabel = role === "organizer" ? "Guide" : "Expert";
+  const platform = role === "organizer" ? "MyGuild" : "MySaga";
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #333;">You've been invited to join ${platform}!</h2>
+      <p>Hi there,</p>
+      <p>
+        A moderator has approved your account. You've been invited to join as a
+        <strong>${roleLabel}</strong> on ${platform}.
+      </p>
+      <p>Click the button below to complete your signup. This link expires in <strong>7 days</strong>.</p>
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${signupUrl}"
+           style="background-color: #010101; color: #ffffff; padding: 14px 28px; border-radius: 8px;
+                  text-decoration: none; font-size: 16px; display: inline-block;">
+          Complete Signup
+        </a>
+      </div>
+      <p style="font-size: 13px; color: #666;">
+        Or copy this link into your browser:<br/>
+        <a href="${signupUrl}" style="color: #333;">${signupUrl}</a>
+      </p>
+      <br />
+      <p>Welcome aboard,</p>
+      <p><strong>MySaga Support Team</strong></p>
+      <hr style="border: none; border-top: 1px solid #eee; margin-top: 24px;" />
+      <p style="font-size: 12px; color: #999;">This is an automated message from support@mysaga.in. Do not reply to this email.</p>
+    </div>
+  `;
+  return {
+    subject: `You're invited to join ${platform} as a ${roleLabel}`,
+    html,
+  };
+}
+
 /* ----------------- SIGNUP LINK FLOW ----------------- */
 export const generateSignupLink = async (req: Request, res: Response) => {
   const role = req.body.role;
@@ -322,6 +358,15 @@ export const generateSignupLink = async (req: Request, res: Response) => {
     `INSERT INTO signup_links (token, role, email, expires_at, kyc_folder) VALUES ($1::text, $2::text, $3::text, $4::timestamptz, $5::text)`,
     [token, role, emailV.value, expiresAt, kycFolder]
   );
+
+  if (role === "organizer") {
+    const signupUrl = `https://myguild.in/join?token=${token}`;
+    const { subject, html } = signupInviteEmail(role, signupUrl);
+    sendEmail(emailV.value, subject, html).catch((e) =>
+      console.error("signup invite email failed:", e)
+    );
+  }
+
   return res.json({ token, expiresAt: expiresAt.toISOString() });
 };
 
