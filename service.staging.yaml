@@ -66,7 +66,7 @@ spec:
             - name: SUPER_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: SUPER_TOKEN
+                  name: STAGING_SUPER_TOKEN
                   key: latest
           volumeMounts:
             - name: sqlsocket
