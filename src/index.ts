@@ -22,7 +22,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 app.use(cors(
   process.env.NODE_ENV === 'production'
-    ? { origin: ['https://mysaga.in', 'https://www.mysaga.in', 'https://guide.mysaga.in', 'https://myguild.in', 'https://www.myguild.in'], credentials: true }
+    ? { origin: ['https://mysaga.in', 'https://www.mysaga.in', 'https://guide.mysaga.in', 'https://mod.mysaga.in', 'https://myguild.in', 'https://www.myguild.in'], credentials: true }
     : { origin: '*' }
 ));
 io.on("connection", (socket) => {
