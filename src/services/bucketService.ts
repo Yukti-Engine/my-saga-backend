@@ -6,6 +6,8 @@ const archiveBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-"
 const profilesBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-profiles");
 const kycBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-kyc");
 const badgeIconsBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-badge-icons");
+const categoryIconsBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-category-icons");
+const themeIconsBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-theme-icons");
 
 export async function uploadBadgeIcon(base64: string, badgeId: number): Promise<string> {
   const buffer = Buffer.from(base64, "base64");
@@ -14,6 +16,24 @@ export async function uploadBadgeIcon(base64: string, badgeId: number): Promise<
   await file.save(buffer, { contentType: "image/png", resumable: false });
   await file.makePublic();
   return `https://storage.googleapis.com/${prefix}my-saga-badge-icons/${badgeId}`;
+}
+
+export async function uploadCategoryIcon(base64: string, categoryId: number): Promise<string> {
+  const buffer = Buffer.from(base64, "base64");
+  const prefix = process.env.NODE_ENV === "staging" ? "staging-" : "";
+  const file = categoryIconsBucket.file(`${categoryId}`);
+  await file.save(buffer, { contentType: "image/png", resumable: false });
+  await file.makePublic();
+  return `https://storage.googleapis.com/${prefix}my-saga-category-icons/${categoryId}`;
+}
+
+export async function uploadThemeIcon(base64: string, themeId: number): Promise<string> {
+  const buffer = Buffer.from(base64, "base64");
+  const prefix = process.env.NODE_ENV === "staging" ? "staging-" : "";
+  const file = themeIconsBucket.file(`${themeId}`);
+  await file.save(buffer, { contentType: "image/png", resumable: false });
+  await file.makePublic();
+  return `https://storage.googleapis.com/${prefix}my-saga-theme-icons/${themeId}`;
 }
 
 export async function generateKycUploadUrl(
