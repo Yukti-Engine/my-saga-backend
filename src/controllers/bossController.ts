@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
-import { uploadProfileIcon } from "../services/bucketService.js";
+import { uploadProfileIcon, deleteProfileIcon } from "../services/bucketService.js";
+import { randomBytes } from "crypto";
 import {
   validateUsername, validateBio, validateBoolean,
   validateBoundedText, validateHttpUrl, validateFutureTimestamp, validatePositiveInt
@@ -85,19 +86,25 @@ export const updateBossProfile = async (req: Request, res: Response) => {
     setting2 = v.value;
   }
 
-  let bumpIcon = false;
+  let newIconKey: string | null = null;
+  let oldIconKey: string | null = null;
   if (updates.icon) {
-    await uploadProfileIcon(updates.icon, "boss", bid);
-    bumpIcon = true;
+    const { rows } = await pool.query(`SELECT icon_key FROM bosses WHERE id = $1::int`, [bid]);
+    oldIconKey = rows[0]?.icon_key ?? null;
+    newIconKey = randomBytes(16).toString("hex");
+    await uploadProfileIcon(updates.icon, "boss", newIconKey);
   }
 
   try {
     const updated = await pool.query(
-      `SELECT * FROM update_boss($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::boolean)`,
-      [bid, username, setting1, setting2, bio, bumpIcon]
+      `SELECT * FROM update_boss($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::text)`,
+      [bid, username, setting1, setting2, bio, newIconKey]
     );
     const updatedBoss = updated.rows[0];
     delete updatedBoss.password;
+    if (oldIconKey && oldIconKey !== newIconKey) {
+      deleteProfileIcon("boss", oldIconKey).catch((e) => console.error("deleteProfileIcon failed:", e));
+    }
     return res.json(updatedBoss);
   } catch (err: any) {
     if (err?.code === "23505")
@@ -116,7 +123,7 @@ export const getBossDashboard = async (req: Request, res: Response) => {
   return res.json({
     username: boss.username, gender: boss.gender, bio: boss.bio, credits: boss.credits,
     age: calculateAge(boss.dob), setting_1: boss.setting_1, setting_2: boss.setting_2,
-    icon_version: boss.icon_version ?? 0
+    icon_key: boss.icon_key ?? null
   });
 };
 export const getBossQualifications = async (req: Request, res: Response) => {

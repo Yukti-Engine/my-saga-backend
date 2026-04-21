@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
-import { uploadProfileIcon } from "../services/bucketService.js";
+import { uploadProfileIcon, deleteProfileIcon } from "../services/bucketService.js";
+import { randomBytes } from "crypto";
 import { validateUsername, validateBio, validateEmail, validateBoolean, validatePositiveInt, validateBoundedText } from "../validators.js";
 
 export const updateUserProfile = async (req: Request, res: Response) => {
@@ -44,17 +45,23 @@ export const updateUserProfile = async (req: Request, res: Response) => {
     setting2 = v.value;
   }
 
-  let bumpIcon = false;
+  let newIconKey: string | null = null;
+  let oldIconKey: string | null = null;
   if (updates.icon) {
-    await uploadProfileIcon(updates.icon, "user", uid);
-    bumpIcon = true;
+    const { rows } = await pool.query(`SELECT icon_key FROM users WHERE id = $1::int`, [uid]);
+    oldIconKey = rows[0]?.icon_key ?? null;
+    newIconKey = randomBytes(16).toString("hex");
+    await uploadProfileIcon(updates.icon, "user", newIconKey);
   }
 
   try {
     const updated = await pool.query(
-      `SELECT update_user($1::int, $2::text, $3::text, $4::text, $5::boolean, $6::boolean, $7::boolean)`,
-      [uid, username, bio, email, setting1, setting2, bumpIcon]
+      `SELECT update_user($1::int, $2::text, $3::text, $4::text, $5::boolean, $6::boolean, $7::text)`,
+      [uid, username, bio, email, setting1, setting2, newIconKey]
     );
+    if (oldIconKey && oldIconKey !== newIconKey) {
+      deleteProfileIcon("user", oldIconKey).catch((e) => console.error("deleteProfileIcon failed:", e));
+    }
     return res.json(updated.rows[0]);
   } catch (err: any) {
     if (err?.code === "23505")
@@ -84,7 +91,7 @@ export const getUserDashboard = async (req: Request, res: Response) => {
     emotional_intellect_index: user.emotional_intellect_index, creativity_index: user.creativity_index,
     bio: user.bio, age: calculateAge(user.dob), gender: user.gender,
     setting_1: user.setting_1, setting_2: user.setting_2,
-    icon_version: user.icon_version ?? 0
+    icon_key: user.icon_key ?? null
   });
 };
 

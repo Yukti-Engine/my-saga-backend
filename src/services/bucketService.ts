@@ -70,12 +70,17 @@ export async function listKycFiles(kycFolder: string): Promise<string[]> {
   return files.map((f: { name: string }) => f.name);
 }
 
-export async function uploadProfileIcon(base64: string, role: string, id: number): Promise<string> {
+export async function uploadProfileIcon(base64: string, role: string, key: string): Promise<string> {
   const buffer = Buffer.from(base64, "base64");
-  const file = profilesBucket.file(`${role}/${id}`);
+  const prefix = process.env.NODE_ENV === "staging" ? "staging-" : "";
+  const file = profilesBucket.file(`${role}/${key}`);
   await file.save(buffer, { contentType: "image/jpeg", resumable: false });
   await file.makePublic();
-  return `https://storage.googleapis.com/my-saga-profiles/${role}/${id}`;
+  return `https://storage.googleapis.com/${prefix}my-saga-profiles/${role}/${key}`;
+}
+
+export async function deleteProfileIcon(role: string, key: string): Promise<void> {
+  await profilesBucket.file(`${role}/${key}`).delete({ ignoreNotFound: true });
 }
 export async function generateUploadUrl(
   fileName: string,

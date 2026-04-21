@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
-import { uploadProfileIcon } from "../services/bucketService.js";
+import { uploadProfileIcon, deleteProfileIcon } from "../services/bucketService.js";
+import { randomBytes } from "crypto";
 import { generateAdventureName as llmGenerateAdventureName } from "../services/llmService.js";
 import {
   validateUsername, validateBio, validateBoolean,
@@ -96,19 +97,25 @@ export const updateOrganizerProfile = async (req: Request, res: Response) => {
     setting2 = v.value;
   }
 
-  let bumpIcon = false;
+  let newIconKey: string | null = null;
+  let oldIconKey: string | null = null;
   if (updates.icon) {
-    await uploadProfileIcon(updates.icon, "organizer", oid);
-    bumpIcon = true;
+    const { rows } = await pool.query(`SELECT icon_key FROM organizers WHERE id = $1::int`, [oid]);
+    oldIconKey = rows[0]?.icon_key ?? null;
+    newIconKey = randomBytes(16).toString("hex");
+    await uploadProfileIcon(updates.icon, "organizer", newIconKey);
   }
 
   try {
     const updated = await pool.query(
-      `SELECT * FROM update_organizer($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::boolean)`,
-      [oid, username, setting1, setting2, bio, bumpIcon]
+      `SELECT * FROM update_organizer($1::int, $2::text, $3::boolean, $4::boolean, $5::text, $6::text)`,
+      [oid, username, setting1, setting2, bio, newIconKey]
     );
     const updatedOrganizer = updated.rows[0];
     delete updatedOrganizer.password;
+    if (oldIconKey && oldIconKey !== newIconKey) {
+      deleteProfileIcon("organizer", oldIconKey).catch((e) => console.error("deleteProfileIcon failed:", e));
+    }
     return res.json(updatedOrganizer);
   } catch (err: any) {
     if (err?.code === "23505")
@@ -124,7 +131,7 @@ export const getOrganizerDashboard = async (req: Request, res: Response) => {
   return res.json({
     username: organizer.username, bio: organizer.bio, gender: organizer.gender, credits: organizer.credits,
     age: calculateAge(organizer.dob), setting_1: organizer.setting_1, setting_2: organizer.setting_2,
-    rating: organizer.rating, icon_version: organizer.icon_version ?? 0
+    rating: organizer.rating, icon_key: organizer.icon_key ?? null
   });
 };
 

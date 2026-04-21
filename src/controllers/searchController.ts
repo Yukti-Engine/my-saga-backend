@@ -49,7 +49,7 @@ export const getProfile = async (req: Request, res: Response) => {
   return res.json({
     username: person2.username, age: calculateAge(person2.dob), gender: person2.gender,
     setting_1: person2.setting_1, setting_2: person2.setting_2,
-    icon_version: person2.icon_version ?? 0, bio: person2.bio
+    icon_key: person2.icon_key ?? null, bio: person2.bio
   });
 };
 
