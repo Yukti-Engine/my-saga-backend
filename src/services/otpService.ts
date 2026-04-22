@@ -15,13 +15,8 @@ export async function sendOtp(phone: string): Promise<string> {
     data: `{\n  "widgetId": "366475304c4c343234373730",\n  "identifier": "${phone}", "tokenAuth":"${msg91_api}"\n}\n`
   };
 
-  try {
-    const res = await axios.request(options);
-    return res.data.message;
-  } catch (error) {
-    console.error(error);
-    return "failed";
-  } 
+  const res = await axios.request(options);
+  return res.data.message;
 }
 
 
@@ -30,16 +25,11 @@ export async function verify(requestId: string, otp: string): Promise<boolean> {
     method: 'POST',
     url: 'https://api.msg91.com/api/v5/widget/verifyOtp',
     headers: {'content-type': 'application/json'},
-    data: `{\n  "widgetId": "36636c745178333137343435",\n  "reqId": "${requestId}",\n  "otp": "${otp}", "tokenAuth":"${msg91_api}"\n}\n`
+    data: `{\n  "widgetId": "366475304c4c343234373730",\n  "reqId": "${requestId}",\n  "otp": "${otp}", "tokenAuth":"${msg91_api}"\n}\n`
   };
 
-  try {
-    await axios.request(options);
-    return true;
-  } catch (error) {
-    console.error(error);
-    return false;
-  }
+  await axios.request(options);
+  return true;
 }
 
 export async function retry(requestId: string): Promise<boolean> {
@@ -47,13 +37,9 @@ export async function retry(requestId: string): Promise<boolean> {
     method: 'POST',
     url: 'https://api.msg91.com/api/v5/widget/retryOtp',
     headers: {'content-type': 'application/json'},
-    data: `{\n  "widgetId": "36636c745178333137343435",\n  "reqId": "${requestId}", "tokenAuth":"${msg91_api}" \n}`
+    data: `{\n  "widgetId": "366475304c4c343234373730",\n  "reqId": "${requestId}", "tokenAuth":"${msg91_api}" \n}`
   };
 
-  try {
-    await axios.request(options);
-    return true;
-  } catch (error) {
-    return false;
-  }
+  await axios.request(options);
+  return true;
 }
