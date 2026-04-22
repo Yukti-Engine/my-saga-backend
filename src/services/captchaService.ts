@@ -7,5 +7,5 @@ export async function verifyRecaptchaToken(token: string): Promise<boolean> {
     { params: { secret: process.env.RECAPTCHA_API_KEY, response: token } }
   );
   if (!data.success) console.error("reCAPTCHA failed:", data["error-codes"]);
-  return data.success && data.score >= 0.5;
+  return data.success === true;
 }
