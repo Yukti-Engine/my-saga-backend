@@ -1,5 +1,5 @@
 import express from "express";
-import { updateUserProfile, getUserDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, getUserQualifications, reportOrganizer, startBook, renameBook, proceedStory, regenerateStory, concludeChapter } from "../controllers/userController.js";
+import { updateUserProfile, getUserDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, getUserQualifications, reportOrganizer, startBook, renameBook, proceedStory, regenerateStory, concludeChapter, getThemes } from "../controllers/userController.js";
 import { authUser } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -19,4 +19,5 @@ router.post("/rename-book", renameBook);
 router.post("/proceed", proceedStory);
 router.post("/regenerate", regenerateStory);
 router.post("/conclude-chapter", concludeChapter);
+router.post("/themes", getThemes);
 export default router;
