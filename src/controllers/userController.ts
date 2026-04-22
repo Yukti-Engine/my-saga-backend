@@ -620,6 +620,11 @@ export const renameBook = async (req: Request, res: Response) => {
   return res.json({ bookId: result.rows[0].id });
 };
 
+export const getThemes = async (_req: Request, res: Response) => {
+  const { rows } = await pool.query(`SELECT id, name, description FROM themes ORDER BY id ASC`);
+  return res.json(rows);
+};
+
 export const reportOrganizer = async (req: Request, res: Response) => {
   const { uid } = req.body;
   const targetV = validatePositiveInt(req.body.organizerId, "organizerId");

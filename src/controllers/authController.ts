@@ -424,3 +424,5 @@ export const signupViaLink = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Signup failed" });
   }
 };
+
+
