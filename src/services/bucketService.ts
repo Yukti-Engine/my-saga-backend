@@ -14,7 +14,6 @@ export async function uploadBadgeIcon(base64: string, badgeId: number): Promise<
   const prefix = process.env.NODE_ENV === "staging" ? "staging-" : "";
   const file = badgeIconsBucket.file(`${badgeId}`);
   await file.save(buffer, { contentType: "image/png", resumable: false });
-  await file.makePublic();
   return `https://storage.googleapis.com/${prefix}my-saga-badge-icons/${badgeId}`;
 }
 
@@ -23,7 +22,6 @@ export async function uploadCategoryIcon(base64: string, categoryId: number): Pr
   const prefix = process.env.NODE_ENV === "staging" ? "staging-" : "";
   const file = categoryIconsBucket.file(`${categoryId}`);
   await file.save(buffer, { contentType: "image/png", resumable: false });
-  await file.makePublic();
   return `https://storage.googleapis.com/${prefix}my-saga-category-icons/${categoryId}`;
 }
 
@@ -32,7 +30,6 @@ export async function uploadThemeIcon(base64: string, themeId: number): Promise<
   const prefix = process.env.NODE_ENV === "staging" ? "staging-" : "";
   const file = themeIconsBucket.file(`${themeId}`);
   await file.save(buffer, { contentType: "image/png", resumable: false });
-  await file.makePublic();
   return `https://storage.googleapis.com/${prefix}my-saga-theme-icons/${themeId}`;
 }
 
@@ -75,7 +72,6 @@ export async function uploadProfileIcon(base64: string, role: string, key: strin
   const prefix = process.env.NODE_ENV === "staging" ? "staging-" : "";
   const file = profilesBucket.file(`${role}/${key}`);
   await file.save(buffer, { contentType: "image/jpeg", resumable: false });
-  await file.makePublic();
   return `https://storage.googleapis.com/${prefix}my-saga-profiles/${role}/${key}`;
 }
 
