@@ -4,7 +4,7 @@ import { calculateAge } from "../utils.js";
 import { uploadProfileIcon, deleteProfileIcon } from "../services/bucketService.js";
 import { randomBytes } from "crypto";
 import { validateUsername, validateBio, validateEmail, validateBoolean, validatePositiveInt, validateBoundedText, validateIntRange } from "../validators.js";
-import { generateStoryChunk, generateProceedChunk, generateIntroduction, generateChapterOpening, type EventSummary, type StatChanges } from "../services/llmService.js";
+import { generateChapterConclusion, generateProceedChunk, generateIntroduction, generateChapterOpening, type EventSummary, type StatChanges, type Theme } from "../services/llmService.js";
 
 export const updateUserProfile = async (req: Request, res: Response) => {
   const { uid, updates } = req.body;
@@ -197,9 +197,10 @@ export const startBook = async (req: Request, res: Response) => {
   if (existing.rows.length > 0)
     return res.status(409).json({ error: "book already started" });
 
-  const themeExists = await pool.query(`SELECT id FROM themes WHERE id = $1::int`, [themeIdV.value]);
-  if (themeExists.rows.length === 0)
+  const themeRow = await pool.query(`SELECT name, description FROM themes WHERE id = $1::int`, [themeIdV.value]);
+  if (themeRow.rows.length === 0)
     return res.status(400).json({ error: "invalid themeId" });
+  const theme: Theme = themeRow.rows[0];
 
   try {
     const userRow = await pool.query(`SELECT name FROM users WHERE id = $1::int`, [uid]);
@@ -215,7 +216,7 @@ export const startBook = async (req: Request, res: Response) => {
     const bookId: number = book.rows[0].id;
 
     // Generate the introduction (chapter 0, seq 1)
-    const introContent = await generateIntroduction(usernameV.value, title);
+    const introContent = await generateIntroduction(usernameV.value, title, theme);
     if (!introContent) throw new Error("introduction generation failed");
 
     await pool.query(
@@ -224,13 +225,12 @@ export const startBook = async (req: Request, res: Response) => {
     );
 
     // Conclude the introduction (chapter 0, seq 2)
-    const introConclusion = await generateStoryChunk({
+    const introConclusion = await generateChapterConclusion({
       username: usernameV.value,
       bookTitle: title,
       chapter: 0,
       priorStory: introContent,
-      events: [],
-      kind: "conclude",
+      theme,
     });
     if (!introConclusion) throw new Error("introduction conclusion generation failed");
 
@@ -248,6 +248,7 @@ export const startBook = async (req: Request, res: Response) => {
       bookTitle: title,
       chapter: 1,
       previousConclusion: introConclusion,
+      theme,
     });
     if (!chapter1Opening) throw new Error("chapter 1 opening generation failed");
 
@@ -405,13 +406,17 @@ export const proceedStory = async (req: Request, res: Response) => {
   const { uid } = req.body;
 
   const bookRow = await pool.query(
-    `SELECT id, title, chapter, last_event_id, last_penalty_count FROM books WHERE user_id = $1::int`,
+    `SELECT b.id, b.title, b.chapter, b.last_event_id, b.last_penalty_count,
+            t.name AS theme_name, t.description AS theme_description
+     FROM books b LEFT JOIN themes t ON t.id = b.theme_id
+     WHERE b.user_id = $1::int`,
     [uid]
   );
   if (bookRow.rows.length === 0)
     return res.status(404).json({ error: "no book found — call start-book first" });
 
-  const book = bookRow.rows[0] as { id: number; title: string; chapter: number; last_event_id: number | null; last_penalty_count: number };
+  const book = bookRow.rows[0] as { id: number; title: string; chapter: number; last_event_id: number | null; last_penalty_count: number; theme_name: string; theme_description: string | null };
+  const theme: Theme = { name: book.theme_name, description: book.theme_description };
   const userRow = await pool.query(`SELECT username, penalties FROM users WHERE id = $1::int`, [uid]);
   const username: string = userRow.rows[0].username;
   const currentPenalties: number = userRow.rows[0].penalties;
@@ -421,7 +426,7 @@ export const proceedStory = async (req: Request, res: Response) => {
   const priorStory = await getFullStory(book.id);
 
   const [llmResult, hardStats] = await Promise.all([
-    generateProceedChunk({ username, bookTitle: book.title, chapter: book.chapter, priorStory, events }),
+    generateProceedChunk({ username, bookTitle: book.title, chapter: book.chapter, priorStory, events, theme }),
     computeHardStats(pendingIds, currentPenalties, book.last_penalty_count),
   ]);
   if (!llmResult) return res.status(500).json({ error: "story generation failed" });
@@ -453,15 +458,19 @@ export const regenerateStory = async (req: Request, res: Response) => {
   const { uid } = req.body;
 
   const bookRow = await pool.query(
-    `SELECT id, title, chapter FROM books WHERE user_id = $1::int`,
+    `SELECT b.id, b.title, b.chapter, b.last_penalty_count, t.name AS theme_name, t.description AS theme_description
+     FROM books b LEFT JOIN themes t ON t.id = b.theme_id
+     WHERE b.user_id = $1::int`,
     [uid]
   );
   if (bookRow.rows.length === 0)
     return res.status(404).json({ error: "no book found" });
 
-  const book = bookRow.rows[0] as { id: number; title: string; chapter: number };
-  const userRow = await pool.query(`SELECT username FROM users WHERE id = $1::int`, [uid]);
+  const book = bookRow.rows[0] as { id: number; title: string; chapter: number; last_penalty_count: number; theme_name: string; theme_description: string | null };
+  const theme: Theme = { name: book.theme_name, description: book.theme_description };
+  const userRow = await pool.query(`SELECT username, penalties FROM users WHERE id = $1::int`, [uid]);
   const username: string = userRow.rows[0].username;
+  const currentPenalties: number = userRow.rows[0].penalties;
 
   const lastChunk = await pool.query(
     `SELECT id, chapter, seq, kind, event_ids FROM story_chunks
@@ -483,33 +492,40 @@ export const regenerateStory = async (req: Request, res: Response) => {
 
   if (chunk.kind === 'proceed') {
     const events = await fetchEventSummaries(uid, chunk.event_ids);
-    const content = await generateStoryChunk({ username, bookTitle: book.title, chapter: chunk.chapter, priorStory: prior, events, kind: "proceed" });
-    if (!content) return res.status(500).json({ error: "story generation failed" });
-    await pool.query(`UPDATE story_chunks SET content = $1 WHERE id = $2`, [content, chunk.id]);
-    return res.json({ content, chapter: chunk.chapter, seq: chunk.seq });
+    const [llmResult, hardStats] = await Promise.all([
+      generateProceedChunk({ username, bookTitle: book.title, chapter: chunk.chapter, priorStory: prior, events, theme }),
+      computeHardStats(chunk.event_ids, currentPenalties, book.last_penalty_count),
+    ]);
+    if (!llmResult) return res.status(500).json({ error: "story generation failed" });
+    const stats: StatChanges = { ...llmResult.softStats, ...hardStats };
+    await pool.query(
+      `UPDATE story_chunks SET content = $1, stat_changes = $2 WHERE id = $3`,
+      [llmResult.story, JSON.stringify(stats), chunk.id]
+    );
+    const updatedStats = await applyStatChanges(uid, stats);
+    return res.json({ content: llmResult.story, chapter: chunk.chapter, seq: chunk.seq, statChanges: stats, stats: updatedStats });
   }
 
   // kind === 'open'
   if (chunk.chapter === 0) {
     const content = chunk.seq === 1
-      ? await generateIntroduction(username, book.title)
-      : await generateStoryChunk({ username, bookTitle: book.title, chapter: 0, priorStory: prior, events: [], kind: "conclude" });
+      ? await generateIntroduction(username, book.title, theme)
+      : await generateChapterConclusion({ username, bookTitle: book.title, chapter: 0, priorStory: prior, theme });
     if (!content) return res.status(500).json({ error: "story generation failed" });
     await pool.query(`UPDATE story_chunks SET content = $1 WHERE id = $2`, [content, chunk.id]);
     return res.json({ content, chapter: chunk.chapter, seq: chunk.seq });
   }
 
   if (chunk.seq === 1) {
-    // Chapter opener
     const previousConclusion = priorRows.rows[priorRows.rows.length - 1]?.content ?? "";
-    const content = await generateChapterOpening({ username, bookTitle: book.title, chapter: chunk.chapter, previousConclusion });
+    const content = await generateChapterOpening({ username, bookTitle: book.title, chapter: chunk.chapter, previousConclusion, theme });
     if (!content) return res.status(500).json({ error: "story generation failed" });
     await pool.query(`UPDATE story_chunks SET content = $1 WHERE id = $2`, [content, chunk.id]);
     return res.json({ content, chapter: chunk.chapter, seq: chunk.seq });
   }
 
   // seq > 1, kind='open' → chapter conclusion
-  const content = await generateStoryChunk({ username, bookTitle: book.title, chapter: chunk.chapter, priorStory: prior, events: [], kind: "conclude" });
+  const content = await generateChapterConclusion({ username, bookTitle: book.title, chapter: chunk.chapter, priorStory: prior, theme });
   if (!content) return res.status(500).json({ error: "story generation failed" });
   await pool.query(`UPDATE story_chunks SET content = $1 WHERE id = $2`, [content, chunk.id]);
   return res.json({ content, chapter: chunk.chapter, seq: chunk.seq });
@@ -519,13 +535,16 @@ export const concludeChapter = async (req: Request, res: Response) => {
   const { uid } = req.body;
 
   const bookRow = await pool.query(
-    `SELECT id, title, chapter FROM books WHERE user_id = $1::int`,
+    `SELECT b.id, b.title, b.chapter, t.name AS theme_name, t.description AS theme_description
+     FROM books b LEFT JOIN themes t ON t.id = b.theme_id
+     WHERE b.user_id = $1::int`,
     [uid]
   );
   if (bookRow.rows.length === 0)
     return res.status(404).json({ error: "no book found" });
 
-  const book = bookRow.rows[0] as { id: number; title: string; chapter: number };
+  const book = bookRow.rows[0] as { id: number; title: string; chapter: number; theme_name: string; theme_description: string | null };
+  const theme: Theme = { name: book.theme_name, description: book.theme_description };
 
   const lastChunk = await pool.query(
     `SELECT kind FROM story_chunks
@@ -541,13 +560,12 @@ export const concludeChapter = async (req: Request, res: Response) => {
   const priorStory = await getFullStory(book.id);
 
   // 1. Conclude the current chapter
-  const conclusion = await generateStoryChunk({
+  const conclusion = await generateChapterConclusion({
     username,
     bookTitle: book.title,
     chapter: book.chapter,
     priorStory,
-    events: [],
-    kind: "conclude",
+    theme,
   });
   if (!conclusion) return res.status(500).json({ error: "story generation failed" });
 
@@ -570,6 +588,7 @@ export const concludeChapter = async (req: Request, res: Response) => {
     bookTitle: book.title,
     chapter: nextChapter,
     previousConclusion: conclusion,
+    theme,
   });
   if (!opening) return res.status(500).json({ error: "chapter opening generation failed" });
 

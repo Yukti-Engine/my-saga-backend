@@ -14,7 +14,7 @@ Title: ${badge.title}
 Description: ${badge.description ?? "N/A"}
 League (difficulty, 1=hardest, 100=easiest): ${badge.league ?? "N/A"}
 
-Create a roadmap with exactly 6 to 7 checkpoints. Rules:
+Create a roadmap with exactly 5 to 6 checkpoints. Rules:
 - Every checkpoint must be a group activity — something the whole group does together, not individually
 - Activities should build progressively towards earning the badge
 - The final checkpoint must be a climactic finale that represents earning the badge
@@ -59,22 +59,26 @@ function formatEvents(events: EventSummary[]): string {
   }).join("\n\n");
 }
 
-export async function generateIntroduction(username: string, bookTitle: string): Promise<string | null> {
+export type Theme = { name: string; description: string | null };
+
+export async function generateIntroduction(username: string, bookTitle: string, theme: Theme): Promise<string | null> {
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 600,
     messages: [{
       role: "user",
-      content: `Write the introduction/prologue for a fantasy adventure chronicle titled "${bookTitle}", following the journey of @${username}.
+      content: `Write the introduction/prologue for an adventure chronicle titled "${bookTitle}", following the journey of @${username}.
+
+World setting — ${theme.name}: ${theme.description ?? theme.name}
 
 Write 3-4 paragraphs that:
-- Introduce @${username} as a budding adventurer stepping into a world of quests and challenges
-- Paint the world they inhabit with a sense of atmosphere and possibility
+- Introduce @${username} as a budding adventurer stepping into this world
+- Paint the world they inhabit with atmosphere rooted in the ${theme.name} setting
 - End on a note of anticipation — adventures are on the horizon
 
 Rules:
 - Refer to the adventurer as @${username} throughout
-- Third-person narrative, fantasy novel style
+- Third-person narrative style consistent with the ${theme.name} world
 - Only output the prose, nothing else`,
     }],
   });
@@ -89,14 +93,17 @@ export async function generateChapterOpening(params: {
   bookTitle: string;
   chapter: number;
   previousConclusion: string;
+  theme: Theme;
 }): Promise<string | null> {
-  const { username, bookTitle, chapter, previousConclusion } = params;
+  const { username, bookTitle, chapter, previousConclusion, theme } = params;
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 200,
     messages: [{
       role: "user",
       content: `You are beginning Chapter ${chapter} of "${bookTitle}", the adventure chronicle of @${username}.
+
+World setting — ${theme.name}: ${theme.description ?? theme.name}
 
 The previous chapter just ended with:
 ---
@@ -107,7 +114,7 @@ Write the opening 2-3 sentences of Chapter ${chapter} — a fresh scene that flo
 
 Rules:
 - Refer to the adventurer as @${username}
-- Third-person narrative, fantasy novel style
+- Third-person narrative style consistent with the ${theme.name} world
 - Only output the sentences, nothing else`,
     }],
   });
@@ -160,35 +167,30 @@ export async function generateProceedChunk(params: {
   chapter: number;
   priorStory: string;
   events: EventSummary[];
+  theme: Theme;
 }): Promise<{ story: string; softStats: SoftStatChanges } | null> {
-  const { username, bookTitle, chapter, priorStory, events } = params;
+  const { username, bookTitle, chapter, priorStory, events, theme } = params;
 
-  const storyPart = !priorStory
-    ? `You are beginning the adventure chronicle "@${username}'s Saga" — a fantasy-style book titled "${bookTitle}".
+  const prompt = `You are continuing Chapter ${chapter} of "${bookTitle}", the adventure chronicle of @${username}.
 
-The very first events in @${username}'s journey:
-${formatEvents(events)}
-
-Write the opening 2-3 paragraphs of this saga. Set the scene, introduce @${username}, and weave these first events into the narrative.`
-    : `You are continuing Chapter ${chapter} of "${bookTitle}", the adventure chronicle of @${username}.
+World setting — ${theme.name}: ${theme.description ?? theme.name}
 
 Story so far:
 ---
 ${priorStory}
 ---
 
-New events since the last entry:
+New events since the last entry (real-world data to be reinterpreted):
 ${formatEvents(events)}
 
-Continue the story in 2-3 paragraphs, weaving in these new events naturally.`;
-
-  const prompt = `${storyPart}
+Continue the story in 2-3 paragraphs, weaving in these events naturally.
 
 Rules:
 - Refer to this adventurer as @${username}
 - Refer to guides as @guide:theirusername, experts as @expert:theirusername, other adventurers as @theirusername
-- Third-person narrative, like a fantasy novel
-- Be specific — use actual activity names, venues, dates
+- Third-person narrative style consistent with the ${theme.name} world
+- Reinterpret every real-world activity and venue as a ${theme.name}-equivalent (e.g. a hackathon becomes a cyber-heist or arcane tournament depending on the world) — never use mundane real-world labels in the prose
+- Keep dates accurate; transform everything else through the ${theme.name} lens
 - Build on what came before — maintain tone and continuity
 ${STATS_PROMPT}`;
 
@@ -210,20 +212,22 @@ ${STATS_PROMPT}`;
   return { story, softStats: parseSoftStats(statsJson) };
 }
 
-export async function generateStoryChunk(params: {
+export async function generateChapterConclusion(params: {
   username: string;
   bookTitle: string;
   chapter: number;
   priorStory: string;
-  events: EventSummary[];
-  kind: "proceed" | "conclude";
+  theme: Theme;
 }): Promise<string | null> {
-  const { username, bookTitle, chapter, priorStory, events, kind } = params;
+  const { username, bookTitle, chapter, priorStory, theme } = params;
+  const message = await client.messages.create({
+    model: MODEL,
+    max_tokens: 250,
+    messages: [{
+      role: "user",
+      content: `You are writing the closing paragraph of Chapter ${chapter} in "${bookTitle}", the adventure chronicle of @${username}.
 
-  let prompt: string;
-
-  if (kind === "conclude") {
-    prompt = `You are writing the closing paragraph of Chapter ${chapter} in "${bookTitle}", the adventure chronicle of @${username}.
+World setting — ${theme.name}: ${theme.description ?? theme.name}
 
 The full story so far (Chapter ${chapter} is the current chapter at the end):
 ---
@@ -235,54 +239,16 @@ Write a single satisfying closing paragraph (3-5 sentences) that concludes Chapt
 Rules:
 - Refer to this adventurer as @${username}
 - Refer to guides as @guide:theirusername, experts as @expert:theirusername, other adventurers as @theirusername
-- Third-person narrative, like a fantasy novel
-- Only output the paragraph, nothing else`;
-  } else if (!priorStory) {
-    prompt = `You are beginning the adventure chronicle "@${username}'s Saga" — a fantasy-style book titled "${bookTitle}".
-
-The very first events in @${username}'s journey:
-${formatEvents(events)}
-
-Write the opening 2-3 paragraphs of this saga. Set the scene, introduce @${username}, and weave these first events into the narrative.
-
-Rules:
-- Refer to this adventurer as @${username}
-- Refer to guides as @guide:theirusername, experts as @expert:theirusername, other adventurers as @theirusername
-- Third-person narrative, like a fantasy novel
-- Be specific — use actual activity names, venues, dates
-- Only output the story paragraphs, nothing else`;
-  } else {
-    prompt = `You are continuing Chapter ${chapter} of "${bookTitle}", the adventure chronicle of @${username}.
-
-Story so far:
----
-${priorStory}
----
-
-New events since the last entry:
-${formatEvents(events)}
-
-Continue the story in 2-3 paragraphs, weaving in these new events naturally.
-
-Rules:
-- Refer to this adventurer as @${username}
-- Refer to guides as @guide:theirusername, experts as @expert:theirusername, other adventurers as @theirusername
-- Third-person narrative, like a fantasy novel
-- Build on what came before — maintain tone and continuity
-- Only output the story paragraphs, nothing else`;
-  }
-
-  const message = await client.messages.create({
-    model: MODEL,
-    max_tokens: 600,
-    messages: [{ role: "user", content: prompt }],
+- Third-person narrative style consistent with the ${theme.name} world
+- Only output the paragraph, nothing else`,
+    }],
   });
-
   const content = message.content[0];
   if (!content || content.type !== "text") return null;
   const text = content.text.trim();
   return text.length > 0 ? text : null;
 }
+
 
 export async function generateAdventureName(roadmap: string): Promise<string | null> {
   const message = await client.messages.create({
