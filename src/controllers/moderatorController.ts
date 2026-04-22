@@ -51,14 +51,11 @@ export const createNewBadge = async (req: Request, res: Response) => {
     );
     const badgeId: number = rows[0].create_badge;
 
-    let iconVersion = 0;
     if (icon) {
       await uploadBadgeIcon(icon, badgeId);
-      await pool.query(`UPDATE badges SET icon_version = 1 WHERE id = $1`, [badgeId]);
-      iconVersion = 1;
     }
 
-    return res.json({ message: "Badge created", id: badgeId, iconVersion });
+    return res.json({ message: "Badge created", id: badgeId });
   } catch (err) {
     console.error("Error in createNewBadge:", err);
     return res.status(500).json({ error: "Failed to create badge" });
