@@ -16,6 +16,9 @@ export async function sendOtp(phone: string): Promise<string> {
   };
 
   const res = await axios.request(options);
+  if (res.data.type === "error" || !res.data.message) {
+    throw new Error(`MSG91 sendOtp failed: ${JSON.stringify(res.data)}`);
+  }
   return res.data.message;
 }
 
