@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
-import { generateKycDownloadUrl, listKycFiles, uploadBadgeIcon } from "../services/bucketService.js";
+import { generateKycDownloadUrl, listKycFiles, uploadBadgeIcon, uploadThemeIcon } from "../services/bucketService.js";
 
 export const addBoss = async (req: Request, res: Response) => {
   const { name, email, password, username, phone, dob, gender } = req.body;
@@ -333,3 +333,63 @@ export const kycDownloadUrl = async (req: Request, res: Response) => {
   return res.json({ url });
 };
 
+
+export const getTickets = async (req: Request, res: Response) => {
+  const { status, type, limit, offset } = req.body;
+  const { rows } = await pool.query(
+    `SELECT * FROM tickets
+     WHERE ($1::text IS NULL OR status = $1::text)
+       AND ($2::text IS NULL OR type = $2::text)
+     ORDER BY created_at DESC
+     LIMIT $3::int OFFSET $4::int`,
+    [status ?? null, type ?? null, limit ?? 50, offset ?? 0]
+  );
+  return res.json({ tickets: rows });
+};
+
+export const resolveTicket = async (req: Request, res: Response) => {
+  const { ticketId, status } = req.body;
+  if (!Number.isInteger(ticketId) || ticketId <= 0)
+    return res.status(400).json({ error: "ticketId must be a positive integer" });
+  if (!["approved", "rejected", "closed"].includes(status))
+    return res.status(400).json({ error: "status must be approved, rejected, or closed" });
+
+  const { rows } = await pool.query(
+    `UPDATE tickets SET status = $1, resolved_at = NOW(), updated_at = NOW()
+     WHERE id = $2::int RETURNING *`,
+    [status, ticketId]
+  );
+  if (rows.length === 0)
+    return res.status(404).json({ error: "ticket not found" });
+  return res.json({ ticket: rows[0] });
+};
+
+export const uploadBadgeIconRoute = async (req: Request, res: Response) => {
+  const { badgeId, icon } = req.body;
+  if (!Number.isInteger(badgeId) || badgeId <= 0)
+    return res.status(400).json({ error: "badgeId must be a positive integer" });
+  if (typeof icon !== "string" || icon.length === 0)
+    return res.status(400).json({ error: "icon must be a base64 string" });
+  await uploadBadgeIcon(icon, badgeId);
+  return res.json({ message: "icon uploaded" });
+};
+
+export const uploadThemeIconRoute = async (req: Request, res: Response) => {
+  const { themeId, icon } = req.body;
+  if (!Number.isInteger(themeId) || themeId <= 0)
+    return res.status(400).json({ error: "themeId must be a positive integer" });
+  if (typeof icon !== "string" || icon.length === 0)
+    return res.status(400).json({ error: "icon must be a base64 string" });
+  await uploadThemeIcon(icon, themeId);
+  return res.json({ message: "icon uploaded" });
+};
+
+export const getThemes = async (req: Request, res: Response) => {
+  try {
+    const { rows } = await pool.query(`SELECT id, name, description FROM themes ORDER BY id ASC`);
+    return res.json({ themes: rows });
+  } catch (err) {
+    console.error("Error in getThemes:", err);
+    return res.status(500).json({ error: "Failed to fetch themes" });
+  }
+};

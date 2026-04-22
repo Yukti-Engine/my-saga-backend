@@ -1,5 +1,5 @@
 import express from "express";
-import { addBoss, addOrganizer, createNewBadge, createCategory, createTournament, verifyToken, getUsers, getOrganizers, getBosses, grantGems, grantCredits, getAdventures, getTournaments, getCategories, getBadges, addCategoryQualification, removeCategoryQualification, listKyc, kycDownloadUrl } from "../controllers/moderatorController.js";
+import { addBoss, addOrganizer, createNewBadge, createCategory, createTournament, verifyToken, getUsers, getOrganizers, getBosses, grantGems, grantCredits, getAdventures, getTournaments, getCategories, getBadges, addCategoryQualification, removeCategoryQualification, listKyc, kycDownloadUrl, getTickets, resolveTicket, uploadBadgeIconRoute, uploadThemeIconRoute, getThemes } from "../controllers/moderatorController.js";
 import { authSuperToken } from "../middlewares/auth.js";
 import { generateSignupLink } from "../controllers/authController.js";
 
@@ -25,5 +25,10 @@ router.post("/create-tournament", authSuperToken, createTournament);
 router.post("/generate-signup-link", authSuperToken, generateSignupLink);
 router.post("/list-kyc", authSuperToken, listKyc);
 router.post("/kyc-download-url", authSuperToken, kycDownloadUrl);
+router.post("/tickets", authSuperToken, getTickets);
+router.post("/resolve-ticket", authSuperToken, resolveTicket);
+router.post("/upload-badge-icon", authSuperToken, uploadBadgeIconRoute);
+router.post("/upload-theme-icon", authSuperToken, uploadThemeIconRoute);
+router.post("/themes", authSuperToken, getThemes);
 
 export default router;

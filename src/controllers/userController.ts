@@ -625,6 +625,37 @@ export const getThemes = async (_req: Request, res: Response) => {
   return res.json(rows);
 };
 
+export const getBook = async (req: Request, res: Response) => {
+  const { uid } = req.body;
+
+  const bookRow = await pool.query(
+    `SELECT b.id, b.title, b.chapter, b.status, t.name AS theme_name, t.description AS theme_description
+     FROM books b LEFT JOIN themes t ON t.id = b.theme_id
+     WHERE b.user_id = $1::int`,
+    [uid]
+  );
+  if (bookRow.rows.length === 0)
+    return res.status(404).json({ error: "no book found" });
+
+  const book = bookRow.rows[0];
+
+  const { rows: chunks } = await pool.query(
+    `SELECT chapter, seq, kind, content, event_ids, stat_changes, created_at
+     FROM story_chunks WHERE book_id = $1::int
+     ORDER BY chapter ASC, seq ASC`,
+    [book.id]
+  );
+
+  return res.json({
+    id: book.id,
+    title: book.title,
+    chapter: book.chapter,
+    status: book.status,
+    theme: { name: book.theme_name, description: book.theme_description },
+    chunks,
+  });
+};
+
 export const reportOrganizer = async (req: Request, res: Response) => {
   const { uid } = req.body;
   const targetV = validatePositiveInt(req.body.organizerId, "organizerId");
