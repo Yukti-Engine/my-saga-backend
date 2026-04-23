@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
-import { generateKycDownloadUrl, listKycFiles, uploadBadgeIcon, uploadThemeIcon } from "../services/bucketService.js";
+import { generateKycDownloadUrl, listKycFiles, uploadBadgeIcon, uploadCategoryIcon, uploadThemeIcon } from "../services/bucketService.js";
 
 export const addBoss = async (req: Request, res: Response) => {
   const { name, email, password, username, phone, dob, gender } = req.body;
@@ -371,6 +371,16 @@ export const uploadBadgeIconRoute = async (req: Request, res: Response) => {
   if (typeof icon !== "string" || icon.length === 0)
     return res.status(400).json({ error: "icon must be a base64 string" });
   await uploadBadgeIcon(icon, badgeId);
+  return res.json({ message: "icon uploaded" });
+};
+
+export const uploadCategoryIconRoute = async (req: Request, res: Response) => {
+  const { categoryId, icon } = req.body;
+  if (!Number.isInteger(categoryId) || categoryId <= 0)
+    return res.status(400).json({ error: "categoryId must be a positive integer" });
+  if (typeof icon !== "string" || icon.length === 0)
+    return res.status(400).json({ error: "icon must be a base64 string" });
+  await uploadCategoryIcon(icon, categoryId);
   return res.json({ message: "icon uploaded" });
 };
 
