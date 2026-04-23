@@ -206,7 +206,7 @@ export const startBook = async (req: Request, res: Response) => {
     const userRow = await pool.query(`SELECT name FROM users WHERE id = $1::int`, [uid]);
     const title = (userRow.rows[0]?.name as string ?? "my saga").slice(0, 20);
 
-    await pool.query(`SELECT update_user($1::int, $2::text, NULL, NULL, NULL, NULL, NULL)`, [uid, usernameV.value]);
+    await pool.query(`SELECT update_user($1::int, $2::text, NULL::text, NULL::text, NULL::boolean, NULL::boolean, NULL::text)`, [uid, usernameV.value]);
 
     // books.chapter defaults to 0 (introduction chapter)
     const book = await pool.query(
