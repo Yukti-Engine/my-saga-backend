@@ -422,6 +422,9 @@ export const proceedStory = async (req: Request, res: Response) => {
   const currentPenalties: number = userRow.rows[0].penalties;
 
   const pendingIds = await getPendingEventIds(uid, book.last_event_id);
+  if (pendingIds.length === 0)
+    return res.status(400).json({ error: "no new events since your last story entry — complete an adventure event first" });
+
   const events = await fetchEventSummaries(uid, pendingIds);
   const priorStory = await getFullStory(book.id);
 
