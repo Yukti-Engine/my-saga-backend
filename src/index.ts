@@ -30,7 +30,21 @@ io.on("connection", (socket) => {
   roomSocket(io, socket);
   socket.on("disconnect", () => {  });
 });
-app.use(bodyParser.json({ limit: "2mb" }));
+app.use((req, res, next) => {
+  const url = req.url;
+  if (url.includes("/upload-theme-icon")) {
+    return bodyParser.json({ limit: "5mb" })(req, res, next);
+  }
+  if (
+    url.includes("/upload-badge-icon") ||
+    url.includes("/upload-category-icon") ||
+    url.includes("/update-profile") ||
+    url.includes("/create-badge")
+  ) {
+    return bodyParser.json({ limit: "1mb" })(req, res, next);
+  }
+  return bodyParser.json({ limit: "100kb" })(req, res, next);
+});
 app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
 app.use("/mail", mailRoutes);
