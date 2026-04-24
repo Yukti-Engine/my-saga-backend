@@ -30,7 +30,7 @@ io.on("connection", (socket) => {
   roomSocket(io, socket);
   socket.on("disconnect", () => {  });
 });
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: "2mb" }));
 app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
 app.use("/mail", mailRoutes);
