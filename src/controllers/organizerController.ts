@@ -289,7 +289,7 @@ export const startAdventure = async (req: Request, res: Response) => {
 
   const lobby = (await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [oid, "organizer"])).rows[0];
   const matchId = lobby.id;
-  if (lobby.boss_id && lobby.user_ids.length >= 6){
+  if (lobby.boss_id && lobby.user_ids.length >= 4){
     const result = await pool.query(`SELECT * FROM complete_match($1::text, $2::int)`, [name, matchId]);
     await pool.query(`SELECT bump_limitation($1::int)`, [oid]);
     return res.json(result.rows[0]);
