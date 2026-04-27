@@ -105,7 +105,7 @@ export const findLobbies = async (req: Request, res: Response) => {
         return res.status(400).json({ error: "badgeIds must contain positive integers" });
     }
     const quals = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS badge_id`, [id, "boss"]);
-    const qualifiedBadgeIds = new Set(quals.rows.map((r: any) => r.badge_id));
+    const qualifiedBadgeIds = new Set(quals.rows.map((r: any) => Number(r.badge_id)));
     for (const bid of badgeIds) {
       if (!qualifiedBadgeIds.has(bid))
         return res.status(403).json({ error: "Not qualified for one or more badges" });
@@ -120,7 +120,8 @@ export const findLobbies = async (req: Request, res: Response) => {
   else if (role == "user"){
     rows = (await pool.query(`SELECT * FROM get_user($1::int)`, [id])).rows;
   }
-  if(!rows) throw new Error("no such person");
+  if (!rows || rows.length === 0)
+    return res.status(404).json({ error: "no such person" });
   const person = rows[0];
   const age = calculateAge(person.dob);
   const compatible = await pool.query(
