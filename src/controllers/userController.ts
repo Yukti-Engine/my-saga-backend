@@ -162,13 +162,8 @@ matchRequest.half_girls
 ]
 );
   const result = matched.rows[0].result;
-  if (result.success) {
-    const deducted = await pool.query(`SELECT deduct_gems($1::int, $2::int) AS ok`, [uid, result.cost]);
-    if (deducted.rows[0].ok)
-      return res.json({ success: true });
-    else
-      return res.json({ success: false, message: "Insufficient gems" });
-  }
+  if (result.success)
+    return res.json({ success: true });
   return res.json({ success: false, message: "Error" });
 };
 
