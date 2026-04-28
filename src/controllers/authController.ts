@@ -5,16 +5,10 @@ import { sendOtp, retry, verify } from "../services/otpService.js";
 import { sendEmail } from "../services/mailerService.js";
 import { generateKycUploadUrl } from "../services/bucketService.js";
 import { validateName, validatePhone, validateEmail, validateDob, validateGender, validateRequestId, validateOtp, validateReasonToJoin, escapeHtml, validatePassword, validateUsername, validateBoundedText } from "../validators.js";
-import { MYSAGA_TERMS_VERSION, MYSAGA_PRIVACY_VERSION, MYSAGAGUIDE_TERMS_VERSION, MYSAGAGUIDE_PRIVACY_VERSION, MYGUILD_TERMS_VERSION, MYGUILD_PRIVACY_VERSION } from "../legalVersions.js";
+import { fetchLegalVersions, type LegalApp } from "../legalVersions.js";
 
 const LEGAL_BUCKET = process.env.NODE_ENV === "production" ? "my-saga-legal" : "staging-my-saga-legal";
 const LEGAL_BASE = `https://storage.googleapis.com/${LEGAL_BUCKET}`;
-
-const APP_VERSIONS = {
-  user:   { termsVersion: MYSAGA_TERMS_VERSION,      privacyVersion: MYSAGA_PRIVACY_VERSION,      folder: "user" },
-  guide:  { termsVersion: MYSAGAGUIDE_TERMS_VERSION,  privacyVersion: MYSAGAGUIDE_PRIVACY_VERSION,  folder: "guide" },
-  expert: { termsVersion: MYGUILD_TERMS_VERSION,      privacyVersion: MYGUILD_PRIVACY_VERSION,      folder: "expert" },
-} as const;
 
 
 function joinRequestAcknowledgement(
@@ -53,17 +47,17 @@ function joinRequestAcknowledgement(
 
 
 /* ----------------- LEGAL VERSIONS ----------------- */
-export const getLegalVersions = (req: Request, res: Response) => {
+export const getLegalVersions = async (req: Request, res: Response) => {
   const app: string = req.body.app;
   if (app !== "user" && app !== "guide" && app !== "expert")
     return res.status(400).json({ error: "app must be user, guide, or expert" });
 
-  const { termsVersion, privacyVersion, folder } = APP_VERSIONS[app as keyof typeof APP_VERSIONS];
+  const { terms_version, privacy_version } = await fetchLegalVersions(app as LegalApp);
   return res.json({
-    termsVersion,
-    termsUrl: `${LEGAL_BASE}/${folder}/terms-and-conditions/${termsVersion}.pdf`,
-    privacyVersion,
-    privacyUrl: `${LEGAL_BASE}/${folder}/privacy-policy/${privacyVersion}.pdf`,
+    termsVersion: terms_version,
+    termsUrl: `${LEGAL_BASE}/${app}/terms-and-conditions/${terms_version}.pdf`,
+    privacyVersion: privacy_version,
+    privacyUrl: `${LEGAL_BASE}/${app}/privacy-policy/${privacy_version}.pdf`,
   });
 };
 
@@ -132,6 +126,7 @@ export const signupVerifyOtp = async (req: Request, res: Response) => {
     if (req.body.acceptTerms !== true || req.body.acceptPrivacy !== true)
       return res.status(400).json({ error: "You must accept the Terms & Conditions and Privacy Policy to sign up" });
 
+    const { terms_version, privacy_version } = await fetchLegalVersions("user");
     await pool.query(
       `SELECT create_user($1::text, $2::text, $3::text, $4::date, $5::text)`,
       [pendingUser.name, pendingUser.phone, pendingUser.email, pendingUser.dob, pendingUser.gender]
@@ -139,7 +134,7 @@ export const signupVerifyOtp = async (req: Request, res: Response) => {
     await pool.query(
       `UPDATE users SET terms_accepted_version = $1, terms_accepted_at = NOW(), privacy_accepted_version = $2, privacy_accepted_at = NOW()
        WHERE phone = $3::text`,
-      [MYSAGA_TERMS_VERSION, MYSAGA_PRIVACY_VERSION, pendingUser.phone]
+      [terms_version, privacy_version, pendingUser.phone]
     );
 
     return res.json({ message: "Signup successful" });
@@ -454,8 +449,8 @@ export const signupViaLink = async (req: Request, res: Response) => {
     );
     const newId: number = rows[0].id;
     const table = role === "organizer" ? "organizers" : "bosses";
-    const termsV = role === "organizer" ? MYSAGAGUIDE_TERMS_VERSION : MYGUILD_TERMS_VERSION;
-    const privacyV = role === "organizer" ? MYSAGAGUIDE_PRIVACY_VERSION : MYGUILD_PRIVACY_VERSION;
+    const legalApp: LegalApp = role === "organizer" ? "guide" : "expert";
+    const { terms_version: termsV, privacy_version: privacyV } = await fetchLegalVersions(legalApp);
     await pool.query(
       `UPDATE ${table} SET terms_accepted_version = $1, terms_accepted_at = NOW(), privacy_accepted_version = $2, privacy_accepted_at = NOW() WHERE id = $3::int`,
       [termsV, privacyV, newId]
