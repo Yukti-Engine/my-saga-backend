@@ -1,6 +1,6 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { signupRequestOtp, signupVerifyOtp, loginRequestOtp,loginVerifyOtp, signupResendOtp, loginResendOtp, organizerLogin, bossLogin, organizerJoinRequest, signupViaLink, getKycUploadUrlForSignup } from "../controllers/authController.js";
+import { signupRequestOtp, signupVerifyOtp, loginRequestOtp,loginVerifyOtp, signupResendOtp, loginResendOtp, organizerLogin, bossLogin, organizerJoinRequest, signupViaLink, getKycUploadUrlForSignup, getLegalVersions } from "../controllers/authController.js";
 import { verifyRecaptcha } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -32,5 +32,6 @@ router.post("/login-resend-otp", otpLimiter, loginResendOtp);
 router.post("/organizer-join-request", otpLimiter, verifyRecaptcha, organizerJoinRequest);
 router.post("/signup-via-link", loginLimiter, verifyRecaptcha, signupViaLink);
 router.post("/kyc-upload-url", otpLimiter, getKycUploadUrlForSignup);
+router.post("/legal-versions", getLegalVersions);
 
 export default router;

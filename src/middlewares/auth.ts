@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import pool from "../db.js";
 import { verifyRecaptchaToken } from "../services/captchaService.js";
+import { MYSAGA_TERMS_VERSION, MYSAGA_PRIVACY_VERSION, MYSAGAGUIDE_TERMS_VERSION, MYSAGAGUIDE_PRIVACY_VERSION, MYGUILD_TERMS_VERSION, MYGUILD_PRIVACY_VERSION } from "../legalVersions.js";
 
 export const authUser = async (req: Request, res: Response, next: NextFunction) => {
   const { uid, accessToken } = req.body;
@@ -57,6 +58,35 @@ export const authSuperToken = (req: Request, res: Response, next: NextFunction) 
     return res.status(401).json({ error: "Unauthorized" });
   next();
 };
+
+const TERMS_VERSION = { user: MYSAGA_TERMS_VERSION, organizer: MYSAGAGUIDE_TERMS_VERSION, boss: MYGUILD_TERMS_VERSION };
+const PRIVACY_VERSION = { user: MYSAGA_PRIVACY_VERSION, organizer: MYSAGAGUIDE_PRIVACY_VERSION, boss: MYGUILD_PRIVACY_VERSION };
+
+export const requireLegalAcceptance = (role: "user" | "organizer" | "boss") =>
+  async (req: Request, res: Response, next: NextFunction) => {
+    const idField = role === "user" ? "uid" : role === "organizer" ? "oid" : "bid";
+    const id = req.body[idField];
+    const table = role === "user" ? "users" : role === "organizer" ? "organizers" : "bosses";
+    const { rows } = await pool.query(
+      `SELECT terms_accepted_version, privacy_accepted_version FROM ${table} WHERE id = $1::int`,
+      [id]
+    );
+    if (rows.length === 0) return res.status(401).json({ error: "Authentication Error" });
+    const { terms_accepted_version, privacy_accepted_version } = rows[0];
+    const currentTermsVersion = TERMS_VERSION[role];
+    const currentPrivacyVersion = PRIVACY_VERSION[role];
+    const requiresTerms = terms_accepted_version < currentTermsVersion;
+    const requiresPrivacy = privacy_accepted_version < currentPrivacyVersion;
+    if (requiresTerms || requiresPrivacy)
+      return res.status(403).json({
+        error: "Legal acceptance required",
+        requiresTerms,
+        requiresPrivacy,
+        currentTermsVersion,
+        currentPrivacyVersion,
+      });
+    next();
+  };
 
 export const authAny = async (req: Request, res: Response, next: NextFunction) => {
   const { id, role, accessToken } = req.body;

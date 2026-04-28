@@ -192,3 +192,26 @@ export const reportOrganizer = async (req: Request, res: Response) => {
   );
   return res.json({ ticketId: inserted.rows[0].id });
 };
+
+export const acceptLegal = async (req: Request, res: Response) => {
+  const { bid } = req.body;
+  const { acceptTerms, acceptPrivacy } = req.body;
+  if (acceptTerms !== undefined && typeof acceptTerms !== "boolean")
+    return res.status(400).json({ error: "acceptTerms must be a boolean" });
+  if (acceptPrivacy !== undefined && typeof acceptPrivacy !== "boolean")
+    return res.status(400).json({ error: "acceptPrivacy must be a boolean" });
+
+  const { MYGUILD_TERMS_VERSION, MYGUILD_PRIVACY_VERSION } = await import("../legalVersions.js");
+  const sets: string[] = [];
+  if (acceptTerms === true) {
+    sets.push(`terms_accepted_version = ${MYGUILD_TERMS_VERSION}, terms_accepted_at = NOW()`);
+  }
+  if (acceptPrivacy === true) {
+    sets.push(`privacy_accepted_version = ${MYGUILD_PRIVACY_VERSION}, privacy_accepted_at = NOW()`);
+  }
+  if (sets.length === 0)
+    return res.status(400).json({ error: "Provide acceptTerms and/or acceptPrivacy as true" });
+
+  await pool.query(`UPDATE bosses SET ${sets.join(", ")} WHERE id = $1::int`, [bid]);
+  return res.json({ success: true });
+};

@@ -1,10 +1,12 @@
 import express from "express";
-import { updateBossProfile, getBossDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, organizeExam, getBossQualifications, reportOrganizer } from "../controllers/bossController.js";
-import { authBoss } from "../middlewares/auth.js";
+import { updateBossProfile, getBossDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, organizeExam, getBossQualifications, reportOrganizer, acceptLegal } from "../controllers/bossController.js";
+import { authBoss, requireLegalAcceptance } from "../middlewares/auth.js";
 
 const router = express.Router();
 router.use(authBoss);
- 
+router.post("/accept-legal", acceptLegal);
+router.use(requireLegalAcceptance("boss"));
+
 router.post("/update-profile", updateBossProfile);
 router.post("/dashboard", getBossDashboard);
 router.post("/match", joinAdventure);

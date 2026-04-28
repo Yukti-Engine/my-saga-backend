@@ -1,0 +1,8 @@
+export const MYSAGA_TERMS_VERSION = 1;
+export const MYSAGA_PRIVACY_VERSION = 1;
+
+export const MYSAGAGUIDE_TERMS_VERSION = 1;
+export const MYSAGAGUIDE_PRIVACY_VERSION = 1;
+
+export const MYGUILD_TERMS_VERSION = 1;
+export const MYGUILD_PRIVACY_VERSION = 1;

@@ -1,9 +1,11 @@
 import express from "express";
-import { updateUserProfile, getUserDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, getUserQualifications, reportOrganizer, startBook, renameBook, proceedStory, regenerateStory, concludeChapter, getThemes, getBook } from "../controllers/userController.js";
-import { authUser } from "../middlewares/auth.js";
+import { updateUserProfile, getUserDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, getUserQualifications, reportOrganizer, startBook, renameBook, proceedStory, regenerateStory, concludeChapter, getThemes, getBook, acceptLegal } from "../controllers/userController.js";
+import { authUser, requireLegalAcceptance } from "../middlewares/auth.js";
 
 const router = express.Router();
 router.use(authUser);
+router.post("/accept-legal", acceptLegal);
+router.use(requireLegalAcceptance("user"));
 
 router.post("/update-profile", updateUserProfile);
 router.post("/dashboard", getUserDashboard);
