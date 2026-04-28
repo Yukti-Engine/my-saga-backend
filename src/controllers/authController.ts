@@ -337,7 +337,7 @@ export const bossLogin = async (req: Request, res: Response) => {
 
 function signupInviteEmail(role: "organizer" | "boss", signupUrl: string) {
   const roleLabel = role === "organizer" ? "Guide" : "Expert";
-  const platform = role === "organizer" ? "MyGuild" : "MySaga";
+  const platform = role === "organizer" ? "MySagaGuide" : "MyGuild";
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #333;">You've been invited to join ${platform}!</h2>
@@ -388,7 +388,7 @@ export const generateSignupLink = async (req: Request, res: Response) => {
   );
 
   if (role === "organizer" && emailV.value) {
-    const signupUrl = `https://myguild.in/join?token=${token}`;
+    const signupUrl = `https://guide.mysaga.in/join?token=${token}`;
     const { subject, html } = signupInviteEmail(role, signupUrl);
     sendEmail(emailV.value, subject, html).catch((e) =>
       console.error("signup invite email failed:", e)
