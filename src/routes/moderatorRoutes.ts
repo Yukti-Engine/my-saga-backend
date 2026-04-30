@@ -1,5 +1,5 @@
 import express from "express";
-import { addBoss, addOrganizer, createNewBadge, createCategory, createTournament, verifyToken, getUsers, getOrganizers, getBosses, grantGems, grantCredits, getAdventures, getTournaments, getCategories, getBadges, addCategoryQualification, removeCategoryQualification, listKyc, kycDownloadUrl, getTickets, resolveTicket, uploadBadgeIconRoute, uploadCategoryIconRoute, uploadThemeIconRoute, getThemes } from "../controllers/moderatorController.js";
+import { addBoss, addOrganizer, createNewBadge, createCategory, createTournament, verifyToken, getUsers, getOrganizers, getBosses, grantGems, grantCredits, getAdventures, getTournaments, getCategories, getBadges, addCategoryQualification, removeCategoryQualification, listKyc, kycDownloadUrl, getTickets, resolveTicket, uploadBadgeIconRoute, uploadCategoryIconRoute, uploadThemeIconRoute, getThemes, listPendingSignups, getPendingSignupKyc, pendingSignupKycDownloadUrl, approveSignup, rejectSignup } from "../controllers/moderatorController.js";
 import { authSuperToken } from "../middlewares/auth.js";
 import { generateSignupLink } from "../controllers/authController.js";
 
@@ -31,5 +31,10 @@ router.post("/upload-badge-icon", authSuperToken, uploadBadgeIconRoute);
 router.post("/upload-category-icon", authSuperToken, uploadCategoryIconRoute);
 router.post("/upload-theme-icon", authSuperToken, uploadThemeIconRoute);
 router.post("/themes", authSuperToken, getThemes);
+router.post("/pending-signups", authSuperToken, listPendingSignups);
+router.post("/pending-signup-kyc", authSuperToken, getPendingSignupKyc);
+router.post("/pending-signup-kyc-download-url", authSuperToken, pendingSignupKycDownloadUrl);
+router.post("/approve-signup", authSuperToken, approveSignup);
+router.post("/reject-signup", authSuperToken, rejectSignup);
 
 export default router;

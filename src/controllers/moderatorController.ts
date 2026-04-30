@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
-import { generateKycDownloadUrl, listKycFiles, uploadBadgeIcon, uploadCategoryIcon, uploadThemeIcon } from "../services/bucketService.js";
+import { generateKycDownloadUrl, listKycFiles, uploadBadgeIcon, uploadCategoryIcon, uploadThemeIcon, deleteKycFolder } from "../services/bucketService.js";
+import { sendEmail } from "../services/mailerService.js";
+import { escapeHtml } from "../validators.js";
 
 export const addBoss = async (req: Request, res: Response) => {
   const { name, email, password, username, phone, dob, gender } = req.body;
@@ -401,5 +403,188 @@ export const getThemes = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Error in getThemes:", err);
     return res.status(500).json({ error: "Failed to fetch themes" });
+  }
+};
+
+/* ─────────────────── PENDING SIGNUPS ─────────────────── */
+
+function signupApprovalEmail(role: "organizer" | "boss", name: string) {
+  const platform = role === "organizer" ? "MySagaGuide" : "MyGuild";
+  const loginUrl = role === "organizer" ? "https://guide.mysaga.in" : "https://expert.mysaga.in";
+  const roleLabel = role === "organizer" ? "Guide" : "Expert";
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #333;">Welcome to ${platform}!</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>
+        Great news — your application to join <strong>${platform}</strong> as a
+        <strong>${roleLabel}</strong> has been reviewed and approved.
+      </p>
+      <p>Your account is ready. You can sign in with the email and password you provided during signup.</p>
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${loginUrl}"
+           style="background-color: #010101; color: #ffffff; padding: 14px 28px; border-radius: 8px;
+                  text-decoration: none; font-size: 16px; display: inline-block;">
+          Sign In
+        </a>
+      </div>
+      <p>We're excited to have you on board. Welcome to the team!</p>
+      <br />
+      <p>Warm regards,</p>
+      <p><strong>MySaga Support Team</strong></p>
+      <hr style="border: none; border-top: 1px solid #eee; margin-top: 24px;" />
+      <p style="font-size: 12px; color: #999;">This is an automated message from support@mysaga.in. Please do not reply directly to this email.</p>
+    </div>
+  `;
+  return { subject: `Your ${platform} account is approved — welcome aboard!`, html };
+}
+
+function signupRejectionEmail(role: "organizer" | "boss", name: string, reason?: string) {
+  const platform = role === "organizer" ? "MySagaGuide" : "MyGuild";
+  const reasonBlock = reason
+    ? `<p>Our team has shared the following note:</p>
+       <blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #555; margin: 16px 0;">
+         "${escapeHtml(reason)}"
+       </blockquote>`
+    : "";
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #333;">Update on your ${platform} application</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>
+        Thank you for applying to join <strong>${platform}</strong>. After careful review,
+        we're unable to approve your application at this time.
+      </p>
+      ${reasonBlock}
+      <p>We appreciate your interest and wish you the best.</p>
+      <br />
+      <p>Regards,</p>
+      <p><strong>MySaga Support Team</strong></p>
+      <hr style="border: none; border-top: 1px solid #eee; margin-top: 24px;" />
+      <p style="font-size: 12px; color: #999;">This is an automated message from support@mysaga.in. Please do not reply directly to this email.</p>
+    </div>
+  `;
+  return { subject: `Update on your ${platform} application`, html };
+}
+
+export const listPendingSignups = async (req: Request, res: Response) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, role, email, name, phone, dob, gender, username, kyc_folder, submitted_at
+       FROM pending_signups ORDER BY submitted_at DESC`
+    );
+    return res.json({ pendingSignups: rows });
+  } catch (err) {
+    console.error("Error in listPendingSignups:", err);
+    return res.status(500).json({ error: "Failed to list pending signups" });
+  }
+};
+
+export const getPendingSignupKyc = async (req: Request, res: Response) => {
+  const { id } = req.body;
+  if (!Number.isInteger(id) || id <= 0)
+    return res.status(400).json({ error: "id must be a positive integer" });
+
+  try {
+    const { rows } = await pool.query(`SELECT kyc_folder FROM pending_signups WHERE id = $1`, [id]);
+    if (!rows[0]) return res.status(404).json({ error: "Pending signup not found" });
+
+    const folder: string = rows[0].kyc_folder;
+    const files = await listKycFiles(folder);
+    return res.json({ folder, files });
+  } catch (err) {
+    console.error("Error in getPendingSignupKyc:", err);
+    return res.status(500).json({ error: "Failed to list KYC files" });
+  }
+};
+
+export const pendingSignupKycDownloadUrl = async (req: Request, res: Response) => {
+  const { id, fileName } = req.body;
+  if (!Number.isInteger(id) || id <= 0)
+    return res.status(400).json({ error: "id must be a positive integer" });
+  if (typeof fileName !== "string" || fileName.length === 0 || fileName.length > 200)
+    return res.status(400).json({ error: "fileName must be 1–200 chars" });
+
+  try {
+    const { rows } = await pool.query(`SELECT kyc_folder FROM pending_signups WHERE id = $1`, [id]);
+    if (!rows[0]) return res.status(404).json({ error: "Pending signup not found" });
+
+    const url = await generateKycDownloadUrl(rows[0].kyc_folder, fileName);
+    return res.json({ url });
+  } catch (err) {
+    console.error("Error in pendingSignupKycDownloadUrl:", err);
+    return res.status(500).json({ error: "Failed to generate download URL" });
+  }
+};
+
+export const approveSignup = async (req: Request, res: Response) => {
+  const { id } = req.body;
+  if (!Number.isInteger(id) || id <= 0)
+    return res.status(400).json({ error: "id must be a positive integer" });
+
+  const { rows } = await pool.query(`SELECT * FROM pending_signups WHERE id = $1`, [id]);
+  if (!rows[0]) return res.status(404).json({ error: "Pending signup not found" });
+  const ps = rows[0];
+
+  const procName = ps.role === "organizer" ? "create_organizer" : "create_boss";
+
+  try {
+    const result = await pool.query(
+      `SELECT ${procName}($1::text, $2::text, $3::text, $4::text, $5::text, $6::date, $7::text, $8::text) AS new_id`,
+      [ps.name, ps.email, ps.password, ps.username, ps.phone, ps.dob, ps.gender, ps.kyc_folder]
+    );
+    const newId: number = result.rows[0].new_id;
+
+    const table = ps.role === "organizer" ? "organizers" : "bosses";
+    await pool.query(
+      `UPDATE ${table}
+       SET terms_accepted_version = $1, terms_accepted_at = NOW(),
+           privacy_accepted_version = $2, privacy_accepted_at = NOW()
+       WHERE id = $3`,
+      [ps.terms_accepted_version, ps.privacy_accepted_version, newId]
+    );
+
+    await pool.query(`DELETE FROM pending_signups WHERE id = $1`, [id]);
+
+    const { subject, html } = signupApprovalEmail(ps.role, ps.name);
+    sendEmail(ps.email, subject, html).catch((e) =>
+      console.error("approval email failed:", e)
+    );
+
+    return res.json({ success: true, newId });
+  } catch (err: any) {
+    if (err?.code === "23505")
+      return res.status(409).json({ error: "An account with this email, phone, or username already exists" });
+    console.error("Error in approveSignup:", err);
+    return res.status(500).json({ error: "Failed to approve signup" });
+  }
+};
+
+export const rejectSignup = async (req: Request, res: Response) => {
+  const { id, reason } = req.body;
+  if (!Number.isInteger(id) || id <= 0)
+    return res.status(400).json({ error: "id must be a positive integer" });
+
+  const { rows } = await pool.query(`SELECT * FROM pending_signups WHERE id = $1`, [id]);
+  if (!rows[0]) return res.status(404).json({ error: "Pending signup not found" });
+  const ps = rows[0];
+
+  try {
+    await deleteKycFolder(ps.kyc_folder);
+    await pool.query(`DELETE FROM pending_signups WHERE id = $1`, [id]);
+
+    const { subject, html } = signupRejectionEmail(
+      ps.role,
+      ps.name,
+      typeof reason === "string" && reason.trim() ? reason.trim() : undefined,
+    );
+    sendEmail(ps.email, subject, html).catch((e) =>
+      console.error("rejection email failed:", e)
+    );
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Error in rejectSignup:", err);
+    return res.status(500).json({ error: "Failed to reject signup" });
   }
 };

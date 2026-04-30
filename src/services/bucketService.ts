@@ -67,6 +67,11 @@ export async function listKycFiles(kycFolder: string): Promise<string[]> {
   return files.map((f: { name: string }) => f.name);
 }
 
+export async function deleteKycFolder(kycFolder: string): Promise<void> {
+  const [files] = await kycBucket.getFiles({ prefix: `${kycFolder}/` });
+  await Promise.all(files.map((f: { delete: (opts: any) => Promise<any> }) => f.delete({ ignoreNotFound: true })));
+}
+
 export async function uploadProfileIcon(base64: string, role: string, key: string): Promise<string> {
   const buffer = Buffer.from(base64, "base64");
   const prefix = process.env.NODE_ENV === "staging" ? "staging-" : "";

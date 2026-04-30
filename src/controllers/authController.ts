@@ -398,6 +398,18 @@ export const generateSignupLink = async (req: Request, res: Response) => {
   return res.json({ token, expiresAt: expiresAt.toISOString() });
 };
 
+export const checkSignupLink = async (req: Request, res: Response) => {
+  const tokenV = validateBoundedText(req.body.token, "token", 10, 128);
+  if (!tokenV.ok) return res.json({ valid: false });
+
+  const { rows } = await pool.query(
+    `SELECT role FROM signup_links WHERE token = $1 AND used_at IS NULL AND expires_at > NOW()`,
+    [tokenV.value]
+  );
+  if (rows.length === 0) return res.json({ valid: false });
+  return res.json({ valid: true, role: rows[0].role as string });
+};
+
 export const getKycUploadUrlForSignup = async (req: Request, res: Response) => {
   const tokenV = validateBoundedText(req.body.token, "token", 10, 128);
   if (!tokenV.ok) return res.status(400).json({ error: tokenV.error });
@@ -442,23 +454,17 @@ export const signupViaLink = async (req: Request, res: Response) => {
   const { role, email, kyc_folder: kycFolder } = consumed.rows[0];
 
   try {
-    const fn = role === "organizer" ? "create_organizer" : "create_boss";
-    const { rows } = await pool.query(
-      `SELECT ${fn}($1::text, $2::text, $3::text, $4::text, $5::text, $6::date, $7::text, $8::text) AS id`,
-      [nameV.value, email, passV.value, userV.value, phoneV.value, dobV.value, genderV.value, kycFolder]
-    );
-    const newId: number = rows[0].id;
-    const table = role === "organizer" ? "organizers" : "bosses";
     const legalApp: LegalApp = role === "organizer" ? "guide" : "expert";
     const { terms_version: termsV, privacy_version: privacyV } = await fetchLegalVersions(legalApp);
     await pool.query(
-      `UPDATE ${table} SET terms_accepted_version = $1, terms_accepted_at = NOW(), privacy_accepted_version = $2, privacy_accepted_at = NOW() WHERE id = $3::int`,
-      [termsV, privacyV, newId]
+      `INSERT INTO pending_signups (token, role, email, name, phone, dob, gender, username, password, kyc_folder, terms_accepted_version, privacy_accepted_version)
+       VALUES ($1, $2, $3, $4, $5, $6::date, $7, $8, $9, $10, $11, $12)`,
+      [tokenV.value, role, email, nameV.value, phoneV.value, dobV.value, genderV.value, userV.value, passV.value, kycFolder, termsV, privacyV]
     );
-    return res.json({ role, id: newId });
+    return res.json({ success: true, message: "Application submitted. You will be notified by email once reviewed." });
   } catch (err: any) {
     if (err?.code === "23505")
-      return res.status(409).json({ error: "Username or email already taken" });
+      return res.status(409).json({ error: "This link has already been used to submit an application" });
     console.error("Error in signupViaLink:", err);
     return res.status(500).json({ error: "Signup failed" });
   }
