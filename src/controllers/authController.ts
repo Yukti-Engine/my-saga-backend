@@ -387,8 +387,10 @@ export const generateSignupLink = async (req: Request, res: Response) => {
     [token, role, emailV.value, expiresAt, kycFolder]
   );
 
-  if (role === "organizer" && emailV.value) {
-    const signupUrl = `https://guide.mysaga.in/join?token=${token}`;
+  if (emailV.value) {
+    const signupUrl = role === "organizer"
+      ? `https://guide.mysaga.in/join?token=${token}`
+      : `https://expert.mysaga.in/join?token=${token}`;
     const { subject, html } = signupInviteEmail(role, signupUrl);
     sendEmail(emailV.value, subject, html).catch((e) =>
       console.error("signup invite email failed:", e)
