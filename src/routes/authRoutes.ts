@@ -30,7 +30,7 @@ router.post("/login-request-otp", otpLimiter, loginRequestOtp);
 router.post("/login-verify-otp", otpLimiter, loginVerifyOtp);
 router.post("/login-resend-otp", otpLimiter, loginResendOtp);
 router.post("/organizer-join-request", otpLimiter, verifyRecaptcha, organizerJoinRequest);
-router.post("/signup-via-link", loginLimiter, verifyRecaptcha, signupViaLink);
+router.post("/signup-via-link", loginLimiter, signupViaLink);
 router.post("/kyc-upload-url", otpLimiter, getKycUploadUrlForSignup);
 router.post("/legal-versions", getLegalVersions);
 
