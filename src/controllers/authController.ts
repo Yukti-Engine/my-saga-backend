@@ -388,9 +388,12 @@ export const generateSignupLink = async (req: Request, res: Response) => {
   );
 
   if (emailV.value) {
+    const isStaging = process.env.NODE_ENV !== "production";
+    const organizerBase = isStaging ? "http://localhost:3000" : "https://guide.mysaga.in";
+    const bossBase     = isStaging ? "http://localhost:3000" : "https://myguild.mysaga.in";
     const signupUrl = role === "organizer"
-      ? `https://guide.mysaga.in/join?token=${token}`
-      : `https://expert.mysaga.in/join?token=${token}`;
+      ? `${organizerBase}/join?token=${token}`
+      : `${bossBase}/join?token=${token}`;
     const { subject, html } = signupInviteEmail(role, signupUrl);
     sendEmail(emailV.value, subject, html).catch((e) =>
       console.error("signup invite email failed:", e)

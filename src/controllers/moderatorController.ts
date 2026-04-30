@@ -410,7 +410,10 @@ export const getThemes = async (req: Request, res: Response) => {
 
 function signupApprovalEmail(role: "organizer" | "boss", name: string) {
   const platform = role === "organizer" ? "MySagaGuide" : "MyGuild";
-  const loginUrl = role === "organizer" ? "https://guide.mysaga.in" : "https://expert.mysaga.in";
+  const isStaging = process.env.NODE_ENV !== "production";
+  const loginUrl = role === "organizer"
+    ? (isStaging ? "http://localhost:3000" : "https://guide.mysaga.in")
+    : (isStaging ? "http://localhost:3000" : "https://myguild.mysaga.in");
   const roleLabel = role === "organizer" ? "Guide" : "Expert";
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
