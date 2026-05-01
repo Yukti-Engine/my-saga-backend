@@ -1,3 +1,13 @@
+/**
+ * authController.ts
+ *
+ * Handles all public authentication flows for the MySaga platform:
+ *   - User signup and login via OTP (phone-based)
+ *   - Organizer and Boss login via email + password
+ *   - Join-request submission for aspiring organizers
+ *   - Invite-link generation, validation, KYC upload, and signup via link
+ *   - Legal version retrieval
+ */
 import type { Request, Response } from "express";
 import { randomBytes } from "crypto";
 import pool from "../db.js";
@@ -7,6 +17,7 @@ import { generateKycUploadUrl } from "../services/bucketService.js";
 import { validateName, validatePhone, validateEmail, validateDob, validateGender, validateRequestId, validateOtp, validateReasonToJoin, escapeHtml, validatePassword, validateUsername, validateBoundedText } from "../validators.js";
 import { fetchLegalVersions, type LegalApp } from "../legalVersions.js";
 
+// GCS bucket that hosts the versioned PDF files for T&C and Privacy Policy
 const LEGAL_BUCKET = process.env.NODE_ENV === "production" ? "my-saga-legal" : "staging-my-saga-legal";
 const LEGAL_BASE = `https://storage.googleapis.com/${LEGAL_BUCKET}`;
 
@@ -115,6 +126,7 @@ export const signupVerifyOtp = async (req: Request, res: Response) => {
     if (!pendingUser)
       return res.status(400).json({ error: "Invalid requestId" });
 
+    // Guard against a race where the user managed to sign up between OTP send and verify
     const taken = await pool.query(`SELECT 1 FROM find_user_by_phone($1::text)`, [pendingUser.phone]);
     if (taken.rows.length > 0)
       return res.status(409).json({ error: "An account with this phone already exists" });
@@ -123,9 +135,11 @@ export const signupVerifyOtp = async (req: Request, res: Response) => {
     if (!verified)
       return res.status(400).json({ error: "Invalid OTP" });
 
+    // Legal acceptance must be confirmed at the point of account creation, not just during signup start
     if (req.body.acceptTerms !== true || req.body.acceptPrivacy !== true)
       return res.status(400).json({ error: "You must accept the Terms & Conditions and Privacy Policy to sign up" });
 
+    // Fetch the current legal versions so we record exactly which version the user agreed to
     const { terms_version, privacy_version } = await fetchLegalVersions("user");
     await pool.query(
       `SELECT create_user($1::text, $2::text, $3::text, $4::date, $5::text)`,
@@ -277,6 +291,7 @@ export const organizerLogin = async (req: Request, res: Response) => {
   const email = emailV.value!;
   const password = passwordV.value;
 
+  // Passwords are stored as plain base64 (not hashed) — encode before comparing
   const encode = (text: string) => Buffer.from(text, "utf8").toString("base64");
 
   const { rows } = await pool.query(`SELECT * FROM get_organizer_by_email($1::text)`, [email]);
@@ -310,6 +325,7 @@ export const bossLogin = async (req: Request, res: Response) => {
   const email = emailV.value!;
   const password = passwordV.value;
 
+  // Same base64 encoding scheme as organizer login
   const encode = (text: string) => Buffer.from(text, "utf8").toString("base64");
 
   const { rows } = await pool.query(`SELECT * FROM get_boss_by_email($1::text)`, [email]);
@@ -380,14 +396,16 @@ export const generateSignupLink = async (req: Request, res: Response) => {
   if (!emailV.ok) return res.status(400).json({ error: emailV.error });
 
   const token = randomBytes(24).toString("hex");
+  // Pre-assign a unique KYC folder path so the applicant can upload documents before the account is approved
   const kycFolder = `${role}/${randomBytes(16).toString("hex")}`;
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // link expires in 7 days
   await pool.query(
     `INSERT INTO signup_links (token, role, email, expires_at, kyc_folder) VALUES ($1::text, $2::text, $3::text, $4::timestamptz, $5::text)`,
     [token, role, emailV.value, expiresAt, kycFolder]
   );
 
   if (emailV.value) {
+    // Derive the correct front-end base URL per role and environment
     const isStaging = process.env.NODE_ENV !== "production";
     const organizerBase = isStaging ? "http://localhost:3000" : "https://guide.mysaga.in";
     const bossBase     = isStaging ? "http://localhost:3000" : "https://myguild.mysaga.in";
@@ -395,6 +413,7 @@ export const generateSignupLink = async (req: Request, res: Response) => {
       ? `${organizerBase}/join?token=${token}`
       : `${bossBase}/join?token=${token}`;
     const { subject, html } = signupInviteEmail(role, signupUrl);
+    // Fire-and-forget — a failed email should not break link generation
     sendEmail(emailV.value, subject, html).catch((e) =>
       console.error("signup invite email failed:", e)
     );
@@ -453,6 +472,7 @@ export const signupViaLink = async (req: Request, res: Response) => {
   if (req.body.acceptTerms !== true || req.body.acceptPrivacy !== true)
     return res.status(400).json({ error: "You must accept the Terms & Conditions and Privacy Policy to sign up" });
 
+  // Atomically mark the link as used to prevent double-submission
   const consumed = await pool.query(`SELECT * FROM consume_signup_link($1::text)`, [tokenV.value]);
   if (consumed.rows.length === 0)
     return res.status(400).json({ error: "Invalid, expired, or already used link" });
@@ -460,6 +480,7 @@ export const signupViaLink = async (req: Request, res: Response) => {
 
   try {
     const legalApp: LegalApp = role === "organizer" ? "guide" : "expert";
+    // Capture the current legal version at submission time for compliance record-keeping
     const { terms_version: termsV, privacy_version: privacyV } = await fetchLegalVersions(legalApp);
     await pool.query(
       `INSERT INTO pending_signups (token, role, email, name, phone, dob, gender, username, password, kyc_folder, terms_accepted_version, privacy_accepted_version)

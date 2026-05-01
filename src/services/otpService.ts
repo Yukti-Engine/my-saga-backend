@@ -1,3 +1,12 @@
+/**
+ * otpService.ts
+ *
+ * Wraps the MSG91 Widget OTP API for phone-based verification.
+ * Provides three operations:
+ *   sendOtp  — initiates an OTP send and returns a requestId to track the session
+ *   verify   — verifies the OTP entered by the user against the requestId
+ *   retry    — resends the OTP for an existing requestId
+ */
 import axios from "axios";
 
 const msg91_api = process.env.MSG91_AUTH_KEY;
@@ -19,6 +28,7 @@ export async function sendOtp(phone: string): Promise<string> {
   if (res.data.type === "error" || !res.data.message) {
     throw new Error(`MSG91 sendOtp failed: ${JSON.stringify(res.data)}`);
   }
+  // MSG91 returns the requestId in the `message` field — used to correlate verify/retry calls
   return res.data.message;
 }
 

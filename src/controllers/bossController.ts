@@ -1,3 +1,14 @@
+/**
+ * bossController.ts
+ *
+ * Handles all actions available to authenticated Bosses (Experts):
+ *   - Profile and settings management
+ *   - Joining an organizer's adventure lobby
+ *   - Exam (boss-created event) scheduling
+ *   - Dashboard data retrieval
+ *   - Reporting organizers
+ *   - Legal acceptance recording
+ */
 import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
@@ -89,6 +100,7 @@ export const updateBossProfile = async (req: Request, res: Response) => {
   let newIconKey: string | null = null;
   let oldIconKey: string | null = null;
   if (updates.icon) {
+    // Upload new icon before the DB update; keep old key so we can clean it up on success
     const { rows } = await pool.query(`SELECT icon_key FROM bosses WHERE id = $1::int`, [bid]);
     oldIconKey = rows[0]?.icon_key ?? null;
     newIconKey = randomBytes(16).toString("hex");
@@ -101,7 +113,9 @@ export const updateBossProfile = async (req: Request, res: Response) => {
       [bid, username, setting1, setting2, bio, newIconKey]
     );
     const updatedBoss = updated.rows[0];
+    // Never return the password in the API response
     delete updatedBoss.password;
+    // Fire-and-forget — storage cleanup failures are non-fatal
     if (oldIconKey && oldIconKey !== newIconKey) {
       deleteProfileIcon("boss", oldIconKey).catch((e) => console.error("deleteProfileIcon failed:", e));
     }
@@ -142,6 +156,7 @@ export const joinAdventure = async (req: Request, res: Response) => {
       || ageRangeMin < 18 || ageRangeMax > 100 || ageRangeMin > ageRangeMax)
     return res.status(400).json({ error: "Invalid age range" });
 
+  // Bosses join based on badge, not category — ensure the lobby has a badge set
   if (!matchRequest || !Number.isInteger(matchRequest.badge_id))
     return res.status(400).json({ error: "Lobby has no badge; boss cannot join" });
 
@@ -149,6 +164,7 @@ export const joinAdventure = async (req: Request, res: Response) => {
   if (existing.rows.length > 0)
     return res.status(409).json({ error: "Already in an active lobby" });
 
+  // Boss must hold a qualification for the badge required by the lobby
   const quals = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS badge_id`, [bid, "boss"]);
   const qualifiedBadgeIds = new Set(quals.rows.map((r: any) => Number(r.badge_id)));
   if (!qualifiedBadgeIds.has(matchRequest.badge_id))

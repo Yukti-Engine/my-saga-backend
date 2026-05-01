@@ -1,3 +1,11 @@
+/**
+ * moderatorController.ts
+ *
+ * Internal moderation endpoints used by the MySaga admin dashboard.
+ * Handles: boss/organizer management, badge/category/tournament creation,
+ * KYC document review, ticket resolution, asset icon uploads,
+ * and the pending-signup approval/rejection workflow.
+ */
 import type { Request, Response } from "express";
 import pool from "../db.js";
 import { generateKycDownloadUrl, listKycFiles, uploadBadgeIcon, uploadCategoryIcon, uploadThemeIcon, deleteKycFolder } from "../services/bucketService.js";
@@ -97,6 +105,7 @@ export const createTournament = async (req: Request, res: Response) => {
       if (!badge)
         return res.status(400).json({ error: "Badge not found" });
 
+      // Prize pool scales quadratically with badge difficulty (lower league = harder = bigger prize)
       const league: number = badge.league;
       prize1 = 1000 + (100 - league)*(100-league) * 25;
       prize2 = Math.floor(prize1 / 2);
@@ -407,6 +416,7 @@ export const getThemes = async (req: Request, res: Response) => {
 };
 
 /* ─────────────────── PENDING SIGNUPS ─────────────────── */
+// The pending signup workflow: applicants submit via link → moderator reviews KYC → approves/rejects.
 
 function signupApprovalEmail(role: "organizer" | "boss", name: string) {
   const platform = role === "organizer" ? "MySagaGuide" : "MyGuild";
@@ -538,6 +548,7 @@ export const approveSignup = async (req: Request, res: Response) => {
     );
     const newId: number = result.rows[0].new_id;
 
+    // Preserve the legal version the applicant accepted at signup time
     const table = ps.role === "organizer" ? "organizers" : "bosses";
     await pool.query(
       `UPDATE ${table}
@@ -549,6 +560,7 @@ export const approveSignup = async (req: Request, res: Response) => {
 
     await pool.query(`DELETE FROM pending_signups WHERE id = $1`, [id]);
 
+    // Fire-and-forget approval email — a failure here should not roll back account creation
     const { subject, html } = signupApprovalEmail(ps.role, ps.name);
     sendEmail(ps.email, subject, html).catch((e) =>
       console.error("approval email failed:", e)
@@ -573,6 +585,7 @@ export const rejectSignup = async (req: Request, res: Response) => {
   const ps = rows[0];
 
   try {
+    // Remove uploaded KYC documents from storage before deleting the pending record
     await deleteKycFolder(ps.kyc_folder);
     await pool.query(`DELETE FROM pending_signups WHERE id = $1`, [id]);
 

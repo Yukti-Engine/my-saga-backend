@@ -1,3 +1,10 @@
+/**
+ * moderatorRoutes.ts
+ *
+ * Internal admin routes — every endpoint is protected by authSuperToken.
+ * Covers: user/organizer/boss management, content administration,
+ * KYC review, pending-signup workflow, ticket resolution, and asset uploads.
+ */
 import express from "express";
 import { addBoss, addOrganizer, createNewBadge, createCategory, createTournament, verifyToken, getUsers, getOrganizers, getBosses, grantGems, grantCredits, getAdventures, getTournaments, getCategories, getBadges, addCategoryQualification, removeCategoryQualification, listKyc, kycDownloadUrl, getTickets, resolveTicket, uploadBadgeIconRoute, uploadCategoryIconRoute, uploadThemeIconRoute, getThemes, listPendingSignups, getPendingSignupKyc, pendingSignupKycDownloadUrl, approveSignup, rejectSignup } from "../controllers/moderatorController.js";
 import { authSuperToken } from "../middlewares/auth.js";

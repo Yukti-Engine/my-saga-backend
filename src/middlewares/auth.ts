@@ -1,8 +1,23 @@
+/**
+ * middlewares/auth.ts
+ *
+ * Express middleware for authentication and authorization across all MySaga roles.
+ * Exports:
+ *   authUser          — verifies uid + accessToken for regular users
+ *   authBoss          — verifies bid + accessToken for bosses (experts)
+ *   authOrganizer     — verifies oid + accessToken for organizers (guides)
+ *   authSuperToken    — static shared secret check used for moderator endpoints
+ *   authAny           — generic multi-role auth; also accepts the super token as "moderator"
+ *   verifyRecaptcha   — validates a Google reCAPTCHA v3 token from the request body
+ *   requireLegalAcceptance — factory that returns a middleware ensuring the caller has
+ *                            accepted the latest Terms & Privacy for their role
+ */
 import type { Request, Response, NextFunction } from "express";
 import pool from "../db.js";
 import { verifyRecaptchaToken } from "../services/captchaService.js";
 import { fetchLegalVersions, ROLE_APP } from "../legalVersions.js";
 
+/** Authenticates a regular user via uid + accessToken. Delegates to the DB `authenticate` function. */
 export const authUser = async (req: Request, res: Response, next: NextFunction) => {
   const { uid, accessToken } = req.body;
   const result = await pool.query(
@@ -14,6 +29,7 @@ export const authUser = async (req: Request, res: Response, next: NextFunction) 
   next();
 };
 
+/** Authenticates a boss (expert) via bid + accessToken. */
 export const authBoss = async (req: Request, res: Response, next: NextFunction) => {
   const { bid, accessToken } = req.body;
   const result = await pool.query(
@@ -25,6 +41,7 @@ export const authBoss = async (req: Request, res: Response, next: NextFunction) 
   next();
 };
 
+/** Authenticates an organizer (guide) via oid + accessToken. */
 export const authOrganizer = async (req: Request, res: Response, next: NextFunction) => {
   const { oid, accessToken } = req.body;
   const result = await pool.query(
@@ -36,6 +53,7 @@ export const authOrganizer = async (req: Request, res: Response, next: NextFunct
   next();
 };
 
+/** Validates the Google reCAPTCHA v3 token sent in `req.body.recaptchaToken`. */
 export const verifyRecaptcha = async (req: Request, res: Response, next: NextFunction) => {
   const { recaptchaToken } = req.body;
   if (!recaptchaToken)
@@ -52,6 +70,10 @@ export const verifyRecaptcha = async (req: Request, res: Response, next: NextFun
   }
 };
 
+/**
+ * Validates a static super token sent in `req.body.superToken`.
+ * Used to protect all moderator/admin routes.
+ */
 export const authSuperToken = (req: Request, res: Response, next: NextFunction) => {
   const { superToken } = req.body;
   if (!superToken || superToken !== process.env.SUPER_TOKEN)
@@ -59,11 +81,18 @@ export const authSuperToken = (req: Request, res: Response, next: NextFunction) 
   next();
 };
 
+/**
+ * Factory middleware that blocks requests where the caller has not accepted
+ * the current version of the Terms or Privacy Policy for their role.
+ * Returns a 403 with `requiresTerms` and `requiresPrivacy` flags so the
+ * client can prompt the user to accept only what is outstanding.
+ */
 export const requireLegalAcceptance = (role: "user" | "organizer" | "boss") =>
   async (req: Request, res: Response, next: NextFunction) => {
     const idField = role === "user" ? "uid" : role === "organizer" ? "oid" : "bid";
     const id = req.body[idField];
     const table = role === "user" ? "users" : role === "organizer" ? "organizers" : "bosses";
+    // Fetch the user's accepted versions and the current published versions in parallel
     const [{ rows }, { terms_version, privacy_version }] = await Promise.all([
       pool.query(`SELECT terms_accepted_version, privacy_accepted_version FROM ${table} WHERE id = $1::int`, [id]),
       fetchLegalVersions(ROLE_APP[role]),
@@ -83,9 +112,15 @@ export const requireLegalAcceptance = (role: "user" | "organizer" | "boss") =>
     next();
   };
 
+/**
+ * Generic multi-role authentication middleware.
+ * Accepts `{ id, role, accessToken }` in the request body.
+ * Also allows the super token to act as a moderator identity (id=0, role="moderator").
+ */
 export const authAny = async (req: Request, res: Response, next: NextFunction) => {
   const { id, role, accessToken } = req.body;
 
+  // Allow moderator access via the super token without a real user account
   if (id === 0 && role === "moderator" && accessToken === process.env.SUPER_TOKEN)
     return next();
 

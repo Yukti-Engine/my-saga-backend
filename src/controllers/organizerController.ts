@@ -1,3 +1,14 @@
+/**
+ * organizerController.ts
+ *
+ * Handles all actions available to authenticated Organizers (Guides):
+ *   - Profile and settings management
+ *   - Match request (lobby) creation, dismissal, and status
+ *   - Adventure start and event scheduling
+ *   - Roadmap retrieval and LLM-based adventure name generation
+ *   - Reporting users and bosses
+ *   - Legal acceptance recording
+ */
 import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
@@ -100,6 +111,7 @@ export const updateOrganizerProfile = async (req: Request, res: Response) => {
   let newIconKey: string | null = null;
   let oldIconKey: string | null = null;
   if (updates.icon) {
+    // Upload the new icon before touching the DB; retain the old key for cleanup afterward
     const { rows } = await pool.query(`SELECT icon_key FROM organizers WHERE id = $1::int`, [oid]);
     oldIconKey = rows[0]?.icon_key ?? null;
     newIconKey = randomBytes(16).toString("hex");
@@ -112,7 +124,9 @@ export const updateOrganizerProfile = async (req: Request, res: Response) => {
       [oid, username, setting1, setting2, bio, newIconKey]
     );
     const updatedOrganizer = updated.rows[0];
+    // Never expose the password hash in the response
     delete updatedOrganizer.password;
+    // Fire-and-forget — storage cleanup failures are non-fatal
     if (oldIconKey && oldIconKey !== newIconKey) {
       deleteProfileIcon("organizer", oldIconKey).catch((e) => console.error("deleteProfileIcon failed:", e));
     }
@@ -163,11 +177,13 @@ export const requestMatch = async (req: Request, res: Response) => {
   if (existing.rows.length > 0)
     return res.status(409).json({ error: "Already in an active lobby" });
 
+  // Organizer must be qualified in the requested category before they can open a lobby
   const quals = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS category_id`, [oid, "organizer"]);
   const qualifiedCategoryIds = new Set(quals.rows.map((r: any) => Number(r.category_id)));
   if (!qualifiedCategoryIds.has(categoryIdV.value))
     return res.status(403).json({ error: "Not qualified for this category" });
 
+  // Validate that the chosen badge actually belongs to the requested category
   const badgeRow = await pool.query(`SELECT category_id FROM badges WHERE id = $1::int`, [badgeIdV.value]);
   if (badgeRow.rows.length === 0)
     return res.status(404).json({ error: "Badge not found" });
@@ -176,6 +192,7 @@ export const requestMatch = async (req: Request, res: Response) => {
 
   const { rows } = await pool.query(`SELECT * FROM get_organizer($1::int)`, [oid]);
   const organizer = rows[0];
+  // all_girls / half_girls flags are derived from the organizer's gender and privacy settings
   const result = await pool.query(
     `SELECT * FROM create_match_request($1::int, $2::int, $3::float8, $4::int, $5::int, $6::float8, $7::float8, $8::float8, $9::boolean, $10::boolean, $11::text, $12::int)`,
     [oid, categoryIdV.value, matchRadiusV.value, ageMinV.value, ageMaxV.value,
@@ -204,6 +221,7 @@ export const retrieveRoadmap = async (req: Request, res: Response) => {
     if (roadmaps.length === 0)
       return res.json({ roadmap: null });
 
+    // Return a random roadmap from the badge's stored list as a suggestion
     const roadmap = roadmaps[Math.floor(Math.random() * roadmaps.length)];
     return res.json({ roadmap });
   } catch (err) {
@@ -289,8 +307,10 @@ export const startAdventure = async (req: Request, res: Response) => {
 
   const lobby = (await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [oid, "organizer"])).rows[0];
   const matchId = lobby.id;
+  // An adventure can only start when a boss has joined and there are at least 4 users in the lobby
   if (lobby.boss_id && lobby.user_ids.length >= 4){
     const result = await pool.query(`SELECT * FROM complete_match($1::text, $2::int)`, [name, matchId]);
+    // Increment the organizer's team-size limitation counter after a successful start
     await pool.query(`SELECT bump_limitation($1::int)`, [oid]);
     return res.json(result.rows[0]);
   }

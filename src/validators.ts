@@ -1,3 +1,11 @@
+/**
+ * validators.ts
+ *
+ * Pure validation helpers used across all controllers.
+ * Each function takes a raw (unknown) input and returns a
+ * ValidationResult — either `{ ok: true, value }` or `{ ok: false, error }`.
+ * No side effects; safe to call at the top of any handler.
+ */
 export type ValidationResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
 export function validateName(raw: unknown): ValidationResult<string> {

@@ -1,3 +1,13 @@
+/**
+ * userController.ts
+ *
+ * Handles all actions available to authenticated MySaga users:
+ *   - Profile and settings management (username, bio, email, icon)
+ *   - Adventure matching, lobby management, and past adventure retrieval
+ *   - The "Book" / story feature: starting, progressing, regenerating, and concluding chapters
+ *   - Legal acceptance recording
+ *   - Reporting organizers
+ */
 import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
@@ -49,6 +59,7 @@ export const updateUserProfile = async (req: Request, res: Response) => {
   let newIconKey: string | null = null;
   let oldIconKey: string | null = null;
   if (updates.icon) {
+    // Upload new icon first; the old key is kept so it can be deleted after a successful DB update
     const { rows } = await pool.query(`SELECT icon_key FROM users WHERE id = $1::int`, [uid]);
     oldIconKey = rows[0]?.icon_key ?? null;
     newIconKey = randomBytes(16).toString("hex");
@@ -60,6 +71,7 @@ export const updateUserProfile = async (req: Request, res: Response) => {
       `SELECT update_user($1::int, $2::text, $3::text, $4::text, $5::boolean, $6::boolean, $7::text)`,
       [uid, username, bio, email, setting1, setting2, newIconKey]
     );
+    // Fire-and-forget old icon deletion — storage cleanup failures are non-fatal
     if (oldIconKey && oldIconKey !== newIconKey) {
       deleteProfileIcon("user", oldIconKey).catch((e) => console.error("deleteProfileIcon failed:", e));
     }
@@ -201,6 +213,7 @@ export const startBook = async (req: Request, res: Response) => {
     const userRow = await pool.query(`SELECT name FROM users WHERE id = $1::int`, [uid]);
     const title = (userRow.rows[0]?.name as string ?? "my saga").slice(0, 20);
 
+    // Set the username before creating the book so the intro generation can use it
     await pool.query(`SELECT update_user($1::int, $2::text, NULL::text, NULL::text, NULL::boolean, NULL::boolean, NULL::text)`, [uid, usernameV.value]);
 
     // books.chapter defaults to 0 (introduction chapter)
@@ -210,7 +223,7 @@ export const startBook = async (req: Request, res: Response) => {
     );
     const bookId: number = book.rows[0].id;
 
-    // Generate the introduction (chapter 0, seq 1)
+    // Step 1: Generate the introduction prose (chapter 0, seq 1)
     const introContent = await generateIntroduction(usernameV.value, title, theme);
     if (!introContent) throw new Error("introduction generation failed");
 
@@ -219,7 +232,7 @@ export const startBook = async (req: Request, res: Response) => {
       [bookId, introContent]
     );
 
-    // Conclude the introduction (chapter 0, seq 2)
+    // Step 2: Write the closing paragraph for the introduction (chapter 0, seq 2)
     const introConclusion = await generateChapterConclusion({
       username: usernameV.value,
       bookTitle: title,
@@ -338,6 +351,13 @@ async function getFullStory(bookId: number): Promise<string> {
   return rows.map((r) => r.content).join("\n\n");
 }
 
+/**
+ * Computes the "hard" (objective) stat changes from a batch of completed events.
+ * These are deterministic rules, unlike the LLM-derived "soft" stats.
+ *   drive:        -1 if no events, +1 if 3+ events, else 0
+ *   adaptability: -1 if only one category seen (needs 2+ events), +1 if 2+ distinct categories
+ *   integrity:    -1 for each new penalty since the last story entry, else 0
+ */
 async function computeHardStats(
   pendingEventIds: number[],
   currentPenalties: number,
@@ -361,13 +381,14 @@ async function computeHardStats(
     adaptability = catCount >= 2 ? 1 : -1;
   }
 
-  // integrity: penalty delta
+  // integrity: penalty delta since last story entry
   const penaltyDelta = currentPenalties - lastPenaltyCount;
   const integrity: -1 | 0 | 1 = penaltyDelta > 0 ? -1 : 0;
 
   return { drive, adaptability, integrity };
 }
 
+/** Converts a -1/0/+1 direction flag into a 1% multiplier applied to the stat column. */
 function statMultiplier(v: -1 | 0 | 1): number {
   return v === 1 ? 1.01 : v === -1 ? 0.99 : 1.0;
 }
@@ -423,12 +444,14 @@ export const proceedStory = async (req: Request, res: Response) => {
   const events = await fetchEventSummaries(uid, pendingIds);
   const priorStory = await getFullStory(book.id);
 
+  // Run LLM generation and hard-stat computation in parallel for performance
   const [llmResult, hardStats] = await Promise.all([
     generateProceedChunk({ username, bookTitle: book.title, chapter: book.chapter, priorStory, events, theme }),
     computeHardStats(pendingIds, currentPenalties, book.last_penalty_count),
   ]);
   if (!llmResult) return res.status(500).json({ error: "story generation failed" });
 
+  // Merge soft stats (from LLM) and hard stats (from event data); hard stats override soft for shared keys
   const stats: StatChanges = { ...llmResult.softStats, ...hardStats };
   const content = llmResult.story;
 
@@ -504,7 +527,7 @@ export const regenerateStory = async (req: Request, res: Response) => {
     return res.json({ content: llmResult.story, chapter: chunk.chapter, seq: chunk.seq, statChanges: stats, stats: updatedStats });
   }
 
-  // kind === 'open'
+  // For 'open' chunks the regeneration path depends on which chunk it is
   if (chunk.chapter === 0) {
     const content = chunk.seq === 1
       ? await generateIntroduction(username, book.title, theme)

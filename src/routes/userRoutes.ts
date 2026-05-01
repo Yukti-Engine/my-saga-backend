@@ -1,10 +1,20 @@
+/**
+ * userRoutes.ts
+ *
+ * Routes for authenticated MySaga users.
+ * All routes require a valid user access token via authUser.
+ */
 import express from "express";
 import { updateUserProfile, getUserDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, getUserQualifications, reportOrganizer, startBook, renameBook, proceedStory, regenerateStory, concludeChapter, getThemes, getBook, acceptLegal } from "../controllers/userController.js";
 import { authUser, requireLegalAcceptance } from "../middlewares/auth.js";
 
 const router = express.Router();
+// Authenticate every request on this router
 router.use(authUser);
+// accept-legal is registered BEFORE requireLegalAcceptance so users can accept new legal
+// versions without being blocked by the very check they are trying to satisfy
 router.post("/accept-legal", acceptLegal);
+// All subsequent routes require up-to-date legal acceptance
 router.use(requireLegalAcceptance("user"));
 
 router.post("/update-profile", updateUserProfile);

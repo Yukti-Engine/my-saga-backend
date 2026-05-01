@@ -70,7 +70,6 @@ export default function roomSocket(io: any, socket: any) {
     );
     if (roomOk.rows[0].ok && related.rows[0].ok) {
       socket.join(roomName);
-      socket.to(roomName).emit("message", "A user has joined!");
     }
   });
 
@@ -93,7 +92,6 @@ export default function roomSocket(io: any, socket: any) {
         `SELECT add_message($1::int, $2::text, $3::int, $4::text)`,
         [senderId, senderType, adventureId, cleaned]
       );
-      io.to(room).emit("message", cleaned);
     }
   });
 
@@ -111,7 +109,6 @@ export default function roomSocket(io: any, socket: any) {
     );
     if (related.rows[0].ok) {
       socket.leave(roomName);
-      socket.to(roomName).emit("message", "A user has left!");
     }
   });
 }
