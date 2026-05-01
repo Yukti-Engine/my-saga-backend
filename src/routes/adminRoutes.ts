@@ -1,7 +1,7 @@
 import express from "express";
 import type { Request, Response } from "express";
 import { authSuperToken } from "../middlewares/auth.js";
-import { archiveMatchRequests, cleanupExpiredPendingUsers, logoutAbsentees, deactivateCompletedAdventures, refreshBadgeRoadmaps, limitMore } from "../controllers/adminController.js";
+import { archiveMatchRequests, cleanupExpiredPendingUsers, logoutAbsentees, deactivateCompletedAdventures, refreshBadgeRoadmaps, limitMore, cleanupExpiredSignupLinks, cleanupStalePendingSignups, cleanupResolvedTickets } from "../controllers/adminController.js";
 
 const router = express.Router();
 
@@ -33,6 +33,21 @@ router.post("/refresh-badge-roadmaps", authSuperToken, async (req: Request, res:
 router.post("/limit-more", authSuperToken, async (req: Request, res: Response) => {
   const affected = await limitMore();
   return res.json({ success: true, affected });
+});
+
+router.post("/cleanup-expired-signup-links", authSuperToken, async (req: Request, res: Response) => {
+  const deleted = await cleanupExpiredSignupLinks();
+  return res.json({ success: true, deleted });
+});
+
+router.post("/cleanup-stale-pending-signups", authSuperToken, async (req: Request, res: Response) => {
+  const deleted = await cleanupStalePendingSignups();
+  return res.json({ success: true, deleted });
+});
+
+router.post("/cleanup-resolved-tickets", authSuperToken, async (req: Request, res: Response) => {
+  const deleted = await cleanupResolvedTickets();
+  return res.json({ success: true, deleted });
 });
 
 export default router;

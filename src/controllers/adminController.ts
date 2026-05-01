@@ -1,5 +1,5 @@
 import pool from "../db.js";
-import { archiveFile, deleteAdventureFiles } from "../services/bucketService.js";
+import { archiveFile, deleteAdventureFiles, deleteKycFolder } from "../services/bucketService.js";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -75,4 +75,62 @@ export const deactivateCompletedAdventures = async () => {
   await Promise.all(ids.map((id) => deleteAdventureFiles(id)));
 
   return true;
+};
+
+/** Removes signup_links that expired without ever being used. Safe to run frequently. */
+export const cleanupExpiredSignupLinks = async () => {
+  const { rowCount } = await pool.query(
+    `DELETE FROM signup_links WHERE expires_at < NOW() AND used_at IS NULL`
+  );
+  return rowCount ?? 0;
+};
+
+/**
+ * Purges pending_signups that have been waiting for moderator review for more than
+ * 60 days. Also deletes each applicant's KYC folder from GCS so no orphaned files remain.
+ */
+export const cleanupStalePendingSignups = async () => {
+  const { rows } = await pool.query(
+    `DELETE FROM pending_signups
+     WHERE submitted_at < NOW() - INTERVAL '60 days'
+     RETURNING kyc_folder`
+  );
+
+  if (rows.length === 0) return 0;
+
+  // Best-effort GCS cleanup — errors are logged but don't abort the rest.
+  await Promise.allSettled(
+    rows.map((r: { kyc_folder: string }) =>
+      deleteKycFolder(r.kyc_folder).catch((e) =>
+        console.error(`cleanupStalePendingSignups: failed to delete GCS folder ${r.kyc_folder}:`, e)
+      )
+    )
+  );
+
+  return rows.length;
+};
+
+/**
+ * Archives closed tickets older than 90 days to GCS, then deletes them from the DB.
+ * One JSON file per run, keyed by timestamp, stored under tickets/ in the archive bucket.
+ */
+export const cleanupResolvedTickets = async () => {
+  const { rows } = await pool.query(
+    `DELETE FROM tickets
+     WHERE status = 'closed'
+       AND resolved_at < NOW() - INTERVAL '90 days'
+     RETURNING *`
+  );
+
+  if (rows.length === 0) return 0;
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const fileName = `tickets_${timestamp}.json`;
+  const tmpFile = path.join(os.tmpdir(), fileName);
+
+  fs.writeFileSync(tmpFile, JSON.stringify(rows));
+  await archiveFile(tmpFile, `tickets/${fileName}`, "application/json");
+  fs.unlinkSync(tmpFile);
+
+  return rows.length;
 };
