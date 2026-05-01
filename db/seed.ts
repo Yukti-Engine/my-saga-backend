@@ -11,7 +11,7 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL??"";
 let pool = new Pool({ connectionString: databaseUrl });
 
 async function seed() {
