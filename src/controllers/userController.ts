@@ -677,6 +677,20 @@ export const getBook = async (req: Request, res: Response) => {
   });
 };
 
+export const rateOrganizer = async (req: Request, res: Response) => {
+  const { uid } = req.body;
+  const organizerIdV = validatePositiveInt(req.body.organizerId, "organizerId");
+  if (!organizerIdV.ok) return res.status(400).json({ error: organizerIdV.error });
+  const ratingV = validateIntRange(req.body.rating, "rating", 1, 5);
+  if (!ratingV.ok) return res.status(400).json({ error: ratingV.error });
+
+  await pool.query(
+    `SELECT upsert_rating($1::int, $2::int, $3::int)`,
+    [organizerIdV.value, uid, ratingV.value]
+  );
+  return res.json({ success: true });
+};
+
 export const reportOrganizer = async (req: Request, res: Response) => {
   const { uid } = req.body;
   const targetV = validatePositiveInt(req.body.organizerId, "organizerId");
