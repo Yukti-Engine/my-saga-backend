@@ -15,6 +15,34 @@ export const getTicketStatus = async (req: Request, res: Response) => {
   return res.json(rows[0]);
 };
 
+export const getMyTickets = async (req: Request, res: Response) => {
+  const { id, role } = req.body;
+  if (role !== "user" && role !== "organizer" && role !== "boss")
+    return res.status(400).json({ error: "role must be user, organizer, or boss" });
+
+  const { rows } = await pool.query(
+    `SELECT * FROM get_my_tickets($1::int, $2::text)`,
+    [id, role]
+  );
+  return res.json(rows);
+};
+
+export const closeMyTicket = async (req: Request, res: Response) => {
+  const { id, role } = req.body;
+  if (role !== "user" && role !== "organizer" && role !== "boss")
+    return res.status(400).json({ error: "role must be user, organizer, or boss" });
+  const ticketV = validatePositiveInt(req.body.ticketId, "ticketId");
+  if (!ticketV.ok) return res.status(400).json({ error: ticketV.error });
+
+  const { rows } = await pool.query(
+    `SELECT close_own_ticket($1::int, $2::int, $3::text) AS closed`,
+    [ticketV.value, id, role]
+  );
+  if (!rows[0].closed)
+    return res.status(404).json({ error: "Ticket not found, already closed, or not yours" });
+  return res.json({ success: true });
+};
+
 export const getCategories = async (req: Request, res: Response) => {
   const result = await pool.query(`SELECT * FROM get_all_categories()`);
   return res.json(result.rows);
