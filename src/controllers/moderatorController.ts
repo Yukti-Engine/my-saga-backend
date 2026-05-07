@@ -669,10 +669,20 @@ export const addVenue = async (req: Request, res: Response) => {
     : { ok: true as const, value: null };
   if (!partnerIdV.ok) return res.status(400).json({ error: partnerIdV.error });
 
+  const headCountV = req.body.headCountLimit != null
+    ? validatePositiveInt(req.body.headCountLimit, "headCountLimit")
+    : { ok: true as const, value: null };
+  if (!headCountV.ok) return res.status(400).json({ error: headCountV.error });
+
+  const guaranteeV = req.body.guaranteePerHead != null
+    ? validateFloatRange(req.body.guaranteePerHead, "guaranteePerHead", 0, 1000000)
+    : { ok: true as const, value: null };
+  if (!guaranteeV.ok) return res.status(400).json({ error: guaranteeV.error });
+
   try {
     const { rows } = await pool.query(
-      `SELECT create_venue($1::varchar, $2::text, $3::decimal, $4::decimal, $5::int) AS venue_id`,
-      [nameV.value, linkV.value, latV.value, longV.value, partnerIdV.value]
+      `SELECT create_venue($1::varchar, $2::text, $3::decimal, $4::decimal, $5::int, $6::int, $7::decimal) AS venue_id`,
+      [nameV.value, linkV.value, latV.value, longV.value, partnerIdV.value, headCountV.value, guaranteeV.value]
     );
     return res.json({ success: true, venueId: rows[0].venue_id });
   } catch (err: any) {
