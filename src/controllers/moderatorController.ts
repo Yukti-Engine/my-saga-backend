@@ -707,32 +707,7 @@ export const removeVenue = async (req: Request, res: Response) => {
   return res.json({ success: true });
 };
 
-/* ================== ALLOTED SCHEDULES ================== */
-
-export const addAllotedSchedule = async (req: Request, res: Response) => {
-  const venueIdV = validatePositiveInt(req.body.venueId, "venueId");
-  if (!venueIdV.ok) return res.status(400).json({ error: venueIdV.error });
-  const startV = validateFutureTimestamp(req.body.startTime, "startTime");
-  if (!startV.ok) return res.status(400).json({ error: startV.error });
-  const endV = validateFutureTimestamp(req.body.endTime, "endTime");
-  if (!endV.ok) return res.status(400).json({ error: endV.error });
-
-  if (new Date(startV.value) >= new Date(endV.value))
-    return res.status(400).json({ error: "startTime must be before endTime" });
-
-  try {
-    const { rows } = await pool.query(
-      `SELECT create_alloted_schedule($1::int, $2::timestamptz, $3::timestamptz) AS id`,
-      [venueIdV.value, startV.value, endV.value]
-    );
-    return res.json({ success: true, id: rows[0].id });
-  } catch (err: any) {
-    if (err?.code === "23503")
-      return res.status(400).json({ error: "Venue not found" });
-    console.error("Error in addAllotedSchedule:", err);
-    return res.status(500).json({ error: "Failed to add schedule" });
-  }
-};
+/* ================== ALLOTED SCHEDULES (read-only for moderator) ================== */
 
 export const getSchedulesForVenue = async (req: Request, res: Response) => {
   const venueIdV = validatePositiveInt(req.body.venueId, "venueId");
@@ -743,13 +718,4 @@ export const getSchedulesForVenue = async (req: Request, res: Response) => {
     [venueIdV.value]
   );
   return res.json(rows);
-};
-
-export const removeAllotedSchedule = async (req: Request, res: Response) => {
-  const idV = validatePositiveInt(req.body.id, "id");
-  if (!idV.ok) return res.status(400).json({ error: idV.error });
-
-  const { rows } = await pool.query(`SELECT delete_alloted_schedule($1::int) AS found`, [idV.value]);
-  if (!rows[0].found) return res.status(404).json({ error: "Schedule not found" });
-  return res.json({ success: true });
 };

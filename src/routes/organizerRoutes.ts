@@ -6,7 +6,7 @@
  */
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { updateOrganizerProfile, getOrganizerDashboard, requestMatch, logOut, currentLobby, startAdventure, getAdventures, getPastAdventures, organizeEvent, retrieveRoadmap, generateAdventureName, getOrganizerQualifications, getLimitation, reportUser, reportBoss, dismissLobby, acceptLegal } from "../controllers/organizerController.js";
+import { updateOrganizerProfile, getOrganizerDashboard, requestMatch, logOut, currentLobby, startAdventure, getAdventures, getPastAdventures, organizeEvent, retrieveRoadmap, generateAdventureName, getOrganizerQualifications, getLimitation, reportUser, reportBoss, dismissLobby, acceptLegal, requestSchedule, getVenueSchedules, getVenues } from "../controllers/organizerController.js";
 import { authOrganizer, requireLegalAcceptance } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -33,6 +33,9 @@ router.post("/limitation", getLimitation);
 router.post("/report-user", reportUser);
 router.post("/report-boss", reportBoss);
 router.post("/dismiss-lobby", dismissLobby);
+router.post("/venues", getVenues);
+router.post("/venue-schedules", getVenueSchedules);
+router.post("/request-schedule", requestSchedule);
 
 // Extra rate limit for LLM-backed name generation to control API costs
 const generateNameLimiter = rateLimit({

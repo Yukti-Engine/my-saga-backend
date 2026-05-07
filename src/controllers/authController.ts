@@ -496,4 +496,28 @@ export const signupViaLink = async (req: Request, res: Response) => {
   }
 };
 
+export const confirmSchedule = async (req: Request, res: Response) => {
+  const tokenV = validateBoundedText(req.body.token, "token", 10, 128);
+  if (!tokenV.ok) return res.status(400).json({ error: tokenV.error });
+
+  const { rows } = await pool.query(
+    `SELECT confirm_alloted_schedule($1::varchar) AS found`,
+    [tokenV.value]
+  );
+  if (!rows[0].found) return res.status(404).json({ error: "Schedule not found or already confirmed" });
+  return res.json({ success: true });
+};
+
+export const rejectSchedule = async (req: Request, res: Response) => {
+  const tokenV = validateBoundedText(req.body.token, "token", 10, 128);
+  if (!tokenV.ok) return res.status(400).json({ error: tokenV.error });
+
+  const { rows } = await pool.query(
+    `SELECT reject_alloted_schedule($1::varchar) AS found`,
+    [tokenV.value]
+  );
+  if (!rows[0].found) return res.status(404).json({ error: "Schedule not found" });
+  return res.json({ success: true });
+};
+
 

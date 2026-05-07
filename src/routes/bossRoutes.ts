@@ -5,7 +5,7 @@
  * All routes require a valid boss access token via authBoss.
  */
 import express from "express";
-import { updateBossProfile, getBossDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, organizeExam, getBossQualifications, reportOrganizer, acceptLegal } from "../controllers/bossController.js";
+import { updateBossProfile, getBossDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, organizeExam, getBossQualifications, reportOrganizer, acceptLegal, requestSchedule, getVenueSchedules, getVenues } from "../controllers/bossController.js";
 import { authBoss, requireLegalAcceptance } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -27,4 +27,7 @@ router.post("/past-adventures", getPastAdventures);
 router.post("/organize-exam", organizeExam);
 router.post("/qualifications", getBossQualifications);
 router.post("/report-organizer", reportOrganizer);
+router.post("/venues", getVenues);
+router.post("/venue-schedules", getVenueSchedules);
+router.post("/request-schedule", requestSchedule);
 export default router;
