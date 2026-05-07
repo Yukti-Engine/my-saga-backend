@@ -24,7 +24,7 @@ export async function fetchLegalVersions(app: LegalApp): Promise<LegalVersion> {
   // Return the cached value if it has not expired
   if (cached && cached.expiresAt > Date.now()) return cached.value;
   const { rows } = await pool.query(
-    `SELECT terms_version, privacy_version FROM legal_versions WHERE app = $1`,
+    `SELECT * FROM get_legal_versions($1::text)`,
     [app]
   );
   const value: LegalVersion = rows[0];

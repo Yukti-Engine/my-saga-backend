@@ -1,3 +1,12 @@
+-- ================== LEGAL VERSIONS ==================
+
+CREATE OR REPLACE FUNCTION get_legal_versions(p_app TEXT)
+RETURNS TABLE (terms_version INT, privacy_version INT) AS $$
+BEGIN
+  RETURN QUERY SELECT lv.terms_version, lv.privacy_version FROM legal_versions lv WHERE lv.app = p_app;
+END;
+$$ LANGUAGE plpgsql;
+
 -- ================== SIGNUP LINKS ==================
 
 CREATE OR REPLACE FUNCTION check_signup_link(p_token TEXT)
@@ -27,6 +36,81 @@ BEGIN
   RETURN QUERY
     UPDATE tickets SET status = p_status, resolved_at = NOW(), updated_at = NOW()
     WHERE id = p_id RETURNING *;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ================== BOOK WITH THEME ==================
+
+CREATE OR REPLACE FUNCTION get_book_with_theme(p_user_id INT)
+RETURNS TABLE (
+  id INT, title TEXT, chapter INT, status TEXT,
+  last_event_id INT, last_penalty_count INT,
+  theme_name VARCHAR, theme_description TEXT
+) AS $$
+BEGIN
+  RETURN QUERY
+    SELECT b.id, b.title::TEXT, b.chapter, b.status::TEXT,
+           b.last_event_id, b.last_penalty_count,
+           t.name, t.description
+    FROM books b LEFT JOIN themes t ON t.id = b.theme_id
+    WHERE b.user_id = p_user_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ================== STORY CHUNK QUERIES ==================
+
+CREATE OR REPLACE FUNCTION get_full_story(p_book_id INT)
+RETURNS TABLE (content TEXT) AS $$
+BEGIN
+  RETURN QUERY
+    SELECT sc.content::TEXT FROM story_chunks sc
+    WHERE sc.book_id = p_book_id
+    ORDER BY sc.chapter ASC, sc.seq ASC;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_last_chunk(p_book_id INT)
+RETURNS TABLE (id INT, chapter INT, seq INT, kind TEXT, event_ids INT[]) AS $$
+BEGIN
+  RETURN QUERY
+    SELECT sc.id, sc.chapter, sc.seq, sc.kind::TEXT, sc.event_ids
+    FROM story_chunks sc
+    WHERE sc.book_id = p_book_id
+    ORDER BY sc.chapter DESC, sc.seq DESC
+    LIMIT 1;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_prior_story(p_book_id INT, p_chapter INT, p_seq INT)
+RETURNS TABLE (content TEXT) AS $$
+BEGIN
+  RETURN QUERY
+    SELECT sc.content::TEXT FROM story_chunks sc
+    WHERE sc.book_id = p_book_id
+      AND (sc.chapter < p_chapter OR (sc.chapter = p_chapter AND sc.seq < p_seq))
+    ORDER BY sc.chapter ASC, sc.seq ASC;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_last_chunk_kind(p_book_id INT, p_chapter INT)
+RETURNS TEXT AS $$
+BEGIN
+  RETURN (
+    SELECT sc.kind FROM story_chunks sc
+    WHERE sc.book_id = p_book_id AND sc.chapter = p_chapter
+    ORDER BY sc.seq DESC LIMIT 1
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_book_chunks(p_book_id INT)
+RETURNS TABLE (chapter INT, seq INT, kind TEXT, content TEXT, event_ids INT[], stat_changes JSONB, created_at TIMESTAMPTZ) AS $$
+BEGIN
+  RETURN QUERY
+    SELECT sc.chapter, sc.seq, sc.kind::TEXT, sc.content::TEXT, sc.event_ids, sc.stat_changes, sc.created_at
+    FROM story_chunks sc
+    WHERE sc.book_id = p_book_id
+    ORDER BY sc.chapter ASC, sc.seq ASC;
 END;
 $$ LANGUAGE plpgsql;
 

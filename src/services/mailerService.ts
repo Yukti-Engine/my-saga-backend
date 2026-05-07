@@ -54,7 +54,7 @@ export async function sendEmail(to: string, subject: string, body: string) {
 /* ================== SCHEDULE EMAILS ================== */
 
 const isStaging = process.env.NODE_ENV !== "production";
-const apiBase = isStaging ? "http://localhost:5000" : "https://api.mysaga.in";
+const apiBase = isStaging ? "http://localhost:3000" : "https://api.mysaga.in";
 
 function formatDt(iso: string) {
   return new Date(iso).toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Kolkata" });

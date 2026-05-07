@@ -343,9 +343,7 @@ async function getPendingEventIds(userId: number, lastEventId: number | null): P
 
 async function getFullStory(bookId: number): Promise<string> {
   const { rows } = await pool.query<{ content: string }>(
-    `SELECT content FROM story_chunks
-     WHERE book_id = $1::int
-     ORDER BY chapter ASC, seq ASC`,
+    `SELECT * FROM get_full_story($1::int)`,
     [bookId]
   );
   return rows.map((r) => r.content).join("\n\n");
@@ -395,15 +393,15 @@ function statMultiplier(v: -1 | 0 | 1): number {
 
 async function applyStatChanges(userId: number, stats: StatChanges) {
   const { rows } = await pool.query(
-    `SELECT * FROM apply_stat_changes($7::int, $1::float8, $2::float8, $3::float8, $4::float8, $5::float8, $6::float8)`,
+    `SELECT * FROM apply_stat_changes($1::int, $2::float8, $3::float8, $4::float8, $5::float8, $6::float8, $7::float8)`,
     [
+      userId,
       statMultiplier(stats.cognitive),
       statMultiplier(stats.drive),
       statMultiplier(stats.adaptability),
       statMultiplier(stats.integrity),
       statMultiplier(stats.emotional_intellect),
       statMultiplier(stats.creativity),
-      userId,
     ]
   );
   return rows[0];
@@ -413,10 +411,7 @@ export const proceedStory = async (req: Request, res: Response) => {
   const { uid } = req.body;
 
   const bookRow = await pool.query(
-    `SELECT b.id, b.title, b.chapter, b.last_event_id, b.last_penalty_count,
-            t.name AS theme_name, t.description AS theme_description
-     FROM books b LEFT JOIN themes t ON t.id = b.theme_id
-     WHERE b.user_id = $1::int`,
+    `SELECT * FROM get_book_with_theme($1::int)`,
     [uid]
   );
   if (bookRow.rows.length === 0)
@@ -470,9 +465,7 @@ export const regenerateStory = async (req: Request, res: Response) => {
   const { uid } = req.body;
 
   const bookRow = await pool.query(
-    `SELECT b.id, b.title, b.chapter, b.last_penalty_count, t.name AS theme_name, t.description AS theme_description
-     FROM books b LEFT JOIN themes t ON t.id = b.theme_id
-     WHERE b.user_id = $1::int`,
+    `SELECT * FROM get_book_with_theme($1::int)`,
     [uid]
   );
   if (bookRow.rows.length === 0)
@@ -485,8 +478,7 @@ export const regenerateStory = async (req: Request, res: Response) => {
   const currentPenalties: number = userRow.rows[0].penalties;
 
   const lastChunk = await pool.query(
-    `SELECT id, chapter, seq, kind, event_ids FROM story_chunks
-     WHERE book_id = $1::int ORDER BY chapter DESC, seq DESC LIMIT 1`,
+    `SELECT * FROM get_last_chunk($1::int)`,
     [book.id]
   );
   if (lastChunk.rows.length === 0)
@@ -495,9 +487,7 @@ export const regenerateStory = async (req: Request, res: Response) => {
   const chunk = lastChunk.rows[0] as { id: number; chapter: number; seq: number; kind: string; event_ids: number[] };
 
   const priorRows = await pool.query(
-    `SELECT content FROM story_chunks
-     WHERE book_id = $1::int AND (chapter < $2::int OR (chapter = $2::int AND seq < $3::int))
-     ORDER BY chapter ASC, seq ASC`,
+    `SELECT * FROM get_prior_story($1::int, $2::int, $3::int)`,
     [book.id, chunk.chapter, chunk.seq]
   );
   const prior = priorRows.rows.map((r: { content: string }) => r.content).join("\n\n");
@@ -547,9 +537,7 @@ export const concludeChapter = async (req: Request, res: Response) => {
   const { uid } = req.body;
 
   const bookRow = await pool.query(
-    `SELECT b.id, b.title, b.chapter, t.name AS theme_name, t.description AS theme_description
-     FROM books b LEFT JOIN themes t ON t.id = b.theme_id
-     WHERE b.user_id = $1::int`,
+    `SELECT * FROM get_book_with_theme($1::int)`,
     [uid]
   );
   if (bookRow.rows.length === 0)
@@ -558,13 +546,11 @@ export const concludeChapter = async (req: Request, res: Response) => {
   const book = bookRow.rows[0] as { id: number; title: string; chapter: number; theme_name: string; theme_description: string | null };
   const theme: Theme = { name: book.theme_name, description: book.theme_description };
 
-  const lastChunk = await pool.query(
-    `SELECT kind FROM story_chunks
-     WHERE book_id = $1::int AND chapter = $2::int
-     ORDER BY seq DESC LIMIT 1`,
+  const lastChunkKind = await pool.query(
+    `SELECT get_last_chunk_kind($1::int, $2::int) AS kind`,
     [book.id, book.chapter]
   );
-  if (lastChunk.rows.length === 0 || lastChunk.rows[0].kind !== "proceed")
+  if (!lastChunkKind.rows[0]?.kind || lastChunkKind.rows[0].kind !== "proceed")
     return res.status(400).json({ error: "write at least one proceed before concluding the chapter" });
 
   const userRow = await pool.query(`SELECT get_user_name($1::int) AS username`, [uid]);
@@ -641,9 +627,7 @@ export const getBook = async (req: Request, res: Response) => {
   const { uid } = req.body;
 
   const bookRow = await pool.query(
-    `SELECT b.id, b.title, b.chapter, b.status, t.name AS theme_name, t.description AS theme_description
-     FROM books b LEFT JOIN themes t ON t.id = b.theme_id
-     WHERE b.user_id = $1::int`,
+    `SELECT * FROM get_book_with_theme($1::int)`,
     [uid]
   );
   if (bookRow.rows.length === 0)
@@ -652,9 +636,7 @@ export const getBook = async (req: Request, res: Response) => {
   const book = bookRow.rows[0];
 
   const { rows: chunks } = await pool.query(
-    `SELECT chapter, seq, kind, content, event_ids, stat_changes, created_at
-     FROM story_chunks WHERE book_id = $1::int
-     ORDER BY chapter ASC, seq ASC`,
+    `SELECT * FROM get_book_chunks($1::int)`,
     [book.id]
   );
 
