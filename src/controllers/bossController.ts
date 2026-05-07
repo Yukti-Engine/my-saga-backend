@@ -13,6 +13,7 @@ import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
 import { uploadProfileIcon, deleteProfileIcon } from "../services/bucketService.js";
+import { sendEmail, scheduleRequestEmail } from "../services/mailerService.js";
 import { randomBytes } from "crypto";
 import {
   validateUsername, validateBio, validateBoolean,
@@ -101,7 +102,7 @@ export const updateBossProfile = async (req: Request, res: Response) => {
   let oldIconKey: string | null = null;
   if (updates.icon) {
     // Upload new icon before the DB update; keep old key so we can clean it up on success
-    const { rows } = await pool.query(`SELECT icon_key FROM bosses WHERE id = $1::int`, [bid]);
+    const { rows } = await pool.query(`SELECT get_boss_icon_key($1::int) AS icon_key`, [bid]);
     oldIconKey = rows[0]?.icon_key ?? null;
     newIconKey = randomBytes(16).toString("hex");
     await uploadProfileIcon(updates.icon, "boss", newIconKey);
@@ -203,7 +204,7 @@ export const reportOrganizer = async (req: Request, res: Response) => {
   if (!reasonV.ok) return res.status(400).json({ error: reasonV.error });
 
   const inserted = await pool.query(
-    `INSERT INTO tickets (type, payload) VALUES ('report_organizer', $1::jsonb) RETURNING id`,
+    `SELECT create_ticket('report_organizer', $1::jsonb) AS id`,
     [JSON.stringify({ reporterId: bid, reporterRole: "boss", organizerId: targetV.value, reason: reasonV.value })]
   );
   return res.json({ ticketId: inserted.rows[0].id });
@@ -219,17 +220,13 @@ export const acceptLegal = async (req: Request, res: Response) => {
 
   const { fetchLegalVersions } = await import("../legalVersions.js");
   const { terms_version, privacy_version } = await fetchLegalVersions("expert");
-  const sets: string[] = [];
-  if (acceptTerms === true) {
-    sets.push(`terms_accepted_version = ${terms_version}, terms_accepted_at = NOW()`);
-  }
-  if (acceptPrivacy === true) {
-    sets.push(`privacy_accepted_version = ${privacy_version}, privacy_accepted_at = NOW()`);
-  }
-  if (sets.length === 0)
+  if (acceptTerms !== true && acceptPrivacy !== true)
     return res.status(400).json({ error: "Provide acceptTerms and/or acceptPrivacy as true" });
 
-  await pool.query(`UPDATE bosses SET ${sets.join(", ")} WHERE id = $1::int`, [bid]);
+  await pool.query(
+    `SELECT accept_legal_boss($1::int, $2::boolean, $3::boolean, $4::int, $5::int)`,
+    [bid, acceptTerms === true, acceptPrivacy === true, terms_version, privacy_version]
+  );
   return res.json({ success: true });
 };
 
@@ -252,6 +249,16 @@ export const requestSchedule = async (req: Request, res: Response) => {
       `SELECT request_alloted_schedule($1::int, $2::timestamptz, $3::timestamptz, 'boss', $4::int, $5::varchar) AS id`,
       [venueIdV.value, startV.value, endV.value, bid, token]
     );
+
+    pool.query(
+      `SELECT * FROM get_venue_partner_by_venue($1::int)`,
+      [venueIdV.value]
+    ).then(({ rows: vp }) => {
+      if (!vp[0]?.partner_email) return;
+      const { subject, html } = scheduleRequestEmail(vp[0].venue_name, vp[0].partner_name, token, startV.value, endV.value);
+      sendEmail(vp[0].partner_email, subject, html);
+    }).catch((e) => console.error("schedule request email failed:", e));
+
     return res.json({ success: true, id: rows[0].id });
   } catch (err: any) {
     const msg = err?.message ?? "";

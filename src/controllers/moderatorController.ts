@@ -348,11 +348,7 @@ export const kycDownloadUrl = async (req: Request, res: Response) => {
 export const getTickets = async (req: Request, res: Response) => {
   const { status, type, limit, offset } = req.body;
   const { rows } = await pool.query(
-    `SELECT * FROM tickets
-     WHERE ($1::text IS NULL OR status = $1::text)
-       AND ($2::text IS NULL OR type = $2::text)
-     ORDER BY created_at DESC
-     LIMIT $3::int OFFSET $4::int`,
+    `SELECT * FROM mod_get_tickets($1::text, $2::text, $3::int, $4::int)`,
     [status ?? null, type ?? null, limit ?? 50, offset ?? 0]
   );
   return res.json({ tickets: rows });
@@ -366,9 +362,8 @@ export const resolveTicket = async (req: Request, res: Response) => {
     return res.status(400).json({ error: "status must be approved, rejected, or closed" });
 
   const { rows } = await pool.query(
-    `UPDATE tickets SET status = $1, resolved_at = NOW(), updated_at = NOW()
-     WHERE id = $2::int RETURNING *`,
-    [status, ticketId]
+    `SELECT * FROM mod_resolve_ticket($1::int, $2::text)`,
+    [ticketId, status]
   );
   if (rows.length === 0)
     return res.status(404).json({ error: "ticket not found" });
@@ -407,7 +402,7 @@ export const uploadThemeIconRoute = async (req: Request, res: Response) => {
 
 export const getThemes = async (req: Request, res: Response) => {
   try {
-    const { rows } = await pool.query(`SELECT id, name, description FROM themes ORDER BY id ASC`);
+    const { rows } = await pool.query(`SELECT * FROM get_all_themes()`);
     return res.json({ themes: rows });
   } catch (err) {
     console.error("Error in getThemes:", err);
@@ -482,10 +477,7 @@ function signupRejectionEmail(role: "organizer" | "boss", name: string, reason?:
 
 export const listPendingSignups = async (req: Request, res: Response) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT id, role, email, name, phone, dob, gender, username, kyc_folder, submitted_at
-       FROM pending_signups ORDER BY submitted_at DESC`
-    );
+    const { rows } = await pool.query(`SELECT * FROM list_pending_signups()`);
     return res.json({ pendingSignups: rows });
   } catch (err) {
     console.error("Error in listPendingSignups:", err);
@@ -499,10 +491,9 @@ export const getPendingSignupKyc = async (req: Request, res: Response) => {
     return res.status(400).json({ error: "id must be a positive integer" });
 
   try {
-    const { rows } = await pool.query(`SELECT kyc_folder FROM pending_signups WHERE id = $1`, [id]);
-    if (!rows[0]) return res.status(404).json({ error: "Pending signup not found" });
-
-    const folder: string = rows[0].kyc_folder;
+    const { rows } = await pool.query(`SELECT get_pending_signup_kyc_folder($1::int) AS kyc_folder`, [id]);
+    const folder: string | null = rows[0]?.kyc_folder ?? null;
+    if (!folder) return res.status(404).json({ error: "Pending signup not found" });
     const files = await listKycFiles(folder);
     return res.json({ folder, files });
   } catch (err) {
@@ -519,10 +510,11 @@ export const pendingSignupKycDownloadUrl = async (req: Request, res: Response) =
     return res.status(400).json({ error: "fileName must be 1–200 chars" });
 
   try {
-    const { rows } = await pool.query(`SELECT kyc_folder FROM pending_signups WHERE id = $1`, [id]);
-    if (!rows[0]) return res.status(404).json({ error: "Pending signup not found" });
+    const { rows } = await pool.query(`SELECT get_pending_signup_kyc_folder($1::int) AS kyc_folder`, [id]);
+    const folder: string | null = rows[0]?.kyc_folder ?? null;
+    if (!folder) return res.status(404).json({ error: "Pending signup not found" });
 
-    const url = await generateKycDownloadUrl(rows[0].kyc_folder, fileName);
+    const url = await generateKycDownloadUrl(folder, fileName);
     return res.json({ url });
   } catch (err) {
     console.error("Error in pendingSignupKycDownloadUrl:", err);
@@ -535,7 +527,7 @@ export const approveSignup = async (req: Request, res: Response) => {
   if (!Number.isInteger(id) || id <= 0)
     return res.status(400).json({ error: "id must be a positive integer" });
 
-  const { rows } = await pool.query(`SELECT * FROM pending_signups WHERE id = $1`, [id]);
+  const { rows } = await pool.query(`SELECT * FROM get_pending_signup($1::int)`, [id]);
   if (!rows[0]) return res.status(404).json({ error: "Pending signup not found" });
   const ps = rows[0];
 
@@ -548,17 +540,12 @@ export const approveSignup = async (req: Request, res: Response) => {
     );
     const newId: number = result.rows[0].new_id;
 
-    // Preserve the legal version the applicant accepted at signup time
-    const table = ps.role === "organizer" ? "organizers" : "bosses";
     await pool.query(
-      `UPDATE ${table}
-       SET terms_accepted_version = $1, terms_accepted_at = NOW(),
-           privacy_accepted_version = $2, privacy_accepted_at = NOW()
-       WHERE id = $3`,
-      [ps.terms_accepted_version, ps.privacy_accepted_version, newId]
+      `SELECT accept_legal_on_approval($1::text, $2::int, $3::int, $4::int)`,
+      [ps.role, newId, ps.terms_accepted_version, ps.privacy_accepted_version]
     );
 
-    await pool.query(`DELETE FROM pending_signups WHERE id = $1`, [id]);
+    await pool.query(`SELECT delete_pending_signup($1::int)`, [id]);
 
     // Fire-and-forget approval email — a failure here should not roll back account creation
     const { subject, html } = signupApprovalEmail(ps.role, ps.name);
@@ -580,14 +567,13 @@ export const rejectSignup = async (req: Request, res: Response) => {
   if (!Number.isInteger(id) || id <= 0)
     return res.status(400).json({ error: "id must be a positive integer" });
 
-  const { rows } = await pool.query(`SELECT * FROM pending_signups WHERE id = $1`, [id]);
+  const { rows } = await pool.query(`SELECT * FROM get_pending_signup($1::int)`, [id]);
   if (!rows[0]) return res.status(404).json({ error: "Pending signup not found" });
   const ps = rows[0];
 
   try {
-    // Remove uploaded KYC documents from storage before deleting the pending record
     await deleteKycFolder(ps.kyc_folder);
-    await pool.query(`DELETE FROM pending_signups WHERE id = $1`, [id]);
+    await pool.query(`SELECT delete_pending_signup($1::int)`, [id]);
 
     const { subject, html } = signupRejectionEmail(
       ps.role,

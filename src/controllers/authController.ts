@@ -12,7 +12,7 @@ import type { Request, Response } from "express";
 import { randomBytes } from "crypto";
 import pool from "../db.js";
 import { sendOtp, retry, verify } from "../services/otpService.js";
-import { sendEmail } from "../services/mailerService.js";
+import { sendEmail, scheduleAcknowledgementEmail } from "../services/mailerService.js";
 import { generateKycUploadUrl } from "../services/bucketService.js";
 import { validateName, validatePhone, validateEmail, validateDob, validateGender, validateRequestId, validateOtp, validateReasonToJoin, escapeHtml, validatePassword, validateUsername, validateBoundedText } from "../validators.js";
 import { fetchLegalVersions, type LegalApp } from "../legalVersions.js";
@@ -146,9 +146,8 @@ export const signupVerifyOtp = async (req: Request, res: Response) => {
       [pendingUser.name, pendingUser.phone, pendingUser.email, pendingUser.dob, pendingUser.gender]
     );
     await pool.query(
-      `UPDATE users SET terms_accepted_version = $1, terms_accepted_at = NOW(), privacy_accepted_version = $2, privacy_accepted_at = NOW()
-       WHERE phone = $3::text`,
-      [terms_version, privacy_version, pendingUser.phone]
+      `SELECT accept_legal_user_by_phone($1::text, $2::int, $3::int)`,
+      [pendingUser.phone, terms_version, privacy_version]
     );
 
     return res.json({ message: "Signup successful" });
@@ -269,7 +268,7 @@ export const organizerJoinRequest = async (req: Request, res: Response) => {
 
   try {
     const inserted = await pool.query(
-      `INSERT INTO tickets (type, payload) VALUES ('organizer_join_request', $1::jsonb) RETURNING id`,
+      `SELECT create_ticket('organizer_join_request', $1::jsonb) AS id`,
       [JSON.stringify({ email, reasonToJoin })]
     );
     const {html, subject} = joinRequestAcknowledgement("organizer", reasonToJoin);
@@ -400,7 +399,7 @@ export const generateSignupLink = async (req: Request, res: Response) => {
   const kycFolder = `${role}/${randomBytes(16).toString("hex")}`;
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // link expires in 7 days
   await pool.query(
-    `INSERT INTO signup_links (token, role, email, expires_at, kyc_folder) VALUES ($1::text, $2::text, $3::text, $4::timestamptz, $5::text)`,
+    `SELECT create_signup_link($1::text, $2::text, $3::text, $4::timestamptz, $5::text)`,
     [token, role, emailV.value, expiresAt, kycFolder]
   );
 
@@ -427,7 +426,7 @@ export const checkSignupLink = async (req: Request, res: Response) => {
   if (!tokenV.ok) return res.json({ valid: false });
 
   const { rows } = await pool.query(
-    `SELECT role FROM signup_links WHERE token = $1 AND used_at IS NULL AND expires_at > NOW()`,
+    `SELECT * FROM check_signup_link($1::text)`,
     [tokenV.value]
   );
   if (rows.length === 0) return res.json({ valid: false });
@@ -483,8 +482,7 @@ export const signupViaLink = async (req: Request, res: Response) => {
     // Capture the current legal version at submission time for compliance record-keeping
     const { terms_version: termsV, privacy_version: privacyV } = await fetchLegalVersions(legalApp);
     await pool.query(
-      `INSERT INTO pending_signups (token, role, email, name, phone, dob, gender, username, password, kyc_folder, terms_accepted_version, privacy_accepted_version)
-       VALUES ($1, $2, $3, $4, $5, $6::date, $7, $8, $9, $10, $11, $12)`,
+      `SELECT create_pending_signup($1::text, $2::text, $3::text, $4::text, $5::text, $6::date, $7::text, $8::text, $9::text, $10::text, $11::int, $12::int)`,
       [tokenV.value, role, email, nameV.value, phoneV.value, dobV.value, genderV.value, userV.value, passV.value, kycFolder, termsV, privacyV]
     );
     return res.json({ success: true, message: "Application submitted. You will be notified by email once reviewed." });
@@ -500,24 +498,51 @@ export const confirmSchedule = async (req: Request, res: Response) => {
   const tokenV = validateBoundedText(req.body.token, "token", 10, 128);
   if (!tokenV.ok) return res.status(400).json({ error: tokenV.error });
 
+  const { rows: info } = await pool.query(
+    `SELECT * FROM get_schedule_with_partner($1::varchar)`,
+    [tokenV.value]
+  );
+
   const { rows } = await pool.query(
     `SELECT confirm_alloted_schedule($1::varchar) AS found`,
     [tokenV.value]
   );
   if (!rows[0].found) return res.status(404).json({ error: "Schedule not found or already confirmed" });
-  return res.json({ success: true });
+
+  if (info[0]?.partner_email) {
+    const { subject, html } = scheduleAcknowledgementEmail(info[0].venue_name, info[0].partner_name, info[0].start_time, info[0].end_time, "confirmed");
+    sendEmail(info[0].partner_email, subject, html).catch((e) =>
+      console.error("schedule confirmation ack email failed:", e)
+    );
+  }
+
+  return res.json({ success: true, message: "Schedule confirmed." });
 };
 
 export const rejectSchedule = async (req: Request, res: Response) => {
   const tokenV = validateBoundedText(req.body.token, "token", 10, 128);
   if (!tokenV.ok) return res.status(400).json({ error: tokenV.error });
 
+  // Fetch before deleting — row is needed for the ack email
+  const { rows: info } = await pool.query(
+    `SELECT * FROM get_schedule_with_partner($1::varchar)`,
+    [tokenV.value]
+  );
+
   const { rows } = await pool.query(
     `SELECT reject_alloted_schedule($1::varchar) AS found`,
     [tokenV.value]
   );
   if (!rows[0].found) return res.status(404).json({ error: "Schedule not found" });
-  return res.json({ success: true });
+
+  if (info[0]?.partner_email) {
+    const { subject, html } = scheduleAcknowledgementEmail(info[0].venue_name, info[0].partner_name, info[0].start_time, info[0].end_time, "rejected");
+    sendEmail(info[0].partner_email, subject, html).catch((e) =>
+      console.error("schedule rejection ack email failed:", e)
+    );
+  }
+
+  return res.json({ success: true, message: "Schedule rejected and removed." });
 };
 
 

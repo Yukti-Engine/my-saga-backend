@@ -8,7 +8,7 @@ export const getTicketStatus = async (req: Request, res: Response) => {
   if (!ticketV.ok) return res.status(400).json({ error: ticketV.error });
 
   const { rows } = await pool.query(
-    `SELECT id, type, status, created_at, updated_at, resolved_at FROM tickets WHERE id = $1::int`,
+    `SELECT * FROM get_ticket_by_id($1::int)`,
     [ticketV.value]
   );
   if (rows.length === 0) return res.status(404).json({ error: "Ticket not found" });

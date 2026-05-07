@@ -60,7 +60,7 @@ export const updateUserProfile = async (req: Request, res: Response) => {
   let oldIconKey: string | null = null;
   if (updates.icon) {
     // Upload new icon first; the old key is kept so it can be deleted after a successful DB update
-    const { rows } = await pool.query(`SELECT icon_key FROM users WHERE id = $1::int`, [uid]);
+    const { rows } = await pool.query(`SELECT get_user_icon_key($1::int) AS icon_key`, [uid]);
     oldIconKey = rows[0]?.icon_key ?? null;
     newIconKey = randomBytes(16).toString("hex");
     await uploadProfileIcon(updates.icon, "user", newIconKey);
@@ -200,17 +200,17 @@ export const startBook = async (req: Request, res: Response) => {
   const themeIdV = validatePositiveInt(req.body.themeId, "themeId");
   if (!themeIdV.ok) return res.status(400).json({ error: themeIdV.error });
 
-  const existing = await pool.query(`SELECT id FROM books WHERE user_id = $1::int`, [uid]);
-  if (existing.rows.length > 0)
+  const existing = await pool.query(`SELECT get_user_book_id($1::int) AS id`, [uid]);
+  if (existing.rows[0]?.id != null)
     return res.status(409).json({ error: "book already started" });
 
-  const themeRow = await pool.query(`SELECT name, description FROM themes WHERE id = $1::int`, [themeIdV.value]);
+  const themeRow = await pool.query(`SELECT * FROM get_theme($1::int)`, [themeIdV.value]);
   if (themeRow.rows.length === 0)
     return res.status(400).json({ error: "invalid themeId" });
   const theme: Theme = themeRow.rows[0];
 
   try {
-    const userRow = await pool.query(`SELECT name FROM users WHERE id = $1::int`, [uid]);
+    const userRow = await pool.query(`SELECT get_user_name($1::int) AS name`, [uid]);
     const title = (userRow.rows[0]?.name as string ?? "my saga").slice(0, 20);
 
     // Set the username before creating the book so the intro generation can use it
@@ -218,7 +218,7 @@ export const startBook = async (req: Request, res: Response) => {
 
     // books.chapter defaults to 0 (introduction chapter)
     const book = await pool.query(
-      `INSERT INTO books (title, user_id, theme_id) VALUES ($1::text, $2::int, $3::int) RETURNING id`,
+      `SELECT create_book($1::text, $2::int, $3::int) AS id`,
       [title, uid, themeIdV.value]
     );
     const bookId: number = book.rows[0].id;
@@ -228,7 +228,7 @@ export const startBook = async (req: Request, res: Response) => {
     if (!introContent) throw new Error("introduction generation failed");
 
     await pool.query(
-      `INSERT INTO story_chunks (book_id, chapter, seq, kind, content) VALUES ($1, 0, 1, 'open', $2)`,
+      `SELECT add_story_chunk($1, 0, 1, 'open', $2)`,
       [bookId, introContent]
     );
 
@@ -243,12 +243,12 @@ export const startBook = async (req: Request, res: Response) => {
     if (!introConclusion) throw new Error("introduction conclusion generation failed");
 
     await pool.query(
-      `INSERT INTO story_chunks (book_id, chapter, seq, kind, content) VALUES ($1, 0, 2, 'open', $2)`,
+      `SELECT add_story_chunk($1, 0, 2, 'open', $2)`,
       [bookId, introConclusion]
     );
 
     // Advance to chapter 1
-    await pool.query(`UPDATE books SET chapter = 1 WHERE id = $1`, [bookId]);
+    await pool.query(`SELECT update_book_chapter($1, 1)`, [bookId]);
 
     // Write the base of chapter 1 (seq 1)
     const chapter1Opening = await generateChapterOpening({
@@ -261,7 +261,7 @@ export const startBook = async (req: Request, res: Response) => {
     if (!chapter1Opening) throw new Error("chapter 1 opening generation failed");
 
     await pool.query(
-      `INSERT INTO story_chunks (book_id, chapter, seq, kind, content) VALUES ($1, 1, 1, 'open', $2)`,
+      `SELECT add_story_chunk($1, 1, 1, 'open', $2)`,
       [bookId, chapter1Opening]
     );
 
@@ -395,16 +395,7 @@ function statMultiplier(v: -1 | 0 | 1): number {
 
 async function applyStatChanges(userId: number, stats: StatChanges) {
   const { rows } = await pool.query(
-    `UPDATE users SET
-       cognitive_index          = LEAST(GREATEST(cognitive_index          * $1, 0), 100),
-       drive_index              = LEAST(GREATEST(drive_index              * $2, 0), 100),
-       adaptability_index       = LEAST(GREATEST(adaptability_index       * $3, 0), 100),
-       integrity_index          = LEAST(GREATEST(integrity_index          * $4, 0), 100),
-       emotional_intellect_index = LEAST(GREATEST(emotional_intellect_index * $5, 0), 100),
-       creativity_index         = LEAST(GREATEST(creativity_index         * $6, 0), 100)
-     WHERE id = $7::int
-     RETURNING cognitive_index, drive_index, adaptability_index,
-               integrity_index, emotional_intellect_index, creativity_index`,
+    `SELECT * FROM apply_stat_changes($7::int, $1::float8, $2::float8, $3::float8, $4::float8, $5::float8, $6::float8)`,
     [
       statMultiplier(stats.cognitive),
       statMultiplier(stats.drive),
@@ -433,7 +424,7 @@ export const proceedStory = async (req: Request, res: Response) => {
 
   const book = bookRow.rows[0] as { id: number; title: string; chapter: number; last_event_id: number | null; last_penalty_count: number; theme_name: string; theme_description: string | null };
   const theme: Theme = { name: book.theme_name, description: book.theme_description };
-  const userRow = await pool.query(`SELECT username, penalties FROM users WHERE id = $1::int`, [uid]);
+  const userRow = await pool.query(`SELECT * FROM get_user_penalties($1::int)`, [uid]);
   const username: string = userRow.rows[0].username;
   const currentPenalties: number = userRow.rows[0].penalties;
 
@@ -456,19 +447,19 @@ export const proceedStory = async (req: Request, res: Response) => {
   const content = llmResult.story;
 
   const seqRow = await pool.query(
-    `SELECT COALESCE(MAX(seq), 0) + 1 AS next_seq FROM story_chunks WHERE book_id = $1::int AND chapter = $2::int`,
+    `SELECT get_next_story_seq($1::int, $2::int) AS next_seq`,
     [book.id, book.chapter]
   );
   const nextSeq: number = seqRow.rows[0].next_seq;
   const maxEventId = pendingIds.length > 0 ? Math.max(...pendingIds) : book.last_event_id;
 
   await pool.query(
-    `INSERT INTO story_chunks (book_id, chapter, seq, kind, content, event_ids, stat_changes) VALUES ($1,$2,$3,'proceed',$4,$5,$6)`,
+    `SELECT add_story_chunk($1, $2, $3, 'proceed', $4, $5::int[], $6::jsonb)`,
     [book.id, book.chapter, nextSeq, content, pendingIds, JSON.stringify(stats)]
   );
   await pool.query(
-    `UPDATE books SET last_event_id = $1, last_penalty_count = $2 WHERE id = $3`,
-    [maxEventId, currentPenalties, book.id]
+    `SELECT update_book_progress($1, $2, $3)`,
+    [book.id, maxEventId, currentPenalties]
   );
 
   const updatedStats = await applyStatChanges(uid, stats);
@@ -489,7 +480,7 @@ export const regenerateStory = async (req: Request, res: Response) => {
 
   const book = bookRow.rows[0] as { id: number; title: string; chapter: number; last_penalty_count: number; theme_name: string; theme_description: string | null };
   const theme: Theme = { name: book.theme_name, description: book.theme_description };
-  const userRow = await pool.query(`SELECT username, penalties FROM users WHERE id = $1::int`, [uid]);
+  const userRow = await pool.query(`SELECT * FROM get_user_penalties($1::int)`, [uid]);
   const username: string = userRow.rows[0].username;
   const currentPenalties: number = userRow.rows[0].penalties;
 
@@ -520,8 +511,8 @@ export const regenerateStory = async (req: Request, res: Response) => {
     if (!llmResult) return res.status(500).json({ error: "story generation failed" });
     const stats: StatChanges = { ...llmResult.softStats, ...hardStats };
     await pool.query(
-      `UPDATE story_chunks SET content = $1, stat_changes = $2 WHERE id = $3`,
-      [llmResult.story, JSON.stringify(stats), chunk.id]
+      `SELECT update_story_chunk_with_stats($1::int, $2::text, $3::jsonb)`,
+      [chunk.id, llmResult.story, JSON.stringify(stats)]
     );
     const updatedStats = await applyStatChanges(uid, stats);
     return res.json({ content: llmResult.story, chapter: chunk.chapter, seq: chunk.seq, statChanges: stats, stats: updatedStats });
@@ -533,7 +524,7 @@ export const regenerateStory = async (req: Request, res: Response) => {
       ? await generateIntroduction(username, book.title, theme)
       : await generateChapterConclusion({ username, bookTitle: book.title, chapter: 0, priorStory: prior, theme });
     if (!content) return res.status(500).json({ error: "story generation failed" });
-    await pool.query(`UPDATE story_chunks SET content = $1 WHERE id = $2`, [content, chunk.id]);
+    await pool.query(`SELECT update_story_chunk_content($2::int, $1::text)`, [content, chunk.id]);
     return res.json({ content, chapter: chunk.chapter, seq: chunk.seq });
   }
 
@@ -541,14 +532,14 @@ export const regenerateStory = async (req: Request, res: Response) => {
     const previousConclusion = priorRows.rows[priorRows.rows.length - 1]?.content ?? "";
     const content = await generateChapterOpening({ username, bookTitle: book.title, chapter: chunk.chapter, previousConclusion, theme });
     if (!content) return res.status(500).json({ error: "story generation failed" });
-    await pool.query(`UPDATE story_chunks SET content = $1 WHERE id = $2`, [content, chunk.id]);
+    await pool.query(`SELECT update_story_chunk_content($2::int, $1::text)`, [content, chunk.id]);
     return res.json({ content, chapter: chunk.chapter, seq: chunk.seq });
   }
 
   // seq > 1, kind='open' → chapter conclusion
   const content = await generateChapterConclusion({ username, bookTitle: book.title, chapter: chunk.chapter, priorStory: prior, theme });
   if (!content) return res.status(500).json({ error: "story generation failed" });
-  await pool.query(`UPDATE story_chunks SET content = $1 WHERE id = $2`, [content, chunk.id]);
+  await pool.query(`SELECT update_story_chunk_content($2::int, $1::text)`, [content, chunk.id]);
   return res.json({ content, chapter: chunk.chapter, seq: chunk.seq });
 };
 
@@ -576,7 +567,7 @@ export const concludeChapter = async (req: Request, res: Response) => {
   if (lastChunk.rows.length === 0 || lastChunk.rows[0].kind !== "proceed")
     return res.status(400).json({ error: "write at least one proceed before concluding the chapter" });
 
-  const userRow = await pool.query(`SELECT username FROM users WHERE id = $1::int`, [uid]);
+  const userRow = await pool.query(`SELECT get_user_name($1::int) AS username`, [uid]);
   const username: string = userRow.rows[0].username;
   const priorStory = await getFullStory(book.id);
 
@@ -591,17 +582,17 @@ export const concludeChapter = async (req: Request, res: Response) => {
   if (!conclusion) return res.status(500).json({ error: "story generation failed" });
 
   const seqRow = await pool.query(
-    `SELECT COALESCE(MAX(seq), 0) + 1 AS next_seq FROM story_chunks WHERE book_id = $1::int AND chapter = $2::int`,
+    `SELECT get_next_story_seq($1::int, $2::int) AS next_seq`,
     [book.id, book.chapter]
   );
   await pool.query(
-    `INSERT INTO story_chunks (book_id, chapter, seq, kind, content, event_ids) VALUES ($1,$2,$3,'open',$4,'{}')`,
+    `SELECT add_story_chunk($1, $2, $3, 'open', $4)`,
     [book.id, book.chapter, seqRow.rows[0].next_seq, conclusion]
   );
 
   // 2. Advance chapter counter
   const nextChapter = book.chapter + 1;
-  await pool.query(`UPDATE books SET chapter = $1 WHERE id = $2`, [nextChapter, book.id]);
+  await pool.query(`SELECT update_book_chapter($1, $2)`, [book.id, nextChapter]);
 
   // 3. Write the opening hook of the new chapter
   const opening = await generateChapterOpening({
@@ -614,7 +605,7 @@ export const concludeChapter = async (req: Request, res: Response) => {
   if (!opening) return res.status(500).json({ error: "chapter opening generation failed" });
 
   await pool.query(
-    `INSERT INTO story_chunks (book_id, chapter, seq, kind, content, event_ids) VALUES ($1,$2,1,'open',$3,'{}')`,
+    `SELECT add_story_chunk($1, $2, 1, 'open', $3)`,
     [book.id, nextChapter, opening]
   );
 
@@ -632,17 +623,17 @@ export const renameBook = async (req: Request, res: Response) => {
   if (!titleV.ok) return res.status(400).json({ error: titleV.error });
 
   const result = await pool.query(
-    `UPDATE books SET title = $1::text WHERE user_id = $2::int RETURNING id`,
-    [titleV.value, uid]
+    `SELECT rename_book($1::int, $2::text) AS id`,
+    [uid, titleV.value]
   );
-  if (result.rows.length === 0)
+  if (result.rows[0]?.id == null)
     return res.status(404).json({ error: "no book found — call start-book first" });
 
   return res.json({ bookId: result.rows[0].id });
 };
 
 export const getThemes = async (_req: Request, res: Response) => {
-  const { rows } = await pool.query(`SELECT id, name, description FROM themes ORDER BY id ASC`);
+  const { rows } = await pool.query(`SELECT * FROM get_all_themes()`);
   return res.json(rows);
 };
 
@@ -699,7 +690,7 @@ export const reportOrganizer = async (req: Request, res: Response) => {
   if (!reasonV.ok) return res.status(400).json({ error: reasonV.error });
 
   const inserted = await pool.query(
-    `INSERT INTO tickets (type, payload) VALUES ('report_organizer', $1::jsonb) RETURNING id`,
+    `SELECT create_ticket('report_organizer', $1::jsonb) AS id`,
     [JSON.stringify({ reporterId: uid, reporterRole: "user", organizerId: targetV.value, reason: reasonV.value })]
   );
   return res.json({ ticketId: inserted.rows[0].id });
@@ -715,16 +706,12 @@ export const acceptLegal = async (req: Request, res: Response) => {
 
   const { fetchLegalVersions } = await import("../legalVersions.js");
   const { terms_version, privacy_version } = await fetchLegalVersions("user");
-  const sets: string[] = [];
-  if (acceptTerms === true) {
-    sets.push(`terms_accepted_version = ${terms_version}, terms_accepted_at = NOW()`);
-  }
-  if (acceptPrivacy === true) {
-    sets.push(`privacy_accepted_version = ${privacy_version}, privacy_accepted_at = NOW()`);
-  }
-  if (sets.length === 0)
+  if (!acceptTerms && !acceptPrivacy)
     return res.status(400).json({ error: "Provide acceptTerms and/or acceptPrivacy as true" });
 
-  await pool.query(`UPDATE users SET ${sets.join(", ")} WHERE id = $1::int`, [uid]);
+  await pool.query(
+    `SELECT accept_legal_user($1::int, $2::boolean, $3::boolean, $4::int, $5::int)`,
+    [uid, acceptTerms === true, acceptPrivacy === true, terms_version, privacy_version]
+  );
   return res.json({ success: true });
 };

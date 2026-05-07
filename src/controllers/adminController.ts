@@ -33,7 +33,7 @@ export const logoutAbsentees = async () => {
 
 export const refreshBadgeRoadmaps = async () => {
   const { rows: badges } = await pool.query(
-    `SELECT id, title, description, league FROM badges`
+    `SELECT * FROM get_all_badges_for_roadmap()`
   );
 
   if (badges.length === 0) return false;
@@ -53,8 +53,8 @@ export const refreshBadgeRoadmaps = async () => {
     if (roadmaps.length === 0) continue;
 
     await pool.query(
-      `UPDATE badges SET roadmaps = $1::varchar(10000)[] WHERE id = $2`,
-      [roadmaps, badge.id]
+      `SELECT update_badge_roadmaps($1::int, $2::varchar(10000)[])`,
+      [badge.id, roadmaps]
     );
   }
 
@@ -79,10 +79,8 @@ export const deactivateCompletedAdventures = async () => {
 
 /** Removes signup_links that expired without ever being used. Safe to run frequently. */
 export const cleanupExpiredSignupLinks = async () => {
-  const { rowCount } = await pool.query(
-    `DELETE FROM signup_links WHERE expires_at < NOW() AND used_at IS NULL`
-  );
-  return rowCount ?? 0;
+  const { rows } = await pool.query(`SELECT cleanup_expired_signup_links() AS count`);
+  return rows[0]?.count ?? 0;
 };
 
 /**
@@ -90,11 +88,7 @@ export const cleanupExpiredSignupLinks = async () => {
  * 60 days. Also deletes each applicant's KYC folder from GCS so no orphaned files remain.
  */
 export const cleanupStalePendingSignups = async () => {
-  const { rows } = await pool.query(
-    `DELETE FROM pending_signups
-     WHERE submitted_at < NOW() - INTERVAL '60 days'
-     RETURNING kyc_folder`
-  );
+  const { rows } = await pool.query(`SELECT * FROM cleanup_stale_pending_signups()`);
 
   if (rows.length === 0) return 0;
 
@@ -115,12 +109,7 @@ export const cleanupStalePendingSignups = async () => {
  * One JSON file per run, keyed by timestamp, stored under tickets/ in the archive bucket.
  */
 export const cleanupResolvedTickets = async () => {
-  const { rows } = await pool.query(
-    `DELETE FROM tickets
-     WHERE status = 'closed'
-       AND resolved_at < NOW() - INTERVAL '90 days'
-     RETURNING *`
-  );
+  const { rows } = await pool.query(`SELECT * FROM cleanup_resolved_tickets()`);
 
   if (rows.length === 0) return 0;
 
