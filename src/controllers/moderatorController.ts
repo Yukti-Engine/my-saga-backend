@@ -674,8 +674,8 @@ export const addVenue = async (req: Request, res: Response) => {
     : { ok: true as const, value: null };
   if (!headCountV.ok) return res.status(400).json({ error: headCountV.error });
 
-  const guaranteeV = req.body.guaranteePerHead != null
-    ? validateFloatRange(req.body.guaranteePerHead, "guaranteePerHead", 0, 1000000)
+  const guaranteeV = req.body.guaranteePerHeadPerHour != null
+    ? validateFloatRange(req.body.guaranteePerHeadPerHour, "guaranteePerHeadPerHour", 0, 1000000)
     : { ok: true as const, value: null };
   if (!guaranteeV.ok) return res.status(400).json({ error: guaranteeV.error });
 
