@@ -13,12 +13,11 @@ import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
 import { uploadProfileIcon, deleteProfileIcon } from "../services/bucketService.js";
-import { sendEmail, scheduleRequestEmail } from "../services/mailerService.js";
 import { randomBytes } from "crypto";
 import { generateAdventureName as llmGenerateAdventureName } from "../services/llmService.js";
 import {
   validateUsername, validateBio, validateBoolean,
-  validateBoundedText, validateFutureTimestamp,
+  validateBoundedText,
   validatePositiveInt, validateIntRange
 } from "../validators.js";
 
@@ -329,59 +328,3 @@ export const acceptLegal = async (req: Request, res: Response) => {
   return res.json({ success: true });
 };
 
-export const requestSchedule = async (req: Request, res: Response) => {
-  const { oid } = req.body;
-  const venueIdV = validatePositiveInt(req.body.venueId, "venueId");
-  if (!venueIdV.ok) return res.status(400).json({ error: venueIdV.error });
-  const startV = validateFutureTimestamp(req.body.startTime, "startTime");
-  if (!startV.ok) return res.status(400).json({ error: startV.error });
-  const endV = validateFutureTimestamp(req.body.endTime, "endTime");
-  if (!endV.ok) return res.status(400).json({ error: endV.error });
-
-  if (new Date(startV.value) >= new Date(endV.value))
-    return res.status(400).json({ error: "startTime must be before endTime" });
-
-  const token = randomBytes(32).toString("hex");
-
-  try {
-    const { rows } = await pool.query(
-      `SELECT request_alloted_schedule($1::int, $2::timestamptz, $3::timestamptz, 'organizer', $4::int, $5::varchar) AS id`,
-      [venueIdV.value, startV.value, endV.value, oid, token]
-    );
-
-    pool.query(
-      `SELECT * FROM get_venue_partner_by_venue($1::int)`,
-      [venueIdV.value]
-    ).then(({ rows: vp }) => {
-      if (!vp[0]?.partner_email) return;
-      const { subject, html } = scheduleRequestEmail(vp[0].venue_name, vp[0].partner_name, token, startV.value, endV.value);
-      sendEmail(vp[0].partner_email, subject, html);
-    }).catch((e) => console.error("schedule request email failed:", e));
-
-    return res.json({ success: true, id: rows[0].id });
-  } catch (err: any) {
-    const msg = err?.message ?? "";
-    if (msg.includes("duration exceeds") || msg.includes("start time") || msg.includes("busy") || msg.includes("overlaps"))
-      return res.status(400).json({ error: msg });
-    if (err?.code === "23503")
-      return res.status(400).json({ error: "Venue not found" });
-    console.error("Error in requestSchedule:", err);
-    return res.status(500).json({ error: "Failed to request schedule" });
-  }
-};
-
-export const getVenueSchedules = async (req: Request, res: Response) => {
-  const venueIdV = validatePositiveInt(req.body.venueId, "venueId");
-  if (!venueIdV.ok) return res.status(400).json({ error: venueIdV.error });
-
-  const { rows } = await pool.query(
-    `SELECT * FROM get_schedules_for_venue($1::int)`,
-    [venueIdV.value]
-  );
-  return res.json(rows);
-};
-
-export const getVenues = async (_req: Request, res: Response) => {
-  const { rows } = await pool.query(`SELECT * FROM get_venues()`);
-  return res.json(rows);
-};

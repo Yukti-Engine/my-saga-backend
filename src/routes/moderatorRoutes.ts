@@ -6,7 +6,7 @@
  * KYC review, pending-signup workflow, ticket resolution, and asset uploads.
  */
 import express from "express";
-import { addBoss, addOrganizer, createNewBadge, createCategory, createTournament, verifyToken, getUsers, getOrganizers, getBosses, grantGems, grantCredits, getAdventures, getTournaments, getCategories, getBadges, addCategoryQualification, removeCategoryQualification, listKyc, kycDownloadUrl, getTickets, resolveTicket, uploadBadgeIconRoute, uploadCategoryIconRoute, uploadThemeIconRoute, getThemes, listPendingSignups, getPendingSignupKyc, pendingSignupKycDownloadUrl, approveSignup, rejectSignup, addVenuePartner, getVenuePartners, removeVenuePartner, addVenue, getVenues, removeVenue, getSchedulesForVenue } from "../controllers/moderatorController.js";
+import { addBoss, addOrganizer, createNewBadge, createCategory, createTournament, verifyToken, getUsers, getOrganizers, getBosses, grantGems, grantCredits, getAdventures, getTournaments, getCategories, getBadges, addCategoryQualification, removeCategoryQualification, listKyc, kycDownloadUrl, getTickets, resolveTicket, uploadBadgeIconRoute, uploadCategoryIconRoute, uploadThemeIconRoute, getThemes, listPendingSignups, getPendingSignupKyc, pendingSignupKycDownloadUrl, approveSignup, rejectSignup } from "../controllers/moderatorController.js";
 import { authSuperToken } from "../middlewares/auth.js";
 import { generateSignupLink } from "../controllers/authController.js";
 
@@ -43,12 +43,4 @@ router.post("/pending-signup-kyc", authSuperToken, getPendingSignupKyc);
 router.post("/pending-signup-kyc-download-url", authSuperToken, pendingSignupKycDownloadUrl);
 router.post("/approve-signup", authSuperToken, approveSignup);
 router.post("/reject-signup", authSuperToken, rejectSignup);
-router.post("/add-venue-partner", authSuperToken, addVenuePartner);
-router.post("/venue-partners", authSuperToken, getVenuePartners);
-router.post("/remove-venue-partner", authSuperToken, removeVenuePartner);
-router.post("/add-venue", authSuperToken, addVenue);
-router.post("/venues", authSuperToken, getVenues);
-router.post("/remove-venue", authSuperToken, removeVenue);
-router.post("/venue-schedules", authSuperToken, getSchedulesForVenue);
-
 export default router;

@@ -12,7 +12,7 @@ import type { Request, Response } from "express";
 import { randomBytes } from "crypto";
 import pool from "../db.js";
 import { sendOtp, retry, verify } from "../services/otpService.js";
-import { sendEmail, scheduleAcknowledgementEmail } from "../services/mailerService.js";
+import { sendEmail } from "../services/mailerService.js";
 import { generateKycUploadUrl } from "../services/bucketService.js";
 import { validateName, validatePhone, validateEmail, validateDob, validateGender, validateRequestId, validateOtp, validateReasonToJoin, escapeHtml, validatePassword, validateUsername, validateBoundedText } from "../validators.js";
 import { fetchLegalVersions, type LegalApp } from "../legalVersions.js";
@@ -492,57 +492,6 @@ export const signupViaLink = async (req: Request, res: Response) => {
     console.error("Error in signupViaLink:", err);
     return res.status(500).json({ error: "Signup failed" });
   }
-};
-
-export const confirmSchedule = async (req: Request, res: Response) => {
-  const tokenV = validateBoundedText(req.body.token, "token", 10, 128);
-  if (!tokenV.ok) return res.status(400).json({ error: tokenV.error });
-
-  const { rows: info } = await pool.query(
-    `SELECT * FROM get_schedule_with_partner($1::varchar)`,
-    [tokenV.value]
-  );
-
-  const { rows } = await pool.query(
-    `SELECT confirm_alloted_schedule($1::varchar) AS found`,
-    [tokenV.value]
-  );
-  if (!rows[0].found) return res.status(404).json({ error: "Schedule not found or already confirmed" });
-
-  if (info[0]?.partner_email) {
-    const { subject, html } = scheduleAcknowledgementEmail(info[0].venue_name, info[0].partner_name, info[0].start_time, info[0].end_time, "confirmed");
-    sendEmail(info[0].partner_email, subject, html).catch((e) =>
-      console.error("schedule confirmation ack email failed:", e)
-    );
-  }
-
-  return res.json({ success: true, message: "Schedule confirmed." });
-};
-
-export const rejectSchedule = async (req: Request, res: Response) => {
-  const tokenV = validateBoundedText(req.body.token, "token", 10, 128);
-  if (!tokenV.ok) return res.status(400).json({ error: tokenV.error });
-
-  // Fetch before deleting — row is needed for the ack email
-  const { rows: info } = await pool.query(
-    `SELECT * FROM get_schedule_with_partner($1::varchar)`,
-    [tokenV.value]
-  );
-
-  const { rows } = await pool.query(
-    `SELECT reject_alloted_schedule($1::varchar) AS found`,
-    [tokenV.value]
-  );
-  if (!rows[0].found) return res.status(404).json({ error: "Schedule not found" });
-
-  if (info[0]?.partner_email) {
-    const { subject, html } = scheduleAcknowledgementEmail(info[0].venue_name, info[0].partner_name, info[0].start_time, info[0].end_time, "rejected");
-    sendEmail(info[0].partner_email, subject, html).catch((e) =>
-      console.error("schedule rejection ack email failed:", e)
-    );
-  }
-
-  return res.json({ success: true, message: "Schedule rejected and removed." });
 };
 
 

@@ -250,7 +250,7 @@ export const startBook = async (req: Request, res: Response) => {
 async function fetchEventSummaries(userId: number, eventIds: number[]): Promise<EventSummary[]> {
   if (eventIds.length === 0) return [];
   const { rows } = await pool.query<{
-    id: number; activity: string; timing: Date; venue: string | null;
+    id: number; activity: string; timing: Date;
     adventure_name: string; guide_username: string; expert_username: string | null;
     other_adventurers: string[] | null; chat_excerpt: string | null;
   }>(
@@ -258,7 +258,6 @@ async function fetchEventSummaries(userId: number, eventIds: number[]): Promise<
        e.id,
        e.activity,
        e.timing,
-       e.venue,
        a.name          AS adventure_name,
        o.username      AS guide_username,
        b.username      AS expert_username,
@@ -289,7 +288,6 @@ async function fetchEventSummaries(userId: number, eventIds: number[]): Promise<
   return rows.map((r) => ({
     activity: r.activity,
     timing: r.timing,
-    venue: r.venue,
     adventureName: r.adventure_name,
     guideUsername: r.guide_username,
     expertUsername: r.expert_username,

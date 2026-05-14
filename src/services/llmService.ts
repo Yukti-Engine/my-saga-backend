@@ -37,7 +37,6 @@ Respond with ONLY the roadmap as plain text. No JSON, no lists, no extra formatt
 export type EventSummary = {
   activity: string;
   timing: Date;
-  venue: string | null;
   adventureName: string;
   guideUsername: string;
   expertUsername: string | null;
@@ -49,13 +48,12 @@ function formatEvents(events: EventSummary[]): string {
   if (events.length === 0) return "No new events recorded.";
   return events.map((e) => {
     const date = e.timing.toDateString();
-    const venue = e.venue ? ` at ${e.venue}` : "";
     const others = e.otherAdventurers.length
       ? `Other adventurers: ${e.otherAdventurers.map((u) => `@${u}`).join(", ")}`
       : "No other adventurers";
     const expert = e.expertUsername ? `\n  Expert: @expert:${e.expertUsername}` : "";
     const chat = e.chatExcerpt ? `\n  Chat excerpt:\n${e.chatExcerpt.split("\n").map(l => `    ${l}`).join("\n")}` : "";
-    return `Adventure: "${e.adventureName}" (${date}${venue})\n  Guide: @guide:${e.guideUsername}${expert}\n  Activity: ${e.activity}\n  ${others}${chat}`;
+    return `Adventure: "${e.adventureName}" (${date})\n  Guide: @guide:${e.guideUsername}${expert}\n  Activity: ${e.activity}\n  ${others}${chat}`;
   }).join("\n\n");
 }
 
@@ -189,7 +187,7 @@ Rules:
 - Refer to this adventurer as @${username}
 - Refer to guides as @guide:theirusername, experts as @expert:theirusername, other adventurers as @theirusername
 - Third-person narrative style consistent with the ${theme.name} world
-- Reinterpret every real-world activity and venue as a ${theme.name}-equivalent (e.g. a hackathon becomes a cyber-heist or arcane tournament depending on the world) — never use mundane real-world labels in the prose
+- Reinterpret every real-world activity as a ${theme.name}-equivalent (e.g. a hackathon becomes a cyber-heist or arcane tournament depending on the world) — never use mundane real-world labels in the prose
 - Keep dates accurate; transform everything else through the ${theme.name} lens
 - Build on what came before — maintain tone and continuity
 ${STATS_PROMPT}`;
