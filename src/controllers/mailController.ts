@@ -14,11 +14,6 @@ export const send = async (req: Request, res: Response) => {
   if (receiverRole === role && receiverIdV.value === id)
     return res.status(400).json({ error: "Cannot send to yourself" });
 
-  if (role=="user"){
-    const deducted = await pool.query(`SELECT deduct_gems($1::int, $2::int) AS ok`, [id, 1]);
-    if (!deducted.rows[0].ok)
-      return res.json({ success: false, message: "Insufficient gems" });
-  }
   await pool.query(
     `SELECT send_notification($1::int, $2::text, $3::text, $4::int, $5::text)`,
     [id, role, messageV.value, receiverIdV.value, receiverRole]

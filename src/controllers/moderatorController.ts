@@ -169,25 +169,6 @@ export const getBosses = async (req: Request, res: Response) => {
   }
 };
 
-export const grantGems = async (req: Request, res: Response) => {
-  const { userId, gems } = req.body;
-
-  if (!userId || gems == null)
-    return res.status(400).json({ error: "userId and gems are required" });
-
-  try {
-    const { rows } = await pool.query(
-      `SELECT mod_grant_gems($1::int, $2::int) AS gems`,
-      [userId, gems]
-    );
-    if (rows[0].gems === null)
-      return res.status(404).json({ error: "User not found" });
-    return res.json({ message: "Gems granted", id: userId, gems: rows[0].gems });
-  } catch (err) {
-    console.error("Error in grantGems:", err);
-    return res.status(500).json({ error: "Failed to grant gems" });
-  }
-};
 
 export const grantCredits = async (req: Request, res: Response) => {
   const { id, role, credits } = req.body;

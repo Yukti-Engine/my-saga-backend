@@ -6,7 +6,7 @@
  * KYC review, pending-signup workflow, ticket resolution, and asset uploads.
  */
 import express from "express";
-import { addBoss, addOrganizer, createNewBadge, createCategory, createTournament, verifyToken, getUsers, getOrganizers, getBosses, grantGems, grantCredits, getAdventures, getTournaments, getCategories, getBadges, addCategoryQualification, removeCategoryQualification, listKyc, kycDownloadUrl, getTickets, resolveTicket, uploadBadgeIconRoute, uploadCategoryIconRoute, uploadThemeIconRoute, getThemes, listPendingSignups, getPendingSignupKyc, pendingSignupKycDownloadUrl, approveSignup, rejectSignup } from "../controllers/moderatorController.js";
+import { addBoss, addOrganizer, createNewBadge, createCategory, createTournament, verifyToken, getUsers, getOrganizers, getBosses, grantCredits, getAdventures, getTournaments, getCategories, getBadges, addCategoryQualification, removeCategoryQualification, listKyc, kycDownloadUrl, getTickets, resolveTicket, uploadBadgeIconRoute, uploadCategoryIconRoute, uploadThemeIconRoute, getThemes, listPendingSignups, getPendingSignupKyc, pendingSignupKycDownloadUrl, approveSignup, rejectSignup } from "../controllers/moderatorController.js";
 import { authSuperToken } from "../middlewares/auth.js";
 import { generateSignupLink } from "../controllers/authController.js";
 
@@ -16,7 +16,6 @@ router.post("/verify-token", authSuperToken, verifyToken);
 router.post("/users", authSuperToken, getUsers);
 router.post("/organizers", authSuperToken, getOrganizers);
 router.post("/bosses", authSuperToken, getBosses);
-router.post("/grant-gems", authSuperToken, grantGems);
 router.post("/grant-credits", authSuperToken, grantCredits);
 router.post("/adventures", authSuperToken, getAdventures);
 router.post("/tournaments", authSuperToken, getTournaments);

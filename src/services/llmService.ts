@@ -131,7 +131,6 @@ export type SoftStatChanges = {
 export type StatChanges = SoftStatChanges & {
   drive:       -1 | 0 | 1;
   adaptability: -1 | 0 | 1;
-  integrity:   -1 | 0 | 1;
 };
 
 const ZERO_SOFT: SoftStatChanges = { cognitive: 0, emotional_intellect: 0, creativity: 0 };

@@ -98,9 +98,9 @@ export const getUserDashboard = async (req: Request, res: Response) => {
   const user = rows[0];
   return res.json({
     id: user.id, username: user.username, email: user.email,
-    level: user.level, penalties: user.penalties, gems: user.gems,
+    level: user.level, penalties: user.penalties,
     cognitive_index: user.cognitive_index, drive_index: user.drive_index,
-    adaptability_index: user.adaptability_index, integrity_index: user.integrity_index,
+    adaptability_index: user.adaptability_index,
     emotional_intellect_index: user.emotional_intellect_index, creativity_index: user.creativity_index,
     bio: user.bio, age: calculateAge(user.dob), gender: user.gender,
     setting_1: user.setting_1, setting_2: user.setting_2,
@@ -316,23 +316,12 @@ async function getFullStory(bookId: number): Promise<string> {
   return rows.map((r) => r.content).join("\n\n");
 }
 
-/**
- * Computes the "hard" (objective) stat changes from a batch of completed events.
- * These are deterministic rules, unlike the LLM-derived "soft" stats.
- *   drive:        -1 if no events, +1 if 3+ events, else 0
- *   adaptability: -1 if only one category seen (needs 2+ events), +1 if 2+ distinct categories
- *   integrity:    -1 for each new penalty since the last story entry, else 0
- */
 async function computeHardStats(
   pendingEventIds: number[],
-  currentPenalties: number,
-  lastPenaltyCount: number,
-): Promise<{ drive: -1 | 0 | 1; adaptability: -1 | 0 | 1; integrity: -1 | 0 | 1 }> {
-  // drive: based on event count in this period
+): Promise<{ drive: -1 | 0 | 1; adaptability: -1 | 0 | 1 }> {
   const eventCount = pendingEventIds.length;
   const drive: -1 | 0 | 1 = eventCount >= 3 ? 1 : eventCount === 0 ? -1 : 0;
 
-  // adaptability: based on distinct categories across this period's adventures
   let adaptability: -1 | 0 | 1 = 0;
   if (eventCount >= 2) {
     const { rows } = await pool.query<{ cat_count: string }>(
@@ -346,11 +335,7 @@ async function computeHardStats(
     adaptability = catCount >= 2 ? 1 : -1;
   }
 
-  // integrity: penalty delta since last story entry
-  const penaltyDelta = currentPenalties - lastPenaltyCount;
-  const integrity: -1 | 0 | 1 = penaltyDelta > 0 ? -1 : 0;
-
-  return { drive, adaptability, integrity };
+  return { drive, adaptability };
 }
 
 /** Converts a -1/0/+1 direction flag into a 1% multiplier applied to the stat column. */
@@ -360,13 +345,12 @@ function statMultiplier(v: -1 | 0 | 1): number {
 
 async function applyStatChanges(userId: number, stats: StatChanges) {
   const { rows } = await pool.query(
-    `SELECT * FROM apply_stat_changes($1::int, $2::float8, $3::float8, $4::float8, $5::float8, $6::float8, $7::float8)`,
+    `SELECT * FROM apply_stat_changes($1::int, $2::float8, $3::float8, $4::float8, $5::float8, $6::float8)`,
     [
       userId,
       statMultiplier(stats.cognitive),
       statMultiplier(stats.drive),
       statMultiplier(stats.adaptability),
-      statMultiplier(stats.integrity),
       statMultiplier(stats.emotional_intellect),
       statMultiplier(stats.creativity),
     ]
@@ -400,7 +384,7 @@ export const proceedStory = async (req: Request, res: Response) => {
   // Run LLM generation and hard-stat computation in parallel for performance
   const [llmResult, hardStats] = await Promise.all([
     generateProceedChunk({ username, bookTitle: book.title, chapter: book.chapter, priorStory, events, theme }),
-    computeHardStats(pendingIds, currentPenalties, book.last_penalty_count),
+    computeHardStats(pendingIds),
   ]);
   if (!llmResult) return res.status(500).json({ error: "story generation failed" });
 
@@ -463,7 +447,7 @@ export const regenerateStory = async (req: Request, res: Response) => {
     const events = await fetchEventSummaries(uid, chunk.event_ids);
     const [llmResult, hardStats] = await Promise.all([
       generateProceedChunk({ username, bookTitle: book.title, chapter: chunk.chapter, priorStory: prior, events, theme }),
-      computeHardStats(chunk.event_ids, currentPenalties, book.last_penalty_count),
+      computeHardStats(chunk.event_ids),
     ]);
     if (!llmResult) return res.status(500).json({ error: "story generation failed" });
     const stats: StatChanges = { ...llmResult.softStats, ...hardStats };
