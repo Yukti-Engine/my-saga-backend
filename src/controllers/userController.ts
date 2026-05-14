@@ -101,7 +101,7 @@ export const getUserDashboard = async (req: Request, res: Response) => {
     level: user.level, penalties: user.penalties,
     cognitive_index: user.cognitive_index, drive_index: user.drive_index,
     adaptability_index: user.adaptability_index,
-    emotional_intellect_index: user.emotional_intellect_index, creativity_index: user.creativity_index,
+    empathy_index: user.empathy_index, creativity_index: user.creativity_index,
     bio: user.bio, age: calculateAge(user.dob), gender: user.gender,
     setting_1: user.setting_1, setting_2: user.setting_2,
     icon_key: user.icon_key ?? null
@@ -351,7 +351,7 @@ async function applyStatChanges(userId: number, stats: StatChanges) {
       statMultiplier(stats.cognitive),
       statMultiplier(stats.drive),
       statMultiplier(stats.adaptability),
-      statMultiplier(stats.emotional_intellect),
+      statMultiplier(stats.empathy),
       statMultiplier(stats.creativity),
     ]
   );
