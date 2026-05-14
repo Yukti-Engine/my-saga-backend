@@ -1,0 +1,1 @@
+ALTER table events DROP column timing
