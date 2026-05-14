@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
-import { validatePositiveInt, validateIntRange, validateFloatRange, validateBoundedText } from "../validators.js";
+import { validatePositiveInt, validateIntRange, validateBoundedText } from "../validators.js";
 
 export const getTicketStatus = async (req: Request, res: Response) => {
   const ticketV = validatePositiveInt(req.body.ticketId, "ticketId");
@@ -41,6 +41,11 @@ export const closeMyTicket = async (req: Request, res: Response) => {
   if (!rows[0].closed)
     return res.status(404).json({ error: "Ticket not found, already closed, or not yours" });
   return res.json({ success: true });
+};
+
+export const getSpaces = async (req: Request, res: Response) => {
+  const result = await pool.query(`SELECT * FROM get_all_spaces()`);
+  return res.json(result.rows);
 };
 
 export const getCategories = async (req: Request, res: Response) => {
@@ -106,18 +111,14 @@ export const findLobbies = async (req: Request, res: Response) => {
   if (role !== "boss" && role !== "user")
     return res.status(400).json({ error: "role must be boss or user" });
 
-  const matchRadiusV = validateIntRange(req.body.matchRadius, "matchRadius", 10, 20);
-  if (!matchRadiusV.ok) return res.status(400).json({ error: matchRadiusV.error });
+  const spaceIdV = validatePositiveInt(req.body.spaceId, "spaceId");
+  if (!spaceIdV.ok) return res.status(400).json({ error: spaceIdV.error });
   const ageMinV = validateIntRange(req.body.ageRangeMin, "ageRangeMin", 18, 100);
   if (!ageMinV.ok) return res.status(400).json({ error: ageMinV.error });
   const ageMaxV = validateIntRange(req.body.ageRangeMax, "ageRangeMax", 18, 100);
   if (!ageMaxV.ok) return res.status(400).json({ error: ageMaxV.error });
   if (ageMinV.value > ageMaxV.value)
     return res.status(400).json({ error: "ageRangeMin must be <= ageRangeMax" });
-  const latV = validateFloatRange(req.body.latitude, "latitude", -90, 90);
-  if (!latV.ok) return res.status(400).json({ error: latV.error });
-  const lngV = validateFloatRange(req.body.longitude, "longitude", -180, 180);
-  if (!lngV.ok) return res.status(400).json({ error: lngV.error });
 
   let validCategoryId: number | null = null;
   let validBadgeIds: number[] | null = null;
@@ -153,15 +154,15 @@ export const findLobbies = async (req: Request, res: Response) => {
   const person = rows[0];
   const age = calculateAge(person.dob);
   const compatible = await pool.query(
-    `SELECT * FROM get_compatible_requests($1::text, $2::int, $3::int[], $4::int, $5::float8, $6::float8, $7::text)`,
-    [role, validCategoryId, validBadgeIds, age, latV.value, lngV.value, person.gender]
+    `SELECT * FROM get_compatible_requests($1::text, $2::int, $3::int[], $4::int, $5::int, $6::text)`,
+    [role, validCategoryId, validBadgeIds, age, spaceIdV.value, person.gender]
   );
 
   const potentialAdventures: any[] = [];
   for (const element of compatible.rows) {
     const check = await pool.query(
-      `SELECT check_reverse_compatibility($1::int, $2::float8, $3::float8, $4::float8, $5::int, $6::int, $7::boolean, $8::boolean) AS ok`,
-      [element.id, latV.value, lngV.value, matchRadiusV.value, ageMinV.value, ageMaxV.value,
+      `SELECT check_reverse_compatibility($1::int, $2::int, $3::int, $4::boolean, $5::boolean) AS ok`,
+      [element.id, ageMinV.value, ageMaxV.value,
        person.gender === 'F' && person.setting_1,
        person.gender === 'F' && person.setting_2]
     );

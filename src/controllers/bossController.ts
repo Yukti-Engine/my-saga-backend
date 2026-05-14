@@ -17,7 +17,7 @@ import { sendEmail, scheduleRequestEmail } from "../services/mailerService.js";
 import { randomBytes } from "crypto";
 import {
   validateUsername, validateBio, validateBoolean,
-  validateBoundedText, validateHttpUrl, validateFutureTimestamp, validatePositiveInt
+  validateBoundedText, validateFutureTimestamp, validatePositiveInt
 } from "../validators.js";
 
 export const getAdventures = async (req: Request, res: Response) => {
@@ -31,12 +31,8 @@ export const organizeExam = async (req: Request, res: Response) => {
   const { bid } = req.body;
   const activityV = validateBoundedText(req.body.activity, "activity", 20, 400);
   if (!activityV.ok) return res.status(400).json({ error: activityV.error });
-  const timingV = validateFutureTimestamp(req.body.timing, "timing");
-  if (!timingV.ok) return res.status(400).json({ error: timingV.error });
-  const venueV = validateBoundedText(req.body.venue, "venue", 10, 200);
-  if (!venueV.ok) return res.status(400).json({ error: venueV.error });
-  const venueLinkV = validateHttpUrl(req.body.venueLink, "venueLink", 100);
-  if (!venueLinkV.ok) return res.status(400).json({ error: venueLinkV.error });
+  const slotIdV = validatePositiveInt(req.body.slotId, "slotId");
+  if (!slotIdV.ok) return res.status(400).json({ error: slotIdV.error });
   const instructionV = validateBoundedText(req.body.instruction, "instruction", 20, 200, { allowNewlines: true });
   if (!instructionV.ok) return res.status(400).json({ error: instructionV.error });
   const adventureIdV = validatePositiveInt(req.body.adventureId, "adventureId");
@@ -50,8 +46,8 @@ export const organizeExam = async (req: Request, res: Response) => {
     return res.status(403).json({ success: false });
 
   const resultQuery = await pool.query(
-    `SELECT create_event($1::text, $2::timestamptz, $3::text, $4::text, $5::int, $6::text, true)`,
-    [activityV.value, timingV.value, venueV.value, venueLinkV.value, adventureIdV.value, instructionV.value]
+    `SELECT create_event($1::text, $2::int, $3::int, $4::text, true)`,
+    [activityV.value, slotIdV.value, adventureIdV.value, instructionV.value]
   );
   return res.json({ success: true, eventId: resultQuery.rows[0].create_event });
 };
@@ -172,11 +168,10 @@ export const joinAdventure = async (req: Request, res: Response) => {
     return res.status(403).json({ error: "Not qualified for this badge" });
 
   const result = await pool.query(
-    `SELECT match_request($1::int, $2::text, $3::int, $4::int, $5::int, $6::int, $7::int, $8::int, $9::float8, $10::int, $11::int, $12::float8, $13::float8, $14::float8, $15::boolean, $16::boolean) AS result`,
+    `SELECT match_request($1::int, $2::text, $3::int, $4::int, $5::int, $6::int, $7::int, $8::int, $9::int, $10::int, $11::int, $12::float8, $13::boolean, $14::boolean) AS result`,
     [bid, "boss", ageRangeMin, ageRangeMax,
      matchRequest.id, matchRequest.boss_id, matchRequest.org_id, matchRequest.category_id,
-     matchRequest.match_radius, matchRequest.age_range_min,
-     matchRequest.age_range_max, matchRequest.latitude, matchRequest.longitude,
+     matchRequest.space_id, matchRequest.age_range_min, matchRequest.age_range_max,
      matchRequest.pay_per_head, matchRequest.all_girls, matchRequest.half_girls]
   );
   return res.json(result.rows[0].result);

@@ -1,8 +1,9 @@
 import express from "express";
-import { getCategories, getSubcategories, findLobbies, getBadges, getProfile, getTicketStatus, getMyTickets, closeMyTicket } from "../controllers/searchController.js";
+import { getSpaces, getCategories, getSubcategories, findLobbies, getBadges, getProfile, getTicketStatus, getMyTickets, closeMyTicket } from "../controllers/searchController.js";
 import { authAny } from "../middlewares/auth.js";
 
 const router = express.Router();
+router.post("/spaces", authAny, getSpaces);
 router.post("/lobbies", authAny, findLobbies);
 router.post("/categories", authAny, getCategories);
 router.post("/subcategories", authAny, getSubcategories);

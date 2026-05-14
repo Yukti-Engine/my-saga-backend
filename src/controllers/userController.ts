@@ -136,43 +136,12 @@ export const joinAdventure = async (req: Request, res: Response) => {
     return res.status(409).json({ error: "Already in an active lobby" });
 
   const matched = await pool.query(
-`SELECT match_request(
-$1::int,
-$2::text,
-$3::int,
-$4::int,
-$5::int,
-$6::int,
-$7::int,
-$8::int,
-$9::float8,
-$10::int,
-$11::int,
-$12::float8,
-$13::float8,
-$14::float8,
-$15::boolean,
-$16::boolean
-) AS result`,
-[
-uid,
-"user",
-ageRangeMin,
-ageRangeMax,
-matchRequest.id,
-matchRequest.boss_id,
-matchRequest.org_id,
-matchRequest.category_id,
-matchRequest.match_radius,
-matchRequest.age_range_min,
-matchRequest.age_range_max,
-matchRequest.latitude,
-matchRequest.longitude,
-matchRequest.pay_per_head,
-matchRequest.all_girls,
-matchRequest.half_girls
-]
-);
+    `SELECT match_request($1::int, $2::text, $3::int, $4::int, $5::int, $6::int, $7::int, $8::int, $9::int, $10::int, $11::int, $12::float8, $13::boolean, $14::boolean) AS result`,
+    [uid, "user", ageRangeMin, ageRangeMax,
+     matchRequest.id, matchRequest.boss_id, matchRequest.org_id, matchRequest.category_id,
+     matchRequest.space_id, matchRequest.age_range_min, matchRequest.age_range_max,
+     matchRequest.pay_per_head, matchRequest.all_girls, matchRequest.half_girls]
+  );
   const result = matched.rows[0].result;
   if (result.success)
     return res.json({ success: true });

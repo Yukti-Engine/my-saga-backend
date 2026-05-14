@@ -18,8 +18,8 @@ import { randomBytes } from "crypto";
 import { generateAdventureName as llmGenerateAdventureName } from "../services/llmService.js";
 import {
   validateUsername, validateBio, validateBoolean,
-  validateBoundedText, validateHttpUrl, validateFutureTimestamp,
-  validatePositiveInt, validateIntRange, validateFloatRange
+  validateBoundedText, validateFutureTimestamp,
+  validatePositiveInt, validateIntRange
 } from "../validators.js";
 
 export const getAdventures = async (req: Request, res: Response) => {
@@ -42,12 +42,8 @@ export const organizeEvent = async (req: Request, res: Response) => {
   const { oid } = req.body;
   const activityV = validateBoundedText(req.body.activity, "activity", 20, 400);
   if (!activityV.ok) return res.status(400).json({ error: activityV.error });
-  const timingV = validateFutureTimestamp(req.body.timing, "timing");
-  if (!timingV.ok) return res.status(400).json({ error: timingV.error });
-  const venueV = validateBoundedText(req.body.venue, "venue", 10, 200);
-  if (!venueV.ok) return res.status(400).json({ error: venueV.error });
-  const venueLinkV = validateHttpUrl(req.body.venueLink, "venueLink", 100);
-  if (!venueLinkV.ok) return res.status(400).json({ error: venueLinkV.error });
+  const slotIdV = validatePositiveInt(req.body.slotId, "slotId");
+  if (!slotIdV.ok) return res.status(400).json({ error: slotIdV.error });
   const instructionV = validateBoundedText(req.body.instruction, "instruction", 20, 200, { allowNewlines: true });
   if (!instructionV.ok) return res.status(400).json({ error: instructionV.error });
   const adventureIdV = validatePositiveInt(req.body.adventureId, "adventureId");
@@ -61,8 +57,8 @@ export const organizeEvent = async (req: Request, res: Response) => {
     return res.status(403).json({ success: false });
 
   const queryResult = await pool.query(
-    `SELECT create_event($1::text, $2::timestamptz, $3::text, $4::text, $5::int, $6::text, false)`,
-    [activityV.value, timingV.value, venueV.value, venueLinkV.value, adventureIdV.value, instructionV.value]
+    `SELECT create_event($1::text, $2::int, $3::int, $4::text, false)`,
+    [activityV.value, slotIdV.value, adventureIdV.value, instructionV.value]
   );
   return res.json({ success: true, eventId: queryResult.rows[0].create_event });
 };
@@ -157,18 +153,14 @@ export const requestMatch = async (req: Request, res: Response) => {
   if (!categoryIdV.ok) return res.status(400).json({ error: categoryIdV.error });
   const badgeIdV = validatePositiveInt(req.body.badgeId, "badgeId");
   if (!badgeIdV.ok) return res.status(400).json({ error: badgeIdV.error });
-  const matchRadiusV = validateIntRange(req.body.matchRadius, "matchRadius", 10, 20);
-  if (!matchRadiusV.ok) return res.status(400).json({ error: matchRadiusV.error });
+  const spaceIdV = validatePositiveInt(req.body.spaceId, "spaceId");
+  if (!spaceIdV.ok) return res.status(400).json({ error: spaceIdV.error });
   const ageMinV = validateIntRange(req.body.ageRangeMin, "ageRangeMin", 18, 100);
   if (!ageMinV.ok) return res.status(400).json({ error: ageMinV.error });
   const ageMaxV = validateIntRange(req.body.ageRangeMax, "ageRangeMax", 18, 100);
   if (!ageMaxV.ok) return res.status(400).json({ error: ageMaxV.error });
   if (ageMinV.value > ageMaxV.value)
     return res.status(400).json({ error: "ageRangeMin must be <= ageRangeMax" });
-  const latV = validateFloatRange(req.body.latitude, "latitude", -90, 90);
-  if (!latV.ok) return res.status(400).json({ error: latV.error });
-  const lngV = validateFloatRange(req.body.longitude, "longitude", -180, 180);
-  if (!lngV.ok) return res.status(400).json({ error: lngV.error });
   const payV = validateIntRange(req.body.payPerHead, "payPerHead", 500, 3000);
   if (!payV.ok) return res.status(400).json({ error: payV.error });
   const roadmapV = validateBoundedText(req.body.roadmap, "roadmap", 1, 5000, { allowNewlines: true });
@@ -195,9 +187,9 @@ export const requestMatch = async (req: Request, res: Response) => {
   const organizer = rows[0];
   // all_girls / half_girls flags are derived from the organizer's gender and privacy settings
   const result = await pool.query(
-    `SELECT * FROM create_match_request($1::int, $2::int, $3::float8, $4::int, $5::int, $6::float8, $7::float8, $8::float8, $9::boolean, $10::boolean, $11::text, $12::int)`,
-    [oid, categoryIdV.value, matchRadiusV.value, ageMinV.value, ageMaxV.value,
-     latV.value, lngV.value, payV.value,
+    `SELECT * FROM create_match_request($1::int, $2::int, $3::int, $4::int, $5::int, $6::float8, $7::boolean, $8::boolean, $9::text, $10::int)`,
+    [oid, categoryIdV.value, spaceIdV.value, ageMinV.value, ageMaxV.value,
+     payV.value,
      organizer.gender === "F" && organizer.setting_1 === true,
      organizer.gender === "F" && organizer.setting_2 === true,
      roadmapV.value, badgeIdV.value]
