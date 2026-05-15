@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
-import { validatePositiveInt, validateIntRange, validateBoundedText } from "../validators.js";
+import { validatePositiveInt, validateIntRange, validateBoundedText, validateFloatRange } from "../validators.js";
 
 export const getTicketStatus = async (req: Request, res: Response) => {
   const ticketV = validatePositiveInt(req.body.ticketId, "ticketId");
@@ -44,7 +44,15 @@ export const closeMyTicket = async (req: Request, res: Response) => {
 };
 
 export const getSpaces = async (req: Request, res: Response) => {
-  const result = await pool.query(`SELECT * FROM get_all_spaces()`);
+  const latV = validateFloatRange(req.body.latitude, "latitude", -90, 90);
+  if (!latV.ok) return res.status(400).json({ error: latV.error });
+  const longV = validateFloatRange(req.body.longitude, "longitude", -180, 180);
+  if (!longV.ok) return res.status(400).json({ error: longV.error });
+
+  const result = await pool.query(
+    `SELECT * FROM get_nearby_spaces($1::float8, $2::float8)`,
+    [latV.value, longV.value]
+  );
   return res.json(result.rows);
 };
 
