@@ -5,7 +5,7 @@
  * All routes require a valid user access token via authUser.
  */
 import express from "express";
-import { updateUserProfile, getUserDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, getUserQualifications, rateOrganizer, reportOrganizer, startBook, renameBook, proceedStory, regenerateStory, concludeChapter, getThemes, getBook, acceptLegal } from "../controllers/userController.js";
+import { updateUserProfile, getUserDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, getUserQualifications, rateOrganizer, reportOrganizer, startBook, renameBook, proceedStory, regenerateStory, concludeChapter, getThemes, getBook, acceptLegal, myBadges } from "../controllers/userController.js";
 import { authUser, requireLegalAcceptance } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -34,4 +34,5 @@ router.post("/regenerate", regenerateStory);
 router.post("/conclude-chapter", concludeChapter);
 router.post("/themes", getThemes);
 router.post("/book", getBook);
+router.post("/my-badges", myBadges);
 export default router;

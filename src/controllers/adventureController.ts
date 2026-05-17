@@ -1,7 +1,9 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
+import { randomUUID } from "crypto";
 import { generateDownloadUrl, generateUploadUrl } from "../services/bucketService.js";
 import { validatePositiveInt, validateIntRange, validateBoundedText } from "../validators.js";
+import { issueOpenBadge } from "../services/openBadgesService.js";
 
 
 export const count = async (req: Request, res: Response) => {
@@ -226,7 +228,48 @@ export async function insertResult(req: Request, res: Response) {
     `SELECT insert_result($1::int, $2::int[], $3::int[], $4::text[]) AS result_number`,
     [advV.value, userIds, starScores, trimmedRemarks]
   );
+
+  // Issue Open Badge credentials for qualified users (fire-and-forget)
+  issueObCredentials(advV.value, userIds, starScores).catch(() => {});
+
   return res.json({ resultNumber: resultQuery.rows[0].result_number });
+}
+
+async function issueObCredentials(adventureId: number, userIds: number[], starScores: number[]) {
+  const { rows: [badge] } = await pool.query(
+    `SELECT b.id, b.title::TEXT, b.description::TEXT, b.league
+     FROM adventures a JOIN badges b ON b.id = a.badge_id
+     WHERE a.id = $1`,
+    [adventureId]
+  );
+  if (!badge) return;
+
+  const threshold = 100 - (badge.league ?? 0);
+  const issuedOn = new Date();
+
+  for (let i = 0; i < userIds.length; i++) {
+    if ((starScores[i] ?? 0) < threshold) continue;
+
+    const { rows: [user] } = await pool.query(
+      `SELECT get_user_email($1::int) AS email`, [userIds[i]]
+    );
+    if (!user?.email) continue;
+
+    const assertionId = randomUUID();
+    const signedVC = await issueOpenBadge({
+      assertionId,
+      recipientEmail: user.email,
+      badgeId: badge.id,
+      badgeName: badge.title,
+      badgeDescription: badge.description,
+      issuedOn,
+    });
+
+    await pool.query(
+      `SELECT insert_ob_assertion($1::uuid, $2::int, $3::int, $4::int, $5::jsonb)`,
+      [assertionId, userIds[i], badge.id, adventureId, JSON.stringify(signedVC)]
+    );
+  }
 }
 export async function getResult(req: any, res: any) {
   const advV = validatePositiveInt(req.body.adventureId, "adventureId");

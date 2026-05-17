@@ -26,23 +26,31 @@
   "homepage": "https://github.com/Vegybin/my-saga-backend",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
+    "@digitalcredentials/ed25519-signature-2020": "^7.0.0",
+    "@digitalcredentials/ed25519-verification-key-2020": "^5.0.0",
+    "@digitalcredentials/jsonld-signatures": "^12.0.1",
+    "@digitalcredentials/vc": "^10.0.2",
     "@google-cloud/storage": "^7.19.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsonld": "^1.5.15",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^7.0.11",
     "@types/pg": "^8.18.0",
+    "@types/uuid": "^10.0.0",
     "axios": "^1.13.6",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.2",
     "googleapis": "^171.4.0",
+    "jsonld": "^9.0.0",
     "nodemailer": "^8.0.4",
     "pg": "^8.20.0",
     "socket.io": "^4.8.3",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "uuid": "^14.0.0"
   },
   "type": "module"
 }

@@ -648,3 +648,21 @@ export const acceptLegal = async (req: Request, res: Response) => {
   );
   return res.json({ success: true });
 };
+
+export const myBadges = async (req: Request, res: Response) => {
+  const { uid } = req.body;
+  const { rows } = await pool.query(
+    `SELECT * FROM get_ob_assertions_by_user($1::int)`,
+    [uid]
+  );
+  return res.json(
+    rows.map((a) => ({
+      assertionId: a.id,
+      badgeId: a.badge_id,
+      adventureId: a.adventure_id,
+      issuedOn: a.issued_on,
+      verificationUrl: `https://api.mysaga.in/ob/assertions/${a.id}`,
+      credentialJson: a.credential_json,
+    }))
+  );
+};

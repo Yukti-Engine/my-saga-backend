@@ -68,6 +68,18 @@ spec:
                 secretKeyRef:
                   name: STAGING_SUPER_TOKEN
                   key: latest
+            - name: OB_PUBLIC_KEY
+              value: z6MkksAqcLaAiLA6eQ1chVGrXNMY78Pj1ounaLxGLgEUj7dt
+            - name: OB_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: STAGING_OB_PRIVATE_KEY
+                  key: latest
+            - name: OB_RECIPIENT_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: STAGING_OB_RECIPIENT_SALT
+                  key: latest
           volumeMounts:
             - name: sqlsocket
               mountPath: /cloudsql

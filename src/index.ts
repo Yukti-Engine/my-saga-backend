@@ -22,6 +22,7 @@ import roomSocket from "./controllers/adventureController.js";
 import eventRoutes from "./routes/eventRoutes.js";
 import moderatorRoutes from "./routes/moderatorRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import obRoutes from "./routes/obRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -71,6 +72,7 @@ app.use("/adventure", adventureRoutes);
 app.use("/event", eventRoutes);
 app.use("/moderator", moderatorRoutes);
 app.use("/admin", adminRoutes);
+app.use("/ob", obRoutes);
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
