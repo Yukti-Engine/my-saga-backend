@@ -123,7 +123,7 @@ Rules:
 }
 
 export type SoftStatChanges = {
-  cognitive:           -1 | 0 | 1;
+  intellect:           -1 | 0 | 1;
   empathy: -1 | 0 | 1;
   creativity:          -1 | 0 | 1;
 };
@@ -133,14 +133,14 @@ export type StatChanges = SoftStatChanges & {
   adaptability: -1 | 0 | 1;
 };
 
-const ZERO_SOFT: SoftStatChanges = { cognitive: 0, empathy: 0, creativity: 0 };
+const ZERO_SOFT: SoftStatChanges = { intellect: 0, empathy: 0, creativity: 0 };
 
 function parseSoftStats(raw: string): SoftStatChanges {
   try {
     const parsed = JSON.parse(raw);
     const clamp = (v: unknown): -1 | 0 | 1 => (v === 1 ? 1 : v === -1 ? -1 : 0);
     return {
-      cognitive:           clamp(parsed.cognitive),
+      intellect:           clamp(parsed.intellect),
       empathy: clamp(parsed.empathy),
       creativity:          clamp(parsed.creativity),
     };
@@ -151,9 +151,9 @@ function parseSoftStats(raw: string): SoftStatChanges {
 
 const STATS_PROMPT = `
 After the story paragraphs, on a new line write exactly:
-STATS:{"cognitive":N,"empathy":N,"creativity":N}
+STATS:{"intellect":N,"empathy":N,"creativity":N}
 where N is strictly -1, 0, or 1 based on the events and any chat excerpts provided:
-- cognitive: problem-solving/strategy activities or chat showing analytical discussion (+1), mindless/purely repetitive tasks (-1), neutral (0)
+- intellect: problem-solving/strategy activities or chat showing analytical discussion (+1), mindless/purely repetitive tasks (-1), neutral (0)
 - empathy: warm collaborative tone or large engaged groups (+1), conflict, hostility, or clique behaviour visible in chat (-1), neutral (0)
 - creativity: unconventional/artistic activities or imaginative chat (+1), back-to-back identical routine activities with dull chat (-1), neutral (0)
 If events are absent or too neutral to judge, output 0 for all.`;

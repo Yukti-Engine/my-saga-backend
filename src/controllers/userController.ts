@@ -99,7 +99,7 @@ export const getUserDashboard = async (req: Request, res: Response) => {
   return res.json({
     id: user.id, username: user.username, email: user.email,
     level: user.level, penalties: user.penalties,
-    cognitive_index: user.cognitive_index, drive_index: user.drive_index,
+    intellect_index: user.intellect_index, drive_index: user.drive_index,
     adaptability_index: user.adaptability_index,
     empathy_index: user.empathy_index, creativity_index: user.creativity_index,
     bio: user.bio, age: calculateAge(user.dob), gender: user.gender,
@@ -348,7 +348,7 @@ async function applyStatChanges(userId: number, stats: StatChanges) {
     `SELECT * FROM apply_stat_changes($1::int, $2::float8, $3::float8, $4::float8, $5::float8, $6::float8)`,
     [
       userId,
-      statMultiplier(stats.cognitive),
+      statMultiplier(stats.intellect),
       statMultiplier(stats.drive),
       statMultiplier(stats.adaptability),
       statMultiplier(stats.empathy),
