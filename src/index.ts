@@ -9,7 +9,7 @@ import express from "express";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import cors from "cors";
-import { adminUiHtml, faviconBase64 } from "./adminUi.js";
+import { adminUiHtml } from "./adminUi.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import mailRoutes from "./routes/mailRoutes.js";
@@ -62,8 +62,7 @@ app.use((req, res, next) => {
   return bodyParser.json({ limit: "100kb" })(req, res, next);
 });
 
-const faviconBuf = Buffer.from(faviconBase64, "base64");
-app.get("/favicon.ico", (_req, res) => { res.type("image/x-icon").send(faviconBuf); });
+app.use(express.static("public"));
 
 // Serve the admin dashboard UI as inline HTML
 app.get("/admin-ui", (_req, res) => { res.type("html").send(adminUiHtml); });
