@@ -156,6 +156,25 @@ export function validateFloatRange(raw: unknown, field: string, min: number, max
   return { ok: true, value: raw };
 }
 
+export function validateDateString(raw: unknown, field: string): ValidationResult<string> {
+  if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw))
+    return { ok: false, error: `${field} must be a valid date (YYYY-MM-DD)` };
+  const d = new Date(raw + "T00:00:00Z");
+  if (Number.isNaN(d.getTime()))
+    return { ok: false, error: `${field} is not a real date` };
+  return { ok: true, value: raw };
+}
+
+export function validateTimeString(raw: unknown, field: string): ValidationResult<string> {
+  if (typeof raw !== "string" || !/^\d{2}:\d{2}$/.test(raw))
+    return { ok: false, error: `${field} must be a valid time (HH:MM)` };
+  const parts = raw.split(":").map(Number);
+  const h = parts[0]!, m = parts[1]!;
+  if (h < 0 || h > 23 || m < 0 || m > 59)
+    return { ok: false, error: `${field} is not a valid time` };
+  return { ok: true, value: raw };
+}
+
 export function validatePassword(raw: unknown): ValidationResult<string> {
   if (typeof raw !== "string") return { ok: false, error: "Invalid password" };
   if (raw.trim().length === 0)

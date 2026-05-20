@@ -18,7 +18,8 @@ import { generateAdventureName as llmGenerateAdventureName } from "../services/l
 import {
   validateUsername, validateBio, validateBoolean,
   validateBoundedText,
-  validatePositiveInt, validateIntRange
+  validatePositiveInt, validateIntRange,
+  validateFutureTimestamp
 } from "../validators.js";
 
 export const getAdventures = async (req: Request, res: Response) => {
@@ -60,6 +61,25 @@ export const organizeEvent = async (req: Request, res: Response) => {
     [activityV.value, slotIdV.value, adventureIdV.value, instructionV.value]
   );
   return res.json({ success: true, eventId: queryResult.rows[0].create_event });
+};
+
+export const bookSlot = async (req: Request, res: Response) => {
+  const spaceIdV = validatePositiveInt(req.body.spaceId, "spaceId");
+  if (!spaceIdV.ok) return res.status(400).json({ error: spaceIdV.error });
+  const dtV = validateFutureTimestamp(req.body.datetime, "datetime");
+  if (!dtV.ok) return res.status(400).json({ error: dtV.error });
+  const durationV = validateIntRange(req.body.duration, "duration", 1, 9);
+  if (!durationV.ok) return res.status(400).json({ error: durationV.error });
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM book_slot($1::int, $2::timestamptz, $3::int)`,
+      [spaceIdV.value, dtV.value, durationV.value]
+    );
+    return res.json(rows[0]);
+  } catch (err: any) {
+    return res.status(409).json({ error: err.message ?? "Slot booking failed" });
+  }
 };
 
 export const getPastAdventures = async (req: Request, res: Response) => {

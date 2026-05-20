@@ -6,7 +6,7 @@
  */
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { updateOrganizerProfile, getOrganizerDashboard, requestMatch, logOut, currentLobby, startAdventure, getAdventures, getPastAdventures, organizeEvent, retrieveRoadmap, generateAdventureName, getOrganizerQualifications, getLimitation, reportUser, reportBoss, dismissLobby, acceptLegal } from "../controllers/organizerController.js";
+import { updateOrganizerProfile, getOrganizerDashboard, requestMatch, logOut, currentLobby, startAdventure, getAdventures, getPastAdventures, organizeEvent, bookSlot, retrieveRoadmap, generateAdventureName, getOrganizerQualifications, getLimitation, reportUser, reportBoss, dismissLobby, acceptLegal } from "../controllers/organizerController.js";
 import { authOrganizer, requireLegalAcceptance } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -27,6 +27,7 @@ router.post("/start-adventure", startAdventure);
 router.post("/current-adventures", getAdventures);
 router.post("/past-adventures", getPastAdventures);
 router.post("/organize-event", organizeEvent);
+router.post("/book-slot", bookSlot);
 router.post("/retrieve-roadmap", retrieveRoadmap);
 router.post("/get-qualifications", getOrganizerQualifications);
 router.post("/limitation", getLimitation);

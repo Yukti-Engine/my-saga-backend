@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
-import { validatePositiveInt, validateIntRange, validateBoundedText, validateFloatRange } from "../validators.js";
+import { validatePositiveInt, validateIntRange, validateBoundedText, validateFloatRange, validateDateString } from "../validators.js";
 
 export const getTicketStatus = async (req: Request, res: Response) => {
   const ticketV = validatePositiveInt(req.body.ticketId, "ticketId");
@@ -177,4 +177,17 @@ export const findLobbies = async (req: Request, res: Response) => {
     if (check.rows[0].ok) potentialAdventures.push(element);
   }
   return res.json(potentialAdventures);
+};
+
+export const getBookedSlots = async (req: Request, res: Response) => {
+  const spaceIdV = validatePositiveInt(req.body.spaceId, "spaceId");
+  if (!spaceIdV.ok) return res.status(400).json({ error: spaceIdV.error });
+  const dateV = validateDateString(req.body.date, "date");
+  if (!dateV.ok) return res.status(400).json({ error: dateV.error });
+
+  const { rows } = await pool.query(
+    `SELECT * FROM get_booked_slots($1::int, $2::date)`,
+    [spaceIdV.value, dateV.value]
+  );
+  return res.json(rows);
 };
