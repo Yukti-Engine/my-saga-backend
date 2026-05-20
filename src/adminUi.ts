@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+export const adminUiHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -61,12 +61,12 @@
 
 <main>
 
-<!-- ════════ MAINTENANCE ════════ -->
+<!-- MAINTENANCE -->
 <div class="section active" id="maintenance">
   <div class="maint-grid" id="maintGrid"></div>
 </div>
 
-<!-- ════════ CATEGORIES ════════ -->
+<!-- CATEGORIES -->
 <div class="section" id="categories">
   <div class="card">
     <h3>Create Category</h3>
@@ -93,7 +93,7 @@
   </div>
 </div>
 
-<!-- ════════ BADGES ════════ -->
+<!-- BADGES -->
 <div class="section" id="badges">
   <div class="card">
     <h3>Create Badge</h3>
@@ -124,7 +124,7 @@
   </div>
 </div>
 
-<!-- ════════ THEMES ════════ -->
+<!-- THEMES -->
 <div class="section" id="themes">
   <div class="card">
     <h3>Create Theme</h3>
@@ -151,7 +151,7 @@
   </div>
 </div>
 
-<!-- ════════ SPACES ════════ -->
+<!-- SPACES -->
 <div class="section" id="spaces">
   <div class="card">
     <h3>Create Space</h3>
@@ -175,8 +175,8 @@
 
 </main>
 
-<!-- ════════ EDIT MODAL ════════ -->
-<div id="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:20; display:none; align-items:center; justify-content:center;">
+<!-- EDIT MODAL -->
+<div id="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:20; align-items:center; justify-content:center;">
   <div style="background:#fff; border-radius:10px; padding:24px; width:90%; max-width:500px; max-height:80vh; overflow-y:auto;">
     <h3 id="modal-title" style="margin-bottom:16px;">Edit</h3>
     <div id="modal-body"></div>
@@ -189,56 +189,56 @@
 </div>
 
 <script>
-const BASE = window.location.origin;
+var BASE = window.location.origin;
 function token() { return document.getElementById('tokenInput').value; }
 
-async function api(path, body = {}) {
-  const t = token();
+async function api(path, body) {
+  var t = token();
   if (!t) { alert('Enter superToken first'); throw new Error('no token'); }
-  const res = await fetch(BASE + path, {
+  var res = await fetch(BASE + path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ superToken: t, ...body })
+    body: JSON.stringify(Object.assign({ superToken: t }, body || {}))
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  var data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
   return data;
 }
 
 function show(el, msg, ok) {
-  const d = typeof el === 'string' ? document.getElementById(el) : el;
+  var d = typeof el === 'string' ? document.getElementById(el) : el;
   d.className = 'result ' + (ok ? 'ok' : 'err');
   d.textContent = typeof msg === 'string' ? msg : JSON.stringify(msg);
 }
 
-function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
 
-// ── Tabs ──
-document.querySelectorAll('nav button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+// Tabs
+document.querySelectorAll('nav button').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('nav button').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
   });
 });
 
-// ── Modal ──
+// Modal
 function openModal(title, fields, onSave) {
   document.getElementById('modal-title').textContent = title;
-  const body = document.getElementById('modal-body');
-  body.innerHTML = fields.map(f =>
-    `<div class="form-row"><label>${esc(f.label)} <input id="modal-${f.key}" value="${esc(f.value ?? '')}"></label></div>`
-  ).join('');
+  var body = document.getElementById('modal-body');
+  body.innerHTML = fields.map(function(f) {
+    return '<div class="form-row"><label>' + esc(f.label) + ' <input id="modal-' + f.key + '" value="' + esc(f.value == null ? '' : f.value) + '"></label></div>';
+  }).join('');
   document.getElementById('modal-result').innerHTML = '';
-  document.getElementById('modal-save').onclick = async () => {
-    const vals = {};
-    fields.forEach(f => {
-      const v = document.getElementById('modal-' + f.key).value;
+  document.getElementById('modal-save').onclick = async function() {
+    var vals = {};
+    fields.forEach(function(f) {
+      var v = document.getElementById('modal-' + f.key).value;
       vals[f.key] = f.type === 'number' ? (v ? Number(v) : null) : (v || null);
     });
     try {
-      const r = await onSave(vals);
+      var r = await onSave(vals);
       show('modal-result', r.message || JSON.stringify(r), true);
       closeModal();
     } catch (e) { show('modal-result', e.message, false); }
@@ -247,8 +247,8 @@ function openModal(title, fields, onSave) {
 }
 function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
 
-// ── Maintenance ──
-const maintOps = [
+// Maintenance
+var maintOps = [
   { name: 'Archive Match Requests', path: '/admin/archive-match-requests', desc: 'Archive inactive match requests to GCS' },
   { name: 'Cleanup Expired Pending Users', path: '/admin/cleanup-expired-pending-users', desc: 'Delete expired pending user signups' },
   { name: 'Logout Absentees', path: '/admin/logout-absentees', desc: 'Force logout inactive users' },
@@ -257,38 +257,32 @@ const maintOps = [
   { name: 'Limit More', path: '/admin/limit-more', desc: 'Increase organizer team-size limits' },
   { name: 'Cleanup Expired Signup Links', path: '/admin/cleanup-expired-signup-links', desc: 'Delete unused signup links older than 7 days' },
   { name: 'Cleanup Stale Pending Signups', path: '/admin/cleanup-stale-pending-signups', desc: 'Delete pending signups older than 60 days' },
-  { name: 'Cleanup Resolved Tickets', path: '/admin/cleanup-resolved-tickets', desc: 'Archive closed tickets older than 90 days' },
+  { name: 'Cleanup Resolved Tickets', path: '/admin/cleanup-resolved-tickets', desc: 'Archive closed tickets older than 90 days' }
 ];
-const maintGrid = document.getElementById('maintGrid');
-maintOps.forEach(op => {
-  const div = document.createElement('div');
+var maintGrid = document.getElementById('maintGrid');
+maintOps.forEach(function(op) {
+  var div = document.createElement('div');
   div.className = 'maint-card';
-  div.innerHTML = `<strong>${esc(op.name)}</strong><p>${esc(op.desc)}</p><button class="btn btn-primary" data-path="${op.path}">Run</button><div class="maint-res"></div>`;
+  div.innerHTML = '<strong>' + esc(op.name) + '</strong><p>' + esc(op.desc) + '</p><button class="btn btn-primary" data-path="' + op.path + '">Run</button><div class="maint-res"></div>';
   div.querySelector('button').onclick = async function() {
-    const res = div.querySelector('.maint-res');
-    try { const r = await api(op.path); show(res, JSON.stringify(r), true); }
+    var res = div.querySelector('.maint-res');
+    try { var r = await api(op.path); show(res, JSON.stringify(r), true); }
     catch(e) { show(res, e.message, false); }
   };
   maintGrid.appendChild(div);
 });
 
-// ── Categories ──
+// Categories
 async function loadCategories() {
   try {
-    const r = await api('/admin/categories');
-    const tb = document.getElementById('cat-table');
-    tb.innerHTML = r.categories.map(c => `<tr>
-      <td>${c.id}</td><td>${esc(c.category)}</td><td>${esc(c.subcategory)}</td>
-      <td class="actions">
-        <button class="btn btn-secondary btn-sm" onclick="editCategory(${c.id},'${esc(c.category)}','${esc(c.subcategory)}')">Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="delCategory(${c.id})">Delete</button>
-      </td>
-    </tr>`).join('');
+    var r = await api('/admin/categories');
+    var tb = document.getElementById('cat-table');
+    tb.innerHTML = r.categories.map(function(c) { return '<tr><td>' + c.id + '</td><td>' + esc(c.category) + '</td><td>' + esc(c.subcategory) + '</td><td class="actions"><button class="btn btn-secondary btn-sm" onclick="editCategory(' + c.id + ',\\'' + esc(c.category).replace(/'/g,"\\\\'") + '\\',\\'' + esc(c.subcategory).replace(/'/g,"\\\\'") + '\\')">Edit</button> <button class="btn btn-danger btn-sm" onclick="delCategory(' + c.id + ')">Delete</button></td></tr>'; }).join('');
   } catch(e) { alert(e.message); }
 }
 async function createCategory() {
   try {
-    const r = await api('/admin/create-category', {
+    var r = await api('/admin/create-category', {
       category: document.getElementById('cat-create-category').value,
       subCategory: document.getElementById('cat-create-subcategory').value || null
     });
@@ -299,45 +293,39 @@ async function createCategory() {
 function editCategory(id, cat, sub) {
   openModal('Edit Category', [
     { key: 'category', label: 'Category', value: cat },
-    { key: 'subcategory', label: 'Subcategory', value: sub },
-  ], vals => api('/admin/update-category', { id, ...vals }).then(r => { loadCategories(); return r; }));
+    { key: 'subcategory', label: 'Subcategory', value: sub }
+  ], function(vals) { return api('/admin/update-category', Object.assign({ id: id }, vals)).then(function(r) { loadCategories(); return r; }); });
 }
 async function delCategory(id) {
   if (!confirm('Delete category ' + id + '? This cascades to space relations and qualifications.')) return;
-  try { await api('/admin/delete-category', { id }); loadCategories(); } catch(e) { alert(e.message); }
+  try { await api('/admin/delete-category', { id: id }); loadCategories(); } catch(e) { alert(e.message); }
 }
 async function uploadCatIcon() {
   try {
-    const id = Number(document.getElementById('cat-icon-id').value);
-    const file = document.getElementById('cat-icon-file').files[0];
+    var id = Number(document.getElementById('cat-icon-id').value);
+    var file = document.getElementById('cat-icon-file').files[0];
     if (!file) throw new Error('Pick a file');
-    const b64 = await fileToBase64(file);
-    const r = await api('/admin/upload-category-icon', { categoryId: id, icon: b64 });
+    var b64 = await fileToBase64(file);
+    var r = await api('/admin/upload-category-icon', { categoryId: id, icon: b64 });
     show('cat-icon-result', r.message, true);
   } catch(e) { show('cat-icon-result', e.message, false); }
 }
 
-// ── Badges ──
+// Badges
 async function loadBadges() {
   try {
-    const r = await api('/admin/badges');
-    const tb = document.getElementById('badge-table');
-    tb.innerHTML = r.badges.map(b => `<tr>
-      <td>${b.id}</td><td>${esc(b.title)}</td><td>${b.category_id ?? ''}</td><td>${b.league ?? ''}</td>
-      <td class="actions">
-        <button class="btn btn-secondary btn-sm" onclick="editBadge(${b.id},'${esc(b.title)}',${b.category_id},${b.league},'${esc(b.description)}')">Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="delBadge(${b.id})">Delete</button>
-      </td>
-    </tr>`).join('');
+    var r = await api('/admin/badges');
+    var tb = document.getElementById('badge-table');
+    tb.innerHTML = r.badges.map(function(b) { return '<tr><td>' + b.id + '</td><td>' + esc(b.title) + '</td><td>' + (b.category_id || '') + '</td><td>' + (b.league || '') + '</td><td class="actions"><button class="btn btn-secondary btn-sm" onclick="editBadge(' + b.id + ',\\'' + esc(b.title).replace(/'/g,"\\\\'") + '\\',' + (b.category_id||'null') + ',' + (b.league||'null') + ',\\'' + esc(b.description).replace(/'/g,"\\\\'") + '\\')">Edit</button> <button class="btn btn-danger btn-sm" onclick="delBadge(' + b.id + ')">Delete</button></td></tr>'; }).join('');
   } catch(e) { alert(e.message); }
 }
 async function createBadge() {
   try {
-    const r = await api('/admin/create-badge', {
+    var r = await api('/admin/create-badge', {
       title: document.getElementById('badge-create-title').value,
       categoryId: Number(document.getElementById('badge-create-catid').value) || null,
       league: Number(document.getElementById('badge-create-league').value) || null,
-      description: document.getElementById('badge-create-desc').value || null,
+      description: document.getElementById('badge-create-desc').value || null
     });
     show('badge-create-result', r.message + ' (ID: ' + r.id + ')', true);
     loadBadges();
@@ -348,43 +336,37 @@ function editBadge(id, title, catId, league, desc) {
     { key: 'title', label: 'Title', value: title },
     { key: 'categoryId', label: 'Category ID', value: catId, type: 'number' },
     { key: 'league', label: 'League', value: league, type: 'number' },
-    { key: 'description', label: 'Description', value: desc },
-  ], vals => api('/admin/update-badge', { id, ...vals }).then(r => { loadBadges(); return r; }));
+    { key: 'description', label: 'Description', value: desc }
+  ], function(vals) { return api('/admin/update-badge', Object.assign({ id: id }, vals)).then(function(r) { loadBadges(); return r; }); });
 }
 async function delBadge(id) {
   if (!confirm('Delete badge ' + id + '?')) return;
-  try { await api('/admin/delete-badge', { id }); loadBadges(); } catch(e) { alert(e.message); }
+  try { await api('/admin/delete-badge', { id: id }); loadBadges(); } catch(e) { alert(e.message); }
 }
 async function uploadBadgeIcon() {
   try {
-    const id = Number(document.getElementById('badge-icon-id').value);
-    const file = document.getElementById('badge-icon-file').files[0];
+    var id = Number(document.getElementById('badge-icon-id').value);
+    var file = document.getElementById('badge-icon-file').files[0];
     if (!file) throw new Error('Pick a file');
-    const b64 = await fileToBase64(file);
-    const r = await api('/admin/upload-badge-icon', { badgeId: id, icon: b64 });
+    var b64 = await fileToBase64(file);
+    var r = await api('/admin/upload-badge-icon', { badgeId: id, icon: b64 });
     show('badge-icon-result', r.message, true);
   } catch(e) { show('badge-icon-result', e.message, false); }
 }
 
-// ── Themes ──
+// Themes
 async function loadThemes() {
   try {
-    const r = await api('/admin/themes');
-    const tb = document.getElementById('theme-table');
-    tb.innerHTML = r.themes.map(t => `<tr>
-      <td>${t.id}</td><td>${esc(t.name)}</td><td>${esc(t.description)}</td>
-      <td class="actions">
-        <button class="btn btn-secondary btn-sm" onclick="editTheme(${t.id},'${esc(t.name)}','${esc(t.description)}')">Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="delTheme(${t.id})">Delete</button>
-      </td>
-    </tr>`).join('');
+    var r = await api('/admin/themes');
+    var tb = document.getElementById('theme-table');
+    tb.innerHTML = r.themes.map(function(t) { return '<tr><td>' + t.id + '</td><td>' + esc(t.name) + '</td><td>' + esc(t.description) + '</td><td class="actions"><button class="btn btn-secondary btn-sm" onclick="editTheme(' + t.id + ',\\'' + esc(t.name).replace(/'/g,"\\\\'") + '\\',\\'' + esc(t.description).replace(/'/g,"\\\\'") + '\\')">Edit</button> <button class="btn btn-danger btn-sm" onclick="delTheme(' + t.id + ')">Delete</button></td></tr>'; }).join('');
   } catch(e) { alert(e.message); }
 }
 async function createTheme() {
   try {
-    const r = await api('/admin/create-theme', {
+    var r = await api('/admin/create-theme', {
       name: document.getElementById('theme-create-name').value,
-      description: document.getElementById('theme-create-desc').value || null,
+      description: document.getElementById('theme-create-desc').value || null
     });
     show('theme-create-result', r.message + ' (ID: ' + r.id + ')', true);
     loadThemes();
@@ -393,47 +375,39 @@ async function createTheme() {
 function editTheme(id, name, desc) {
   openModal('Edit Theme', [
     { key: 'name', label: 'Name', value: name },
-    { key: 'description', label: 'Description', value: desc },
-  ], vals => api('/admin/update-theme', { id, ...vals }).then(r => { loadThemes(); return r; }));
+    { key: 'description', label: 'Description', value: desc }
+  ], function(vals) { return api('/admin/update-theme', Object.assign({ id: id }, vals)).then(function(r) { loadThemes(); return r; }); });
 }
 async function delTheme(id) {
   if (!confirm('Delete theme ' + id + '?')) return;
-  try { await api('/admin/delete-theme', { id }); loadThemes(); } catch(e) { alert(e.message); }
+  try { await api('/admin/delete-theme', { id: id }); loadThemes(); } catch(e) { alert(e.message); }
 }
 async function uploadThemeIcon() {
   try {
-    const id = Number(document.getElementById('theme-icon-id').value);
-    const file = document.getElementById('theme-icon-file').files[0];
+    var id = Number(document.getElementById('theme-icon-id').value);
+    var file = document.getElementById('theme-icon-file').files[0];
     if (!file) throw new Error('Pick a file');
-    const b64 = await fileToBase64(file);
-    const r = await api('/admin/upload-theme-icon', { themeId: id, icon: b64 });
+    var b64 = await fileToBase64(file);
+    var r = await api('/admin/upload-theme-icon', { themeId: id, icon: b64 });
     show('theme-icon-result', r.message, true);
   } catch(e) { show('theme-icon-result', e.message, false); }
 }
 
-// ── Spaces ──
+// Spaces
 async function loadSpaces() {
   try {
-    const r = await api('/admin/spaces');
-    const tb = document.getElementById('space-table');
-    tb.innerHTML = r.spaces.map(s => `<tr>
-      <td>${s.id}</td><td>${esc(s.name)}</td><td>${s.link ? '<a href="'+esc(s.link)+'" target="_blank">link</a>' : ''}</td>
-      <td>${s.lat ?? ''}</td><td>${s.long ?? ''}</td>
-      <td class="actions">
-        <button class="btn btn-secondary btn-sm" onclick="editSpace(${s.id},'${esc(s.name)}','${esc(s.link)}',${s.lat},${s.long})">Edit</button>
-        <button class="btn btn-secondary btn-sm" onclick="manageSpaceCats(${s.id},'${esc(s.name)}')">Categories</button>
-        <button class="btn btn-danger btn-sm" onclick="delSpace(${s.id})">Delete</button>
-      </td>
-    </tr>`).join('');
+    var r = await api('/admin/spaces');
+    var tb = document.getElementById('space-table');
+    tb.innerHTML = r.spaces.map(function(s) { return '<tr><td>' + s.id + '</td><td>' + esc(s.name) + '</td><td>' + (s.link ? '<a href="' + esc(s.link) + '" target="_blank">link</a>' : '') + '</td><td>' + (s.lat || '') + '</td><td>' + (s.long || '') + '</td><td class="actions"><button class="btn btn-secondary btn-sm" onclick="editSpace(' + s.id + ',\\'' + esc(s.name).replace(/'/g,"\\\\'") + '\\',\\'' + esc(s.link).replace(/'/g,"\\\\'") + '\\',' + (s.lat||'null') + ',' + (s.long||'null') + ')">Edit</button> <button class="btn btn-secondary btn-sm" onclick="manageSpaceCats(' + s.id + ',\\'' + esc(s.name).replace(/'/g,"\\\\'") + '\\')">Categories</button> <button class="btn btn-danger btn-sm" onclick="delSpace(' + s.id + ')">Delete</button></td></tr>'; }).join('');
   } catch(e) { alert(e.message); }
 }
 async function createSpace() {
   try {
-    const r = await api('/admin/create-space', {
+    var r = await api('/admin/create-space', {
       name: document.getElementById('space-create-name').value,
       link: document.getElementById('space-create-link').value || null,
       lat: Number(document.getElementById('space-create-lat').value) || null,
-      long: Number(document.getElementById('space-create-long').value) || null,
+      long: Number(document.getElementById('space-create-long').value) || null
     });
     show('space-create-result', r.message + ' (ID: ' + r.id + ')', true);
     loadSpaces();
@@ -444,34 +418,31 @@ function editSpace(id, name, link, lat, lng) {
     { key: 'name', label: 'Name', value: name },
     { key: 'link', label: 'Link', value: link },
     { key: 'lat', label: 'Latitude', value: lat, type: 'number' },
-    { key: 'long', label: 'Longitude', value: lng, type: 'number' },
-  ], vals => api('/admin/update-space', { id, ...vals }).then(r => { loadSpaces(); return r; }));
+    { key: 'long', label: 'Longitude', value: lng, type: 'number' }
+  ], function(vals) { return api('/admin/update-space', Object.assign({ id: id }, vals)).then(function(r) { loadSpaces(); return r; }); });
 }
 async function delSpace(id) {
   if (!confirm('Delete space ' + id + '? This cascades to slots, props, and category relations.')) return;
-  try { await api('/admin/delete-space', { id }); loadSpaces(); } catch(e) { alert(e.message); }
+  try { await api('/admin/delete-space', { id: id }); loadSpaces(); } catch(e) { alert(e.message); }
 }
 async function manageSpaceCats(spaceId, name) {
   try {
-    const [cats, assigned] = await Promise.all([
-      api('/admin/categories'),
-      api('/admin/get-space-categories', { spaceId })
-    ]);
-    const assignedIds = new Set(assigned.categories.map(c => c.category_id));
-    const body = document.getElementById('modal-body');
+    var results = await Promise.all([api('/admin/categories'), api('/admin/get-space-categories', { spaceId: spaceId })]);
+    var cats = results[0]; var assigned = results[1];
+    var assignedIds = {};
+    assigned.categories.forEach(function(c) { assignedIds[c.category_id] = true; });
+    var body = document.getElementById('modal-body');
     document.getElementById('modal-title').textContent = 'Categories for: ' + name;
     body.innerHTML = '<div style="max-height:300px;overflow-y:auto;">' +
-      cats.categories.map(c =>
-        `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:14px;">
-          <input type="checkbox" value="${c.id}" ${assignedIds.has(c.id)?'checked':''}>
-          ${esc(c.category)} - ${esc(c.subcategory)}
-        </label>`
-      ).join('') + '</div>';
+      cats.categories.map(function(c) {
+        return '<label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:14px;"><input type="checkbox" value="' + c.id + '"' + (assignedIds[c.id] ? ' checked' : '') + '> ' + esc(c.category) + ' - ' + esc(c.subcategory) + '</label>';
+      }).join('') + '</div>';
     document.getElementById('modal-result').innerHTML = '';
-    document.getElementById('modal-save').onclick = async () => {
-      const ids = [...body.querySelectorAll('input[type=checkbox]:checked')].map(cb => Number(cb.value));
+    document.getElementById('modal-save').onclick = async function() {
+      var ids = [];
+      body.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb) { ids.push(Number(cb.value)); });
       try {
-        await api('/admin/set-space-categories', { spaceId, categoryIds: ids });
+        await api('/admin/set-space-categories', { spaceId: spaceId, categoryIds: ids });
         show('modal-result', 'Updated', true);
         closeModal();
       } catch(e) { show('modal-result', e.message, false); }
@@ -480,15 +451,15 @@ async function manageSpaceCats(spaceId, name) {
   } catch(e) { alert(e.message); }
 }
 
-// ── Helpers ──
+// Helpers
 function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(',')[1]);
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function() { resolve(reader.result.split(',')[1]); };
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
 </script>
 </body>
-</html>
+</html>`;
