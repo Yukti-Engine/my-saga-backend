@@ -4,8 +4,7 @@ export const adminUiHtml = `<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My Saga Admin</title>
-<link rel="shortcut icon" href="/favicon.ico">
-<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="icon" type="image/png" href="/logo.png">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; }
@@ -83,12 +82,12 @@ export const adminUiHtml = `<!DOCTYPE html>
   <div class="card">
     <h3>All Categories</h3>
     <button class="btn btn-secondary" onclick="loadCategories()">Refresh</button>
-    <div style="overflow-x:auto; margin-top:12px;"><table><thead><tr><th>ID</th><th>Category</th><th>Subcategory</th><th>Actions</th></tr></thead><tbody id="cat-table"></tbody></table></div>
+    <div style="overflow-x:auto; margin-top:12px;"><table><thead><tr><th>Category</th><th>Subcategory</th><th>Actions</th></tr></thead><tbody id="cat-table"></tbody></table></div>
   </div>
   <div class="card">
     <h3>Upload Category Icon</h3>
     <div class="form-row">
-      <label>Category ID <input type="number" id="cat-icon-id"></label>
+      <label>Category <select id="cat-icon-id"><option value="">— select —</option></select></label>
       <label>Icon <input type="file" id="cat-icon-file" accept="image/*"></label>
     </div>
     <button class="btn btn-primary" onclick="uploadCatIcon()">Upload</button>
@@ -102,7 +101,7 @@ export const adminUiHtml = `<!DOCTYPE html>
     <h3>Create Badge</h3>
     <div class="form-row">
       <label>Title <input id="badge-create-title"></label>
-      <label>Category ID <input type="number" id="badge-create-catid"></label>
+      <label>Category <select id="badge-create-catid"><option value="">— select —</option></select></label>
       <label>League <input type="number" id="badge-create-league" min="1" max="100"></label>
     </div>
     <div class="form-row">
@@ -114,12 +113,12 @@ export const adminUiHtml = `<!DOCTYPE html>
   <div class="card">
     <h3>All Badges</h3>
     <button class="btn btn-secondary" onclick="loadBadges()">Refresh</button>
-    <div style="overflow-x:auto; margin-top:12px;"><table><thead><tr><th>ID</th><th>Title</th><th>Category</th><th>League</th><th>Actions</th></tr></thead><tbody id="badge-table"></tbody></table></div>
+    <div style="overflow-x:auto; margin-top:12px;"><table><thead><tr><th>Title</th><th>Category</th><th>League</th><th>Actions</th></tr></thead><tbody id="badge-table"></tbody></table></div>
   </div>
   <div class="card">
     <h3>Upload Badge Icon</h3>
     <div class="form-row">
-      <label>Badge ID <input type="number" id="badge-icon-id"></label>
+      <label>Badge <select id="badge-icon-id"><option value="">— select —</option></select></label>
       <label>Icon <input type="file" id="badge-icon-file" accept="image/*"></label>
     </div>
     <button class="btn btn-primary" onclick="uploadBadgeIcon()">Upload</button>
@@ -141,12 +140,12 @@ export const adminUiHtml = `<!DOCTYPE html>
   <div class="card">
     <h3>All Themes</h3>
     <button class="btn btn-secondary" onclick="loadThemes()">Refresh</button>
-    <div style="overflow-x:auto; margin-top:12px;"><table><thead><tr><th>ID</th><th>Name</th><th>Description</th><th>Actions</th></tr></thead><tbody id="theme-table"></tbody></table></div>
+    <div style="overflow-x:auto; margin-top:12px;"><table><thead><tr><th>Name</th><th>Description</th><th>Actions</th></tr></thead><tbody id="theme-table"></tbody></table></div>
   </div>
   <div class="card">
     <h3>Upload Theme Icon</h3>
     <div class="form-row">
-      <label>Theme ID <input type="number" id="theme-icon-id"></label>
+      <label>Theme <select id="theme-icon-id"><option value="">— select —</option></select></label>
       <label>Icon <input type="file" id="theme-icon-file" accept="image/*"></label>
     </div>
     <button class="btn btn-primary" onclick="uploadThemeIcon()">Upload</button>
@@ -172,7 +171,7 @@ export const adminUiHtml = `<!DOCTYPE html>
   <div class="card">
     <h3>All Spaces</h3>
     <button class="btn btn-secondary" onclick="loadSpaces()">Refresh</button>
-    <div style="overflow-x:auto; margin-top:12px;"><table><thead><tr><th>ID</th><th>Name</th><th>Link</th><th>Lat</th><th>Long</th><th>Actions</th></tr></thead><tbody id="space-table"></tbody></table></div>
+    <div style="overflow-x:auto; margin-top:12px;"><table><thead><tr><th>Name</th><th>Link</th><th>Lat</th><th>Long</th><th>Actions</th></tr></thead><tbody id="space-table"></tbody></table></div>
   </div>
 </div>
 
@@ -275,12 +274,29 @@ maintOps.forEach(function(op) {
   maintGrid.appendChild(div);
 });
 
+// In-memory lists for dropdowns
+var catList = [], badgeList = [], themeList = [], spaceList = [];
+
+function fillSelect(selId, items, labelFn) {
+  var sel = document.getElementById(selId);
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">— select —</option>' +
+    items.map(function(it) { return '<option value="' + it.id + '"' + (it.id == cur ? ' selected' : '') + '>' + esc(labelFn(it)) + '</option>'; }).join('');
+}
+
 // Categories
 async function loadCategories() {
   try {
     var r = await api('/admin/categories');
+    catList = r.categories;
     var tb = document.getElementById('cat-table');
-    tb.innerHTML = r.categories.map(function(c) { return '<tr><td>' + c.id + '</td><td>' + esc(c.category) + '</td><td>' + esc(c.subcategory) + '</td><td class="actions"><button class="btn btn-secondary btn-sm" onclick="editCategory(' + c.id + ',\\'' + esc(c.category).replace(/'/g,"\\\\'") + '\\',\\'' + esc(c.subcategory).replace(/'/g,"\\\\'") + '\\')">Edit</button> <button class="btn btn-danger btn-sm" onclick="delCategory(' + c.id + ')">Delete</button></td></tr>'; }).join('');
+    tb.innerHTML = catList.map(function(c) {
+      return '<tr><td>' + esc(c.category) + '</td><td>' + esc(c.subcategory) + '</td><td class="actions">' +
+        '<button class="btn btn-secondary btn-sm" onclick="editCategory(' + c.id + ',\\'' + esc(c.category).replace(/'/g,"\\\\'") + '\\',\\'' + esc(c.subcategory).replace(/'/g,"\\\\'") + '\\')">Edit</button> ' +
+        '<button class="btn btn-danger btn-sm" onclick="delCategory(' + c.id + ',\\'' + esc(c.category).replace(/'/g,"\\\\'") + '\\')">Delete</button></td></tr>';
+    }).join('');
+    fillSelect('cat-icon-id', catList, function(c) { return c.category + (c.subcategory ? ' — ' + c.subcategory : ''); });
+    fillSelect('badge-create-catid', catList, function(c) { return c.category + (c.subcategory ? ' — ' + c.subcategory : ''); });
   } catch(e) { alert(e.message); }
 }
 async function createCategory() {
@@ -289,7 +305,7 @@ async function createCategory() {
       category: document.getElementById('cat-create-category').value,
       subCategory: document.getElementById('cat-create-subcategory').value || null
     });
-    show('cat-create-result', r.message + ' (ID: ' + r.id + ')', true);
+    show('cat-create-result', r.message, true);
     loadCategories();
   } catch(e) { show('cat-create-result', e.message, false); }
 }
@@ -299,13 +315,14 @@ function editCategory(id, cat, sub) {
     { key: 'subcategory', label: 'Subcategory', value: sub }
   ], function(vals) { return api('/admin/update-category', Object.assign({ id: id }, vals)).then(function(r) { loadCategories(); return r; }); });
 }
-async function delCategory(id) {
-  if (!confirm('Delete category ' + id + '? This cascades to space relations and qualifications.')) return;
+async function delCategory(id, name) {
+  if (!confirm('Delete "' + name + '"? This cascades to space relations and qualifications.')) return;
   try { await api('/admin/delete-category', { id: id }); loadCategories(); } catch(e) { alert(e.message); }
 }
 async function uploadCatIcon() {
   try {
     var id = Number(document.getElementById('cat-icon-id').value);
+    if (!id) throw new Error('Select a category');
     var file = document.getElementById('cat-icon-file').files[0];
     if (!file) throw new Error('Pick a file');
     var b64 = await fileToBase64(file);
@@ -318,8 +335,16 @@ async function uploadCatIcon() {
 async function loadBadges() {
   try {
     var r = await api('/admin/badges');
+    badgeList = r.badges;
+    var catMap = {};
+    catList.forEach(function(c) { catMap[c.id] = c.category + (c.subcategory ? ' — ' + c.subcategory : ''); });
     var tb = document.getElementById('badge-table');
-    tb.innerHTML = r.badges.map(function(b) { return '<tr><td>' + b.id + '</td><td>' + esc(b.title) + '</td><td>' + (b.category_id || '') + '</td><td>' + (b.league || '') + '</td><td class="actions"><button class="btn btn-secondary btn-sm" onclick="editBadge(' + b.id + ',\\'' + esc(b.title).replace(/'/g,"\\\\'") + '\\',' + (b.category_id||'null') + ',' + (b.league||'null') + ',\\'' + esc(b.description).replace(/'/g,"\\\\'") + '\\')">Edit</button> <button class="btn btn-danger btn-sm" onclick="delBadge(' + b.id + ')">Delete</button></td></tr>'; }).join('');
+    tb.innerHTML = badgeList.map(function(b) {
+      return '<tr><td>' + esc(b.title) + '</td><td>' + esc(catMap[b.category_id] || '') + '</td><td>' + (b.league || '') + '</td><td class="actions">' +
+        '<button class="btn btn-secondary btn-sm" onclick="editBadge(' + b.id + ',\\'' + esc(b.title).replace(/'/g,"\\\\'") + '\\',' + (b.category_id||'null') + ',' + (b.league||'null') + ',\\'' + esc(b.description||'').replace(/'/g,"\\\\'") + '\\')">Edit</button> ' +
+        '<button class="btn btn-danger btn-sm" onclick="delBadge(' + b.id + ',\\'' + esc(b.title).replace(/'/g,"\\\\'") + '\\')">Delete</button></td></tr>';
+    }).join('');
+    fillSelect('badge-icon-id', badgeList, function(b) { return b.title; });
   } catch(e) { alert(e.message); }
 }
 async function createBadge() {
@@ -330,25 +355,25 @@ async function createBadge() {
       league: Number(document.getElementById('badge-create-league').value) || null,
       description: document.getElementById('badge-create-desc').value || null
     });
-    show('badge-create-result', r.message + ' (ID: ' + r.id + ')', true);
+    show('badge-create-result', r.message, true);
     loadBadges();
   } catch(e) { show('badge-create-result', e.message, false); }
 }
 function editBadge(id, title, catId, league, desc) {
   openModal('Edit Badge', [
     { key: 'title', label: 'Title', value: title },
-    { key: 'categoryId', label: 'Category ID', value: catId, type: 'number' },
     { key: 'league', label: 'League', value: league, type: 'number' },
     { key: 'description', label: 'Description', value: desc }
-  ], function(vals) { return api('/admin/update-badge', Object.assign({ id: id }, vals)).then(function(r) { loadBadges(); return r; }); });
+  ], function(vals) { return api('/admin/update-badge', Object.assign({ id: id, categoryId: catId }, vals)).then(function(r) { loadBadges(); return r; }); });
 }
-async function delBadge(id) {
-  if (!confirm('Delete badge ' + id + '?')) return;
+async function delBadge(id, title) {
+  if (!confirm('Delete badge "' + title + '"?')) return;
   try { await api('/admin/delete-badge', { id: id }); loadBadges(); } catch(e) { alert(e.message); }
 }
 async function uploadBadgeIcon() {
   try {
     var id = Number(document.getElementById('badge-icon-id').value);
+    if (!id) throw new Error('Select a badge');
     var file = document.getElementById('badge-icon-file').files[0];
     if (!file) throw new Error('Pick a file');
     var b64 = await fileToBase64(file);
@@ -361,8 +386,14 @@ async function uploadBadgeIcon() {
 async function loadThemes() {
   try {
     var r = await api('/admin/themes');
+    themeList = r.themes;
     var tb = document.getElementById('theme-table');
-    tb.innerHTML = r.themes.map(function(t) { return '<tr><td>' + t.id + '</td><td>' + esc(t.name) + '</td><td>' + esc(t.description) + '</td><td class="actions"><button class="btn btn-secondary btn-sm" onclick="editTheme(' + t.id + ',\\'' + esc(t.name).replace(/'/g,"\\\\'") + '\\',\\'' + esc(t.description).replace(/'/g,"\\\\'") + '\\')">Edit</button> <button class="btn btn-danger btn-sm" onclick="delTheme(' + t.id + ')">Delete</button></td></tr>'; }).join('');
+    tb.innerHTML = themeList.map(function(t) {
+      return '<tr><td>' + esc(t.name) + '</td><td>' + esc(t.description) + '</td><td class="actions">' +
+        '<button class="btn btn-secondary btn-sm" onclick="editTheme(' + t.id + ',\\'' + esc(t.name).replace(/'/g,"\\\\'") + '\\',\\'' + esc(t.description||'').replace(/'/g,"\\\\'") + '\\')">Edit</button> ' +
+        '<button class="btn btn-danger btn-sm" onclick="delTheme(' + t.id + ',\\'' + esc(t.name).replace(/'/g,"\\\\'") + '\\')">Delete</button></td></tr>';
+    }).join('');
+    fillSelect('theme-icon-id', themeList, function(t) { return t.name; });
   } catch(e) { alert(e.message); }
 }
 async function createTheme() {
@@ -371,7 +402,7 @@ async function createTheme() {
       name: document.getElementById('theme-create-name').value,
       description: document.getElementById('theme-create-desc').value || null
     });
-    show('theme-create-result', r.message + ' (ID: ' + r.id + ')', true);
+    show('theme-create-result', r.message, true);
     loadThemes();
   } catch(e) { show('theme-create-result', e.message, false); }
 }
@@ -381,13 +412,14 @@ function editTheme(id, name, desc) {
     { key: 'description', label: 'Description', value: desc }
   ], function(vals) { return api('/admin/update-theme', Object.assign({ id: id }, vals)).then(function(r) { loadThemes(); return r; }); });
 }
-async function delTheme(id) {
-  if (!confirm('Delete theme ' + id + '?')) return;
+async function delTheme(id, name) {
+  if (!confirm('Delete theme "' + name + '"?')) return;
   try { await api('/admin/delete-theme', { id: id }); loadThemes(); } catch(e) { alert(e.message); }
 }
 async function uploadThemeIcon() {
   try {
     var id = Number(document.getElementById('theme-icon-id').value);
+    if (!id) throw new Error('Select a theme');
     var file = document.getElementById('theme-icon-file').files[0];
     if (!file) throw new Error('Pick a file');
     var b64 = await fileToBase64(file);
@@ -400,8 +432,14 @@ async function uploadThemeIcon() {
 async function loadSpaces() {
   try {
     var r = await api('/admin/spaces');
+    spaceList = r.spaces;
     var tb = document.getElementById('space-table');
-    tb.innerHTML = r.spaces.map(function(s) { return '<tr><td>' + s.id + '</td><td>' + esc(s.name) + '</td><td>' + (s.link ? '<a href="' + esc(s.link) + '" target="_blank">link</a>' : '') + '</td><td>' + (s.lat || '') + '</td><td>' + (s.long || '') + '</td><td class="actions"><button class="btn btn-secondary btn-sm" onclick="editSpace(' + s.id + ',\\'' + esc(s.name).replace(/'/g,"\\\\'") + '\\',\\'' + esc(s.link).replace(/'/g,"\\\\'") + '\\',' + (s.lat||'null') + ',' + (s.long||'null') + ')">Edit</button> <button class="btn btn-secondary btn-sm" onclick="manageSpaceCats(' + s.id + ',\\'' + esc(s.name).replace(/'/g,"\\\\'") + '\\')">Categories</button> <button class="btn btn-danger btn-sm" onclick="delSpace(' + s.id + ')">Delete</button></td></tr>'; }).join('');
+    tb.innerHTML = spaceList.map(function(s) {
+      return '<tr><td>' + esc(s.name) + '</td><td>' + (s.link ? '<a href="' + esc(s.link) + '" target="_blank">link</a>' : '') + '</td><td>' + (s.lat || '') + '</td><td>' + (s.long || '') + '</td><td class="actions">' +
+        '<button class="btn btn-secondary btn-sm" onclick="editSpace(' + s.id + ',\\'' + esc(s.name).replace(/'/g,"\\\\'") + '\\',\\'' + esc(s.link||'').replace(/'/g,"\\\\'") + '\\',' + (s.lat||'null') + ',' + (s.long||'null') + ')">Edit</button> ' +
+        '<button class="btn btn-secondary btn-sm" onclick="manageSpaceCats(' + s.id + ',\\'' + esc(s.name).replace(/'/g,"\\\\'") + '\\')">Categories</button> ' +
+        '<button class="btn btn-danger btn-sm" onclick="delSpace(' + s.id + ',\\'' + esc(s.name).replace(/'/g,"\\\\'") + '\\')">Delete</button></td></tr>';
+    }).join('');
   } catch(e) { alert(e.message); }
 }
 async function createSpace() {
@@ -412,7 +450,7 @@ async function createSpace() {
       lat: Number(document.getElementById('space-create-lat').value) || null,
       long: Number(document.getElementById('space-create-long').value) || null
     });
-    show('space-create-result', r.message + ' (ID: ' + r.id + ')', true);
+    show('space-create-result', r.message, true);
     loadSpaces();
   } catch(e) { show('space-create-result', e.message, false); }
 }
@@ -424,8 +462,8 @@ function editSpace(id, name, link, lat, lng) {
     { key: 'long', label: 'Longitude', value: lng, type: 'number' }
   ], function(vals) { return api('/admin/update-space', Object.assign({ id: id }, vals)).then(function(r) { loadSpaces(); return r; }); });
 }
-async function delSpace(id) {
-  if (!confirm('Delete space ' + id + '? This cascades to slots, props, and category relations.')) return;
+async function delSpace(id, name) {
+  if (!confirm('Delete space "' + name + '"? This cascades to slots, props, and category relations.')) return;
   try { await api('/admin/delete-space', { id: id }); loadSpaces(); } catch(e) { alert(e.message); }
 }
 async function manageSpaceCats(spaceId, name) {
