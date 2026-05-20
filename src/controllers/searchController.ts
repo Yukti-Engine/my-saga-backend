@@ -179,6 +179,18 @@ export const findLobbies = async (req: Request, res: Response) => {
   return res.json(potentialAdventures);
 };
 
+export const getSlot = async (req: Request, res: Response) => {
+  const slotIdV = validatePositiveInt(req.body.slotId, "slotId");
+  if (!slotIdV.ok) return res.status(400).json({ error: slotIdV.error });
+
+  const { rows } = await pool.query(
+    `SELECT * FROM get_slot($1::int)`,
+    [slotIdV.value]
+  );
+  if (rows.length === 0) return res.status(404).json({ error: "Slot not found" });
+  return res.json(rows[0]);
+};
+
 export const getBookedSlots = async (req: Request, res: Response) => {
   const spaceIdV = validatePositiveInt(req.body.spaceId, "spaceId");
   if (!spaceIdV.ok) return res.status(400).json({ error: spaceIdV.error });

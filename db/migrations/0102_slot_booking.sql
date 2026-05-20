@@ -19,6 +19,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Get a single slot by ID
+CREATE OR REPLACE FUNCTION get_slot(p_slot_id INT)
+RETURNS SETOF slots AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM slots WHERE id = p_slot_id;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Book a slot: creates a new slot if it fits within 10:00–19:00 IST and
 -- doesn't overlap any existing slot at the same space.
 CREATE OR REPLACE FUNCTION book_slot(

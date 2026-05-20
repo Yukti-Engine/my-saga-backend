@@ -1,5 +1,5 @@
 import express from "express";
-import { getSpaces, getCategories, getSubcategories, findLobbies, getBadges, getProfile, getTicketStatus, getMyTickets, closeMyTicket, getBookedSlots } from "../controllers/searchController.js";
+import { getSpaces, getCategories, getSubcategories, findLobbies, getBadges, getProfile, getTicketStatus, getMyTickets, closeMyTicket, getSlot, getBookedSlots } from "../controllers/searchController.js";
 import { authAny } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -12,5 +12,6 @@ router.post("/profile", authAny, getProfile);
 router.post("/get-ticket-status", authAny, getTicketStatus);
 router.post("/my-tickets", authAny, getMyTickets);
 router.post("/close-ticket", authAny, closeMyTicket);
+router.post("/slot", authAny, getSlot);
 router.post("/booked-slots", authAny, getBookedSlots);
 export default router;
