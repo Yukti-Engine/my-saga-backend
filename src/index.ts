@@ -45,8 +45,9 @@ app.use(cors(
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "..", "public");
 app.use(express.static(publicDir));
-const logoBuf = readFileSync(path.join(publicDir, "logo.png"));
-app.get("/favicon.ico", (_req, res) => { res.type("image/png").send(logoBuf); });
+const faviconBuf = readFileSync(path.join(publicDir, "favicon.png"));
+app.get("/favicon.ico", (_req, res) => { res.type("image/png").send(faviconBuf); });
+app.get("/favicon.png", (_req, res) => { res.type("image/png").send(faviconBuf); });
 
 // Attach the adventure room socket handler for real-time chat/events
 io.on("connection", (socket) => {
