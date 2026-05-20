@@ -1,16 +1,18 @@
 /**
  * moderatorController.ts
  *
- * Internal moderation endpoints used by the MySaga admin dashboard.
- * Handles: boss/organizer management, badge/category/tournament creation,
- * KYC document review, ticket resolution, asset icon uploads,
+ * Internal moderation endpoints.
+ * Handles: boss/organizer management, tournament creation, qualifications,
+ * KYC document review, ticket resolution,
  * and the pending-signup approval/rejection workflow.
+ *
+ * Category/badge/theme/space CRUD has moved to adminController.
  */
 import type { Request, Response } from "express";
 import pool from "../db.js";
-import { generateKycDownloadUrl, listKycFiles, uploadBadgeIcon, uploadCategoryIcon, uploadThemeIcon, deleteKycFolder } from "../services/bucketService.js";
+import { generateKycDownloadUrl, listKycFiles, deleteKycFolder } from "../services/bucketService.js";
 import { sendEmail } from "../services/mailerService.js";
-import { escapeHtml, validateBoundedText, validatePositiveInt } from "../validators.js";
+import { escapeHtml } from "../validators.js";
 
 export const addBoss = async (req: Request, res: Response) => {
   const { name, email, password, username, phone, dob, gender } = req.body;
@@ -45,48 +47,6 @@ export const addOrganizer = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Error in addOrganizer:", err);
     return res.status(500).json({ error: "Failed to create organizer" });
-  }
-};
-
-export const createNewBadge = async (req: Request, res: Response) => {
-  const { title, categoryId, league, description, icon } = req.body;
-
-  if (!title)
-    return res.status(400).json({ error: "title is required" });
-
-  try {
-    const { rows } = await pool.query(
-      `SELECT create_badge($1::text, $2::int, $3::smallint, $4::text)`,
-      [title, categoryId ?? null, league ?? null, description ?? null]
-    );
-    const badgeId: number = rows[0].create_badge;
-
-    if (icon) {
-      await uploadBadgeIcon(icon, badgeId);
-    }
-
-    return res.json({ message: "Badge created", id: badgeId });
-  } catch (err) {
-    console.error("Error in createNewBadge:", err);
-    return res.status(500).json({ error: "Failed to create badge" });
-  }
-};
-
-export const createCategory = async (req: Request, res: Response) => {
-  const { category, subCategory, word2s } = req.body;
-
-  if (!category)
-    return res.status(400).json({ error: "category is required" });
-
-  try {
-    const { rows } = await pool.query(
-      `SELECT create_category($1::text, $2::text, $3::text[])`,
-      [category, subCategory ?? null, word2s ?? null]
-    );
-    return res.json({ message: "Category created", id: rows[0].create_category });
-  } catch (err) {
-    console.error("Error in createCategory:", err);
-    return res.status(500).json({ error: "Failed to create category" });
   }
 };
 
@@ -221,20 +181,6 @@ export const getTournaments = async (req: Request, res: Response) => {
   }
 };
 
-export const getCategories = async (req: Request, res: Response) => {
-  const { limit, offset } = req.body;
-  try {
-    const { rows } = await pool.query(
-      `SELECT * FROM mod_list_categories($1::int, $2::int)`,
-      [limit ?? 50, offset ?? 0]
-    );
-    return res.json({ categories: rows });
-  } catch (err) {
-    console.error("Error in getCategories:", err);
-    return res.status(500).json({ error: "Failed to fetch categories" });
-  }
-};
-
 export const addCategoryQualification = async (req: Request, res: Response) => {
   const { organizerId, category } = req.body;
 
@@ -276,20 +222,6 @@ export const removeCategoryQualification = async (req: Request, res: Response) =
       return res.status(404).json({ error: "Category not found" });
     console.error("Error in removeCategoryQualification:", err);
     return res.status(500).json({ error: "Failed to remove category qualification" });
-  }
-};
-
-export const getBadges = async (req: Request, res: Response) => {
-  const { limit, offset } = req.body;
-  try {
-    const { rows } = await pool.query(
-      `SELECT * FROM mod_list_badges($1::int, $2::int)`,
-      [limit ?? 50, offset ?? 0]
-    );
-    return res.json({ badges: rows });
-  } catch (err) {
-    console.error("Error in getBadges:", err);
-    return res.status(500).json({ error: "Failed to fetch badges" });
   }
 };
 
@@ -349,46 +281,6 @@ export const resolveTicket = async (req: Request, res: Response) => {
   if (rows.length === 0)
     return res.status(404).json({ error: "ticket not found" });
   return res.json({ ticket: rows[0] });
-};
-
-export const uploadBadgeIconRoute = async (req: Request, res: Response) => {
-  const { badgeId, icon } = req.body;
-  if (!Number.isInteger(badgeId) || badgeId <= 0)
-    return res.status(400).json({ error: "badgeId must be a positive integer" });
-  if (typeof icon !== "string" || icon.length === 0)
-    return res.status(400).json({ error: "icon must be a base64 string" });
-  await uploadBadgeIcon(icon, badgeId);
-  return res.json({ message: "icon uploaded" });
-};
-
-export const uploadCategoryIconRoute = async (req: Request, res: Response) => {
-  const { categoryId, icon } = req.body;
-  if (!Number.isInteger(categoryId) || categoryId <= 0)
-    return res.status(400).json({ error: "categoryId must be a positive integer" });
-  if (typeof icon !== "string" || icon.length === 0)
-    return res.status(400).json({ error: "icon must be a base64 string" });
-  await uploadCategoryIcon(icon, categoryId);
-  return res.json({ message: "icon uploaded" });
-};
-
-export const uploadThemeIconRoute = async (req: Request, res: Response) => {
-  const { themeId, icon } = req.body;
-  if (!Number.isInteger(themeId) || themeId <= 0)
-    return res.status(400).json({ error: "themeId must be a positive integer" });
-  if (typeof icon !== "string" || icon.length === 0)
-    return res.status(400).json({ error: "icon must be a base64 string" });
-  await uploadThemeIcon(icon, themeId);
-  return res.json({ message: "icon uploaded" });
-};
-
-export const getThemes = async (req: Request, res: Response) => {
-  try {
-    const { rows } = await pool.query(`SELECT * FROM get_all_themes()`);
-    return res.json({ themes: rows });
-  } catch (err) {
-    console.error("Error in getThemes:", err);
-    return res.status(500).json({ error: "Failed to fetch themes" });
-  }
 };
 
 /* ─────────────────── PENDING SIGNUPS ─────────────────── */

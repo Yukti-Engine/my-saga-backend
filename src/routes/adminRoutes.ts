@@ -1,10 +1,23 @@
 import express from "express";
 import type { Request, Response } from "express";
 import { authSuperToken } from "../middlewares/auth.js";
-import { archiveMatchRequests, cleanupExpiredPendingUsers, logoutAbsentees, deactivateCompletedAdventures, refreshBadgeRoadmaps, limitMore, cleanupExpiredSignupLinks, cleanupStalePendingSignups, cleanupResolvedTickets } from "../controllers/adminController.js";
+import {
+  archiveMatchRequests, cleanupExpiredPendingUsers, logoutAbsentees,
+  deactivateCompletedAdventures, refreshBadgeRoadmaps, limitMore,
+  cleanupExpiredSignupLinks, cleanupStalePendingSignups, cleanupResolvedTickets,
+  // Categories
+  getCategories, createCategory, updateCategory, deleteCategory, uploadCategoryIconRoute,
+  // Badges
+  getBadges, createNewBadge, updateBadge, deleteBadge, uploadBadgeIconRoute,
+  // Themes
+  getThemes, createTheme, updateTheme, deleteTheme, uploadThemeIconRoute,
+  // Spaces
+  listSpaces, createSpace, updateSpace, deleteSpace, setSpaceCategories, getSpaceCategories,
+} from "../controllers/adminController.js";
 
 const router = express.Router();
 
+// ── Maintenance ──
 router.post("/archive-match-requests", authSuperToken, async (req: Request, res: Response) => {
   const result = await archiveMatchRequests();
   return res.json({ success: true, archived: result });
@@ -49,5 +62,34 @@ router.post("/cleanup-resolved-tickets", authSuperToken, async (req: Request, re
   const deleted = await cleanupResolvedTickets();
   return res.json({ success: true, deleted });
 });
+
+// ── Categories ──
+router.post("/categories", authSuperToken, getCategories);
+router.post("/create-category", authSuperToken, createCategory);
+router.post("/update-category", authSuperToken, updateCategory);
+router.post("/delete-category", authSuperToken, deleteCategory);
+router.post("/upload-category-icon", authSuperToken, uploadCategoryIconRoute);
+
+// ── Badges ──
+router.post("/badges", authSuperToken, getBadges);
+router.post("/create-badge", authSuperToken, createNewBadge);
+router.post("/update-badge", authSuperToken, updateBadge);
+router.post("/delete-badge", authSuperToken, deleteBadge);
+router.post("/upload-badge-icon", authSuperToken, uploadBadgeIconRoute);
+
+// ── Themes ──
+router.post("/themes", authSuperToken, getThemes);
+router.post("/create-theme", authSuperToken, createTheme);
+router.post("/update-theme", authSuperToken, updateTheme);
+router.post("/delete-theme", authSuperToken, deleteTheme);
+router.post("/upload-theme-icon", authSuperToken, uploadThemeIconRoute);
+
+// ── Spaces ──
+router.post("/spaces", authSuperToken, listSpaces);
+router.post("/create-space", authSuperToken, createSpace);
+router.post("/update-space", authSuperToken, updateSpace);
+router.post("/delete-space", authSuperToken, deleteSpace);
+router.post("/set-space-categories", authSuperToken, setSpaceCategories);
+router.post("/get-space-categories", authSuperToken, getSpaceCategories);
 
 export default router;

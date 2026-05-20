@@ -9,6 +9,8 @@ import express from "express";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import mailRoutes from "./routes/mailRoutes.js";
@@ -60,6 +62,11 @@ app.use((req, res, next) => {
   }
   return bodyParser.json({ limit: "100kb" })(req, res, next);
 });
+
+// Serve the admin dashboard UI (resolve from dist/ back to src/ since tsc doesn't copy HTML)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use("/admin-ui", express.static(path.join(__dirname, "..", "src", "admin-ui")));
 
 // Route mounting — each prefix maps to its dedicated router
 app.use("/auth", authRoutes);
