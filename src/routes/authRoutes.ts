@@ -13,36 +13,52 @@ import { verifyRecaptcha } from "../middlewares/auth.js";
 
 const router = express.Router();
 
-// Strict limiter for OTP-sending endpoints — 5 requests per 15 min to prevent SMS abuse
-const otpLimiter = rateLimit({
+const limiterOpts = { standardHeaders: true, legacyHeaders: false } as const;
+
+// 5 req / 15 min — user signup OTP flow
+const signupLimiter = rateLimit({
+  ...limiterOpts,
   windowMs: 15 * 60 * 1000,
   max: 5,
-  message: { error: "Too many requests, please try again later." },
-  standardHeaders: true,
-  legacyHeaders: false,
+  message: { error: "Too many signup requests, please try again later." },
 });
 
-// Slightly more lenient limiter for password-based logins
-const loginLimiter = rateLimit({
+// 5 req / 15 min — user login OTP flow
+const loginOtpLimiter = rateLimit({
+  ...limiterOpts,
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: "Too many login requests, please try again later." },
+});
+
+// 10 req / 15 min — organizer/boss password login
+const passwordLoginLimiter = rateLimit({
+  ...limiterOpts,
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: { error: "Too many login attempts, please try again later." },
-  standardHeaders: true,
-  legacyHeaders: false,
+});
+
+// 5 req / 15 min — organizer join requests
+const joinRequestLimiter = rateLimit({
+  ...limiterOpts,
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: "Too many join requests, please try again later." },
 });
 
 // verifyRecaptcha guards signup/join-request to prevent automated submissions
-router.post("/signup-request-otp", otpLimiter, verifyRecaptcha, signupRequestOtp);
-router.post("/signup-verify-otp", otpLimiter, signupVerifyOtp);
-router.post("/signup-resend-otp", otpLimiter, signupResendOtp);
-router.post("/organizer-login", loginLimiter, organizerLogin);
-router.post("/boss-login", loginLimiter, bossLogin);
-router.post("/login-request-otp", otpLimiter, loginRequestOtp);
-router.post("/login-verify-otp", otpLimiter, loginVerifyOtp);
-router.post("/login-resend-otp", otpLimiter, loginResendOtp);
-router.post("/organizer-join-request", otpLimiter, verifyRecaptcha, organizerJoinRequest);
-router.post("/signup-via-link", loginLimiter, signupViaLink);
-router.post("/kyc-upload-url", otpLimiter, getKycUploadUrlForSignup);
+router.post("/signup-request-otp", signupLimiter, verifyRecaptcha, signupRequestOtp);
+router.post("/signup-verify-otp", signupLimiter, signupVerifyOtp);
+router.post("/signup-resend-otp", signupLimiter, signupResendOtp);
+router.post("/organizer-login", passwordLoginLimiter, organizerLogin);
+router.post("/boss-login", passwordLoginLimiter, bossLogin);
+router.post("/login-request-otp", loginOtpLimiter, loginRequestOtp);
+router.post("/login-verify-otp", loginOtpLimiter, loginVerifyOtp);
+router.post("/login-resend-otp", loginOtpLimiter, loginResendOtp);
+router.post("/organizer-join-request", joinRequestLimiter, verifyRecaptcha, organizerJoinRequest);
+router.post("/signup-via-link", passwordLoginLimiter, signupViaLink);
+router.post("/kyc-upload-url", signupLimiter, getKycUploadUrlForSignup);
 router.post("/legal-versions", getLegalVersions);
 router.post("/check-signup-link", checkSignupLink);
 
