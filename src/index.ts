@@ -9,6 +9,7 @@ import express from "express";
 import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
+import { readFileSync } from "fs";
 import dotenv from "dotenv";
 import cors from "cors";
 import { adminUiHtml } from "./adminUi.js";
@@ -42,7 +43,10 @@ app.use(cors(
 ));
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-app.use(express.static(path.join(__dirname, "..", "public")));
+const publicDir = path.join(__dirname, "..", "public");
+app.use(express.static(publicDir));
+const faviconBuf = readFileSync(path.join(publicDir, "favicon.ico"));
+app.get("/favicon.ico", (_req, res) => { res.type("image/x-icon").send(faviconBuf); });
 
 // Attach the adventure room socket handler for real-time chat/events
 io.on("connection", (socket) => {
