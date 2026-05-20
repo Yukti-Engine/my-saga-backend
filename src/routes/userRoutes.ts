@@ -1,7 +1,7 @@
 /**
  * userRoutes.ts
  *
- * Routes for authenticated MySaga users.
+ * Routes for authenticated My Saga users.
  * All routes require a valid user access token via authUser.
  */
 import express from "express";

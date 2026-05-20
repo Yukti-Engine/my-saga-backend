@@ -26,7 +26,7 @@ export const getBadgeClass = async (req: Request, res: Response) => {
     id: `https://api.mysaga.in/ob/badges/${badge.id}`,
     type: "Achievement",
     name: badge.title,
-    description: badge.description || "MySaga badge achievement.",
+    description: badge.description || "My Saga badge achievement.",
     image: { id: `${BADGE_ICON_BUCKET}/${badge.id}`, type: "Image" },
     issuer: { id: ISSUER_URL, type: "Profile" },
     criteria: {

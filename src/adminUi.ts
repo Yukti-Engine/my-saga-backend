@@ -3,7 +3,7 @@ export const adminUiHtml = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MySaga Admin</title>
+<title>My Saga Admin</title>
 <link rel="icon" href="/favicon.ico" type="image/x-icon">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -48,8 +48,8 @@ export const adminUiHtml = `<!DOCTYPE html>
 <body>
 
 <header>
-  <img src="/logo.png" alt="MySaga" style="height:36px;width:36px;">
-  <h1>MySaga Admin</h1>
+  <img src="/logo.png" alt="My Saga" style="height:36px;width:36px;">
+  <h1>My Saga Admin</h1>
   <input type="password" id="tokenInput" placeholder="Enter superToken..." autocomplete="off">
 </header>
 

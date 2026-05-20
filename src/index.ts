@@ -35,7 +35,7 @@ app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Production CORS: restrict to known MySaga front-end origins
+// Production CORS: restrict to known My Saga front-end origins
 app.use(cors(
   process.env.NODE_ENV === 'production'
     ? { origin: ['https://mysaga.in', 'https://www.mysaga.in', 'https://guide.mysaga.in', 'https://mod.mysaga.in', 'https://myguild.in', 'https://www.myguild.in'], credentials: true }

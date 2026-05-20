@@ -1,7 +1,7 @@
 /**
  * middlewares/auth.ts
  *
- * Express middleware for authentication and authorization across all MySaga roles.
+ * Express middleware for authentication and authorization across all My Saga roles.
  * Exports:
  *   authUser          — verifies uid + accessToken for regular users
  *   authBoss          — verifies bid + accessToken for bosses (experts)

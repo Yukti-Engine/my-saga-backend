@@ -1,7 +1,7 @@
 /**
  * authController.ts
  *
- * Handles all public authentication flows for the MySaga platform:
+ * Handles all public authentication flows for the My Saga platform:
  *   - User signup and login via OTP (phone-based)
  *   - Organizer and Boss login via email + password
  *   - Join-request submission for aspiring organizers
@@ -30,28 +30,28 @@ function joinRequestAcknowledgement(
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #333;">Thank you for your interest in joining MySaga!</h2>
+      <h2 style="color: #333;">Thank you for your interest in joining My Saga!</h2>
       <p>Dear Applicant,</p>
-      <p>We have received your request to join MySaga as a <strong>${roleLabel}</strong>.</p>
+      <p>We have received your request to join My Saga as a <strong>${roleLabel}</strong>.</p>
       <p>Your message:</p>
       <blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #555; margin: 16px 0;">
         "${escapeHtml(reasonToJoin)}"
       </blockquote>
       <p>
         Our team will carefully review your application. If we find your request worthy of further consideration,
-        a member of the MySaga workforce will reach out to you at this email address.
+        a member of the My Saga workforce will reach out to you at this email address.
       </p>
       <p>We appreciate your patience and look forward to potentially welcoming you aboard.</p>
       <br />
       <p>Warm regards,</p>
-      <p><strong>MySaga Support Team</strong></p>
+      <p><strong>My Saga Support Team</strong></p>
       <hr style="border: none; border-top: 1px solid #eee; margin-top: 24px;" />
       <p style="font-size: 12px; color: #999;">This is an automated message from support@mysaga.in. Please do not reply directly to this email.</p>
     </div>
   `;
 
   return {
-    subject: `MySaga ${roleLabel} Join Request — Received`,
+    subject: `My Saga ${roleLabel} Join Request — Received`,
     html
   };
 }
@@ -352,7 +352,7 @@ export const bossLogin = async (req: Request, res: Response) => {
 
 function signupInviteEmail(role: "organizer" | "boss", signupUrl: string) {
   const roleLabel = role === "organizer" ? "Guide" : "Expert";
-  const platform = role === "organizer" ? "MySagaGuide" : "MyGuild";
+  const platform = role === "organizer" ? "My Saga" : "My Guild";
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #333;">You've been invited to join ${platform}!</h2>
@@ -375,7 +375,7 @@ function signupInviteEmail(role: "organizer" | "boss", signupUrl: string) {
       </p>
       <br />
       <p>Welcome aboard,</p>
-      <p><strong>MySaga Support Team</strong></p>
+      <p><strong>My Saga Support Team</strong></p>
       <hr style="border: none; border-top: 1px solid #eee; margin-top: 24px;" />
       <p style="font-size: 12px; color: #999;">This is an automated message from support@mysaga.in. Do not reply to this email.</p>
     </div>

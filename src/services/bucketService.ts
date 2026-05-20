@@ -1,7 +1,7 @@
 /**
  * bucketService.ts
  *
- * Wraps all Google Cloud Storage operations for the MySaga platform.
+ * Wraps all Google Cloud Storage operations for the My Saga platform.
  * Provides helpers for:
  *   - Badge, category, and theme icon uploads (base64 → PNG)
  *   - Profile icon uploads (base64 → JPEG) and deletion

@@ -94,11 +94,11 @@ export async function issueOpenBadge(params: {
         id: `https://api.mysaga.in/ob/badges/${badgeId}`,
         type: "Achievement",
         name: badgeName,
-        description: badgeDescription || "MySaga badge achievement.",
+        description: badgeDescription || "My Saga badge achievement.",
         image: { id: `${BADGE_ICON_BUCKET}/${badgeId}`, type: "Image" },
         criteria: {
           narrative:
-            "Awarded by an Expert upon successful completion of a MySaga Adventure assessment.",
+            "Awarded by an Expert upon successful completion of a My Saga Adventure assessment.",
         },
         issuer: { id: ISSUER_URL, type: "Profile", name: "Yukti Engine LLP" },
       },

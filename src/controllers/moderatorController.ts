@@ -287,7 +287,7 @@ export const resolveTicket = async (req: Request, res: Response) => {
 // The pending signup workflow: applicants submit via link → moderator reviews KYC → approves/rejects.
 
 function signupApprovalEmail(role: "organizer" | "boss", name: string) {
-  const platform = role === "organizer" ? "MySagaGuide" : "MyGuild";
+  const platform = role === "organizer" ? "My Saga" : "My Guild";
   const isStaging = process.env.NODE_ENV !== "production";
   const loginUrl = role === "organizer"
     ? (isStaging ? "http://localhost:3000" : "https://guide.mysaga.in")
@@ -312,7 +312,7 @@ function signupApprovalEmail(role: "organizer" | "boss", name: string) {
       <p>We're excited to have you on board. Welcome to the team!</p>
       <br />
       <p>Warm regards,</p>
-      <p><strong>MySaga Support Team</strong></p>
+      <p><strong>My Saga Support Team</strong></p>
       <hr style="border: none; border-top: 1px solid #eee; margin-top: 24px;" />
       <p style="font-size: 12px; color: #999;">This is an automated message from support@mysaga.in. Please do not reply directly to this email.</p>
     </div>
@@ -321,7 +321,7 @@ function signupApprovalEmail(role: "organizer" | "boss", name: string) {
 }
 
 function signupRejectionEmail(role: "organizer" | "boss", name: string, reason?: string) {
-  const platform = role === "organizer" ? "MySagaGuide" : "MyGuild";
+  const platform = role === "organizer" ? "My Saga" : "MyGuild";
   const reasonBlock = reason
     ? `<p>Our team has shared the following note:</p>
        <blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #555; margin: 16px 0;">
@@ -340,7 +340,7 @@ function signupRejectionEmail(role: "organizer" | "boss", name: string, reason?:
       <p>We appreciate your interest and wish you the best.</p>
       <br />
       <p>Regards,</p>
-      <p><strong>MySaga Support Team</strong></p>
+      <p><strong>My Saga Support Team</strong></p>
       <hr style="border: none; border-top: 1px solid #eee; margin-top: 24px;" />
       <p style="font-size: 12px; color: #999;">This is an automated message from support@mysaga.in. Please do not reply directly to this email.</p>
     </div>

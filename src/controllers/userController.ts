@@ -1,7 +1,7 @@
 /**
  * userController.ts
  *
- * Handles all actions available to authenticated MySaga users:
+ * Handles all actions available to authenticated My Saga users:
  *   - Profile and settings management (username, bio, email, icon)
  *   - Adventure matching, lobby management, and past adventure retrieval
  *   - The "Book" / story feature: starting, progressing, regenerating, and concluding chapters
