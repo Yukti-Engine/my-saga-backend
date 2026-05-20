@@ -395,6 +395,20 @@ export const pendingSignupKycDownloadUrl = async (req: Request, res: Response) =
   }
 };
 
+export const getLobbies = async (req: Request, res: Response) => {
+  const { bossId, categoryId, limit, offset } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM mod_list_lobbies($1::int, $2::int, $3::int, $4::int)`,
+      [bossId ?? null, categoryId ?? null, limit ?? 50, offset ?? 0]
+    );
+    return res.json({ lobbies: rows });
+  } catch (err) {
+    console.error("Error in getLobbies:", err);
+    return res.status(500).json({ error: "Failed to fetch lobbies" });
+  }
+};
+
 export const approveSignup = async (req: Request, res: Response) => {
   const { id } = req.body;
   if (!Number.isInteger(id) || id <= 0)
