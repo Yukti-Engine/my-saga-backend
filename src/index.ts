@@ -41,6 +41,9 @@ app.use(cors(
     : { origin: '*' }
 ));
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+app.use(express.static(path.join(__dirname, "..", "public")));
+
 // Attach the adventure room socket handler for real-time chat/events
 io.on("connection", (socket) => {
   roomSocket(io, socket);
@@ -63,9 +66,6 @@ app.use((req, res, next) => {
   }
   return bodyParser.json({ limit: "100kb" })(req, res, next);
 });
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-app.use(express.static(path.join(__dirname, "..", "public")));
 
 // Serve the admin dashboard UI as inline HTML
 app.get("/admin-ui", (_req, res) => { res.type("html").send(adminUiHtml); });

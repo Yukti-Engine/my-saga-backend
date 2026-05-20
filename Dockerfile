@@ -12,7 +12,7 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY package*.json ./
-COPY favicon.ico logo.png ./public/
+COPY public ./public
 
 EXPOSE 3000
 CMD ["npm", "start"]
