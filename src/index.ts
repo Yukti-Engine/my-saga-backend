@@ -7,6 +7,8 @@
  */
 import express from "express";
 import bodyParser from "body-parser";
+import path from "path";
+import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import cors from "cors";
 import { adminUiHtml } from "./adminUi.js";
@@ -62,7 +64,8 @@ app.use((req, res, next) => {
   return bodyParser.json({ limit: "100kb" })(req, res, next);
 });
 
-app.use(express.static("public"));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+app.use(express.static(path.join(__dirname, "..", "public")));
 
 // Serve the admin dashboard UI as inline HTML
 app.get("/admin-ui", (_req, res) => { res.type("html").send(adminUiHtml); });
