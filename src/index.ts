@@ -66,7 +66,9 @@ app.use((req, res, next) => {
 // Serve the admin dashboard UI (resolve from dist/ back to src/ since tsc doesn't copy HTML)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use("/admin-ui", express.static(path.join(__dirname, "..", "src", "admin-ui")));
+const adminUiPath = path.join(__dirname, "..", "src", "admin-ui");
+app.use("/admin-ui", express.static(adminUiPath));
+app.get("/admin-ui", (_req, res) => res.sendFile(path.join(adminUiPath, "index.html")));
 
 // Route mounting — each prefix maps to its dedicated router
 app.use("/auth", authRoutes);
