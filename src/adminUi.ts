@@ -40,9 +40,6 @@ export const adminUiHtml = `<!DOCTYPE html>
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; }
   th { font-weight: 600; color: #555; background: #fafafa; }
   .actions { display: flex; gap: 6px; }
-  .maint-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
-  .maint-card { background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 8px; }
-  .maint-card p { font-size: 13px; color: #666; }
 </style>
 </head>
 <body>
@@ -54,8 +51,7 @@ export const adminUiHtml = `<!DOCTYPE html>
 </header>
 
 <nav>
-  <button class="active" data-tab="maintenance">Maintenance</button>
-  <button data-tab="categories">Categories</button>
+  <button class="active" data-tab="categories">Categories</button>
   <button data-tab="badges">Badges</button>
   <button data-tab="themes">Themes</button>
   <button data-tab="spaces">Spaces</button>
@@ -63,13 +59,8 @@ export const adminUiHtml = `<!DOCTYPE html>
 
 <main>
 
-<!-- MAINTENANCE -->
-<div class="section active" id="maintenance">
-  <div class="maint-grid" id="maintGrid"></div>
-</div>
-
 <!-- CATEGORIES -->
-<div class="section" id="categories">
+<div class="section active" id="categories">
   <div class="card">
     <h3>Create Category</h3>
     <div class="form-row">
@@ -248,31 +239,6 @@ function openModal(title, fields, onSave) {
   document.getElementById('modal-overlay').style.display = 'flex';
 }
 function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
-
-// Maintenance
-var maintOps = [
-  { name: 'Archive Match Requests', path: '/admin/archive-match-requests', desc: 'Archive inactive match requests to GCS' },
-  { name: 'Cleanup Expired Pending Users', path: '/admin/cleanup-expired-pending-users', desc: 'Delete expired pending user signups' },
-  { name: 'Logout Absentees', path: '/admin/logout-absentees', desc: 'Force logout inactive users' },
-  { name: 'Deactivate Completed Adventures', path: '/admin/deactivate-completed-adventures', desc: 'Mark completed adventures inactive' },
-  { name: 'Refresh Badge Roadmaps', path: '/admin/refresh-badge-roadmaps', desc: 'Regenerate all badge roadmaps via LLM' },
-  { name: 'Limit More', path: '/admin/limit-more', desc: 'Increase organizer team-size limits' },
-  { name: 'Cleanup Expired Signup Links', path: '/admin/cleanup-expired-signup-links', desc: 'Delete unused signup links older than 7 days' },
-  { name: 'Cleanup Stale Pending Signups', path: '/admin/cleanup-stale-pending-signups', desc: 'Delete pending signups older than 60 days' },
-  { name: 'Cleanup Resolved Tickets', path: '/admin/cleanup-resolved-tickets', desc: 'Archive closed tickets older than 90 days' }
-];
-var maintGrid = document.getElementById('maintGrid');
-maintOps.forEach(function(op) {
-  var div = document.createElement('div');
-  div.className = 'maint-card';
-  div.innerHTML = '<strong>' + esc(op.name) + '</strong><p>' + esc(op.desc) + '</p><button class="btn btn-primary" data-path="' + op.path + '">Run</button><div class="maint-res"></div>';
-  div.querySelector('button').onclick = async function() {
-    var res = div.querySelector('.maint-res');
-    try { var r = await api(op.path); show(res, JSON.stringify(r), true); }
-    catch(e) { show(res, e.message, false); }
-  };
-  maintGrid.appendChild(div);
-});
 
 // In-memory lists for dropdowns
 var catList = [], badgeList = [], themeList = [], spaceList = [];
