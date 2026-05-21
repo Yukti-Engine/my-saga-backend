@@ -516,8 +516,9 @@ export const refreshClone = async (_req: Request, res: Response) => {
     });
     await pollOperation(project, cloneOp.name!);
     log("Clone created.");
+    await new Promise((r) => setTimeout(r, 10_000)); // let the instance settle before patching
 
-    // Step 3 — assign public IP, clear inherited private network, open to all
+    // Step 3 — add public IP on top of existing private network (private IP cannot be removed once set)
     log("Enabling public IP...");
     const { data: patchOp } = await sql.instances.patch({
       project,
@@ -526,7 +527,6 @@ export const refreshClone = async (_req: Request, res: Response) => {
         settings: {
           ipConfiguration: {
             ipv4Enabled: true,
-            privateNetwork: "",       // clear inherited private network from source
             authorizedNetworks: [{ value: "0.0.0.0/0", name: "all" }],
           },
         },
