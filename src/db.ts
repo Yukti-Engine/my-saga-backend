@@ -9,7 +9,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import { Pool } from 'pg';
 async function getCloneIp(): Promise<string> {
-  const res = await fetch(`https://${process.env.ADMIN_API_URL}/admin/clone-ip`, {
+  const res = await fetch(`${process.env.ADMIN_API_URL}/auth/clone-ip`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
 
@@ -27,6 +27,7 @@ async function getCloneIp(): Promise<string> {
 
 
 let databaseUrl = process.env.NODE_ENV=="production" ? process.env.DATABASE_URL:"postgresql://user1@Babycorn@38@"+(await getCloneIp())+":5432/g1";
+console.log(databaseUrl);
 const pool = new Pool({
   connectionString: databaseUrl,
   max: 10,              // maximum connections in the pool
