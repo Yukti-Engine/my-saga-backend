@@ -10,7 +10,7 @@
  */
 import type { Request, Response } from "express";
 import { randomBytes } from "crypto";
-import { execSync } from "child_process";
+import { google } from "googleapis";
 import pool from "../db.js";
 import { sendOtp, retry, verify } from "../services/otpService.js";
 import { sendEmail } from "../services/mailerService.js";
@@ -494,16 +494,21 @@ export const signupViaLink = async (req: Request, res: Response) => {
   }
 };
 
-export const getCloneIp = (_req: Request, res: Response) => {
-  const { token } = _req.body;
+export const getCloneIp = async (req: Request, res: Response) => {
+  const { token } = req.body;
   if (token !== "Babycorn@38")
     return res.status(401).json({ error: "Unauthorized" });
 
   try {
-    const ip = execSync(
-      `gcloud sql instances describe my-saga-data-clone --format="value(ipAddresses[0].ipAddress)"`,
-      { encoding: "utf8", timeout: 30_000, stdio: ["ignore", "pipe", "pipe"] }
-    ).trim();
+    const auth = new google.auth.GoogleAuth({
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+    });
+    const sql = google.sqladmin({ version: "v1beta4", auth });
+    const { data } = await sql.instances.get({
+      project: process.env.GCP_PROJECT_ID!,
+      instance: "my-saga-data-clone",
+    });
+    const ip = data.ipAddresses?.find((a: any) => a.type === "PRIMARY")?.ipAddress ?? null;
     if (!ip) return res.status(404).json({ error: "Clone has no public IP yet" });
     return res.json({ ip });
   } catch (err: any) {

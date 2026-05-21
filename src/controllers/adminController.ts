@@ -4,7 +4,7 @@ import { archiveFile, deleteAdventureFiles, deleteKycFolder, uploadBadgeIcon, up
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { execSync } from "child_process";
+import { google } from "googleapis";
 import { generateBadgeRoadmap } from "../services/llmService.js";
 
 /* ─────────────────── MAINTENANCE (existing) ─────────────────── */
@@ -456,16 +456,29 @@ export const getSpaceCategories = async (req: Request, res: Response) => {
 
 /* ─────────────────── CLONE MANAGEMENT ─────────────────── */
 
-const CLONE_INSTANCE = "my-saga-data-clone";
+const CLONE_INSTANCE  = "my-saga-data-clone";
 const SOURCE_INSTANCE = "my-saga-data";
+const GCP_PROJECT     = process.env.GCP_PROJECT_ID!;
 
-/** Run a gcloud command synchronously; throws on non-zero exit. */
-function gcloud(args: string, timeoutMs = 180_000): string {
-  return execSync(`gcloud ${args}`, {
-    encoding: "utf8",
-    timeout: timeoutMs,
-    stdio: ["ignore", "pipe", "pipe"],
-  }).trim();
+function getSqlAdmin() {
+  const auth = new google.auth.GoogleAuth({
+    scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+  });
+  return google.sqladmin({ version: "v1beta4", auth });
+}
+
+/** Poll a Cloud SQL operation until it reaches DONE status. */
+async function pollOperation(operationName: string): Promise<void> {
+  const sql = getSqlAdmin();
+  const opId = operationName.split("/").pop()!;
+  for (;;) {
+    const { data } = await sql.operations.get({ project: GCP_PROJECT, operation: opId });
+    if (data.status === "DONE") {
+      if (data.error) throw new Error(JSON.stringify(data.error));
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 5_000));
+  }
 }
 
 /**
@@ -476,30 +489,59 @@ function gcloud(args: string, timeoutMs = 180_000): string {
  */
 export const refreshClone = async (_req: Request, res: Response) => {
   const log = (msg: string) => console.log(`[refreshClone] ${msg}`);
+  const sql = getSqlAdmin();
+
   try {
     // Step 1 — delete existing clone if present
     try {
-      gcloud(`sql instances describe ${CLONE_INSTANCE} --format="value(name)"`);
+      await sql.instances.get({ project: GCP_PROJECT, instance: CLONE_INSTANCE });
       log("Clone exists — deleting...");
-      gcloud(`sql instances delete ${CLONE_INSTANCE} --quiet`, 300_000);
+      const { data: delOp } = await sql.instances.delete({ project: GCP_PROJECT, instance: CLONE_INSTANCE });
+      await pollOperation(delOp.name!);
       log("Deleted.");
-    } catch {
-      log("No existing clone — skipping delete.");
+    } catch (e: any) {
+      if (e?.code === 404 || e?.status === 404) {
+        log("No existing clone — skipping delete.");
+      } else {
+        throw e;
+      }
     }
 
     // Step 2 — create fresh clone (~5–10 min)
     log("Creating fresh clone...");
-    gcloud(`sql instances clone ${SOURCE_INSTANCE} ${CLONE_INSTANCE}`, 900_000);
+    const { data: cloneOp } = await sql.instances.clone({
+      project: GCP_PROJECT,
+      instance: SOURCE_INSTANCE,
+      requestBody: { cloneContext: { kind: "sql#cloneContext", destinationInstanceName: CLONE_INSTANCE } },
+    });
+    await pollOperation(cloneOp.name!);
     log("Clone created.");
 
     // Step 3 — assign public IP + open to all networks
     log("Enabling public IP...");
-    gcloud(`sql instances patch ${CLONE_INSTANCE} --assign-ip --authorized-networks=0.0.0.0/0`, 300_000);
+    const { data: patchOp } = await sql.instances.patch({
+      project: GCP_PROJECT,
+      instance: CLONE_INSTANCE,
+      requestBody: {
+        settings: {
+          ipConfiguration: {
+            ipv4Enabled: true,
+            authorizedNetworks: [{ value: "0.0.0.0/0", name: "all" }],
+          },
+        },
+      },
+    });
+    await pollOperation(patchOp.name!);
     log("Public IP enabled.");
 
     // Step 4 — reset dev password
     log("Setting password...");
-    gcloud(`sql users set-password user1 --instance=${CLONE_INSTANCE} --password=Babycorn@11`);
+    await sql.users.update({
+      project: GCP_PROJECT,
+      instance: CLONE_INSTANCE,
+      name: "user1",
+      requestBody: { password: "Babycorn@11" },
+    });
     log("Done.");
 
     return res.json({ success: true, message: "Clone refreshed successfully" });
