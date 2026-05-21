@@ -504,8 +504,9 @@ export const getCloneIp = async (req: Request, res: Response) => {
       scopes: ["https://www.googleapis.com/auth/cloud-platform"],
     });
     const sql = google.sqladmin({ version: "v1beta4", auth });
+    const project = await auth.getProjectId();
     const { data } = await sql.instances.get({
-      project: process.env.GCP_PROJECT_ID!,
+      project,
       instance: "my-saga-data-clone",
     });
     const ip = data.ipAddresses?.find((a: any) => a.type === "PRIMARY")?.ipAddress ?? null;

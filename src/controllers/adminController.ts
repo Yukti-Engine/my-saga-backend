@@ -458,21 +458,20 @@ export const getSpaceCategories = async (req: Request, res: Response) => {
 
 const CLONE_INSTANCE  = "my-saga-data-clone";
 const SOURCE_INSTANCE = "my-saga-data";
-const GCP_PROJECT     = process.env.GCP_PROJECT_ID!;
 
 function getSqlAdmin() {
   const auth = new google.auth.GoogleAuth({
     scopes: ["https://www.googleapis.com/auth/cloud-platform"],
   });
-  return google.sqladmin({ version: "v1beta4", auth });
+  return { sql: google.sqladmin({ version: "v1beta4", auth }), auth };
 }
 
 /** Poll a Cloud SQL operation until it reaches DONE status. */
-async function pollOperation(operationName: string): Promise<void> {
-  const sql = getSqlAdmin();
+async function pollOperation(project: string, operationName: string): Promise<void> {
+  const { sql } = getSqlAdmin();
   const opId = operationName.split("/").pop()!;
   for (;;) {
-    const { data } = await sql.operations.get({ project: GCP_PROJECT, operation: opId });
+    const { data } = await sql.operations.get({ project, operation: opId });
     if (data.status === "DONE") {
       if (data.error) throw new Error(JSON.stringify(data.error));
       return;
@@ -489,15 +488,16 @@ async function pollOperation(operationName: string): Promise<void> {
  */
 export const refreshClone = async (_req: Request, res: Response) => {
   const log = (msg: string) => console.log(`[refreshClone] ${msg}`);
-  const sql = getSqlAdmin();
+  const { sql, auth } = getSqlAdmin();
+  const project = await auth.getProjectId();
 
   try {
     // Step 1 — delete existing clone if present
     try {
-      await sql.instances.get({ project: GCP_PROJECT, instance: CLONE_INSTANCE });
+      await sql.instances.get({ project, instance: CLONE_INSTANCE });
       log("Clone exists — deleting...");
-      const { data: delOp } = await sql.instances.delete({ project: GCP_PROJECT, instance: CLONE_INSTANCE });
-      await pollOperation(delOp.name!);
+      const { data: delOp } = await sql.instances.delete({ project, instance: CLONE_INSTANCE });
+      await pollOperation(project, delOp.name!);
       log("Deleted.");
     } catch (e: any) {
       if (e?.code === 404 || e?.status === 404) {
@@ -510,17 +510,17 @@ export const refreshClone = async (_req: Request, res: Response) => {
     // Step 2 — create fresh clone (~5–10 min)
     log("Creating fresh clone...");
     const { data: cloneOp } = await sql.instances.clone({
-      project: GCP_PROJECT,
+      project,
       instance: SOURCE_INSTANCE,
       requestBody: { cloneContext: { kind: "sql#cloneContext", destinationInstanceName: CLONE_INSTANCE } },
     });
-    await pollOperation(cloneOp.name!);
+    await pollOperation(project, cloneOp.name!);
     log("Clone created.");
 
     // Step 3 — assign public IP + open to all networks
     log("Enabling public IP...");
     const { data: patchOp } = await sql.instances.patch({
-      project: GCP_PROJECT,
+      project,
       instance: CLONE_INSTANCE,
       requestBody: {
         settings: {
@@ -531,13 +531,13 @@ export const refreshClone = async (_req: Request, res: Response) => {
         },
       },
     });
-    await pollOperation(patchOp.name!);
+    await pollOperation(project, patchOp.name!);
     log("Public IP enabled.");
 
     // Step 4 — reset dev password
     log("Setting password...");
     await sql.users.update({
-      project: GCP_PROJECT,
+      project,
       instance: CLONE_INSTANCE,
       name: "user1",
       requestBody: { password: "Babycorn@11" },
