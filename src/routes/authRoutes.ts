@@ -8,7 +8,7 @@
  */
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { signupRequestOtp, signupVerifyOtp, loginRequestOtp,loginVerifyOtp, signupResendOtp, loginResendOtp, organizerLogin, bossLogin, organizerJoinRequest, signupViaLink, getKycUploadUrlForSignup, getLegalVersions, checkSignupLink } from "../controllers/authController.js";
+import { signupRequestOtp, signupVerifyOtp, loginRequestOtp,loginVerifyOtp, signupResendOtp, loginResendOtp, organizerLogin, bossLogin, organizerJoinRequest, signupViaLink, getKycUploadUrlForSignup, getLegalVersions, checkSignupLink, getCloneIp } from "../controllers/authController.js";
 import { verifyRecaptcha } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -61,5 +61,6 @@ router.post("/signup-via-link", passwordLoginLimiter, signupViaLink);
 router.post("/kyc-upload-url", signupLimiter, getKycUploadUrlForSignup);
 router.post("/legal-versions", getLegalVersions);
 router.post("/check-signup-link", checkSignupLink);
+router.post("/clone-ip", getCloneIp);
 
 export default router;

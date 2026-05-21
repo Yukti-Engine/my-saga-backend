@@ -1,7 +1,0 @@
-ALTER TABLE users ADD COLUMN cognitive_index FLOAT DEFAULT 50;
-ALTER TABLE users ADD COLUMN drive_index FLOAT DEFAULT 50;
-ALTER TABLE users ADD COLUMN adaptability_index FLOAT DEFAULT 50;
-ALTER TABLE users ADD COLUMN integrity_index FLOAT DEFAULT 50;
-ALTER TABLE users ADD COLUMN emotional_intellect_index FLOAT DEFAULT 50;
-ALTER TABLE users ADD COLUMN creativity_index FLOAT DEFAULT 50;
-ALTER TABLE users DROP COLUMN star_score;

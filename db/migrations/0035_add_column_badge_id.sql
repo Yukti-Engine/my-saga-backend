@@ -1,1 +1,0 @@
-ALTER TABLE match_requests add COLUMN badge_id int REFERENCES badges(id)

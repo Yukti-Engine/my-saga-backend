@@ -1,1 +1,0 @@
-ALTER TABLE badges ADD COLUMN roadmaps VARCHAR(10000)[8];

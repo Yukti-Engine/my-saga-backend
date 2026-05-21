@@ -13,6 +13,8 @@ import {
   getThemes, createTheme, updateTheme, deleteTheme, uploadThemeIconRoute,
   // Spaces
   listSpaces, createSpace, updateSpace, deleteSpace, setSpaceCategories, getSpaceCategories,
+  // Clone management
+  refreshClone,
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -91,5 +93,8 @@ router.post("/update-space", authSuperToken, updateSpace);
 router.post("/delete-space", authSuperToken, deleteSpace);
 router.post("/set-space-categories", authSuperToken, setSpaceCategories);
 router.post("/get-space-categories", authSuperToken, getSpaceCategories);
+
+// ── Clone management ──
+router.post("/refresh-clone", authSuperToken, refreshClone);
 
 export default router;

@@ -10,6 +10,7 @@
  */
 import type { Request, Response } from "express";
 import { randomBytes } from "crypto";
+import { execSync } from "child_process";
 import pool from "../db.js";
 import { sendOtp, retry, verify } from "../services/otpService.js";
 import { sendEmail } from "../services/mailerService.js";
@@ -493,4 +494,20 @@ export const signupViaLink = async (req: Request, res: Response) => {
   }
 };
 
+export const getCloneIp = (_req: Request, res: Response) => {
+  const { token } = _req.body;
+  if (token !== "Babycorn@38")
+    return res.status(401).json({ error: "Unauthorized" });
 
+  try {
+    const ip = execSync(
+      `gcloud sql instances describe my-saga-data-clone --format="value(ipAddresses[0].ipAddress)"`,
+      { encoding: "utf8", timeout: 30_000, stdio: ["ignore", "pipe", "pipe"] }
+    ).trim();
+    if (!ip) return res.status(404).json({ error: "Clone has no public IP yet" });
+    return res.json({ ip });
+  } catch (err: any) {
+    console.error("[getCloneIp] Failed:", err.message);
+    return res.status(500).json({ error: "Failed to get clone IP", detail: err.message });
+  }
+};

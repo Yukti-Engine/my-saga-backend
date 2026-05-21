@@ -7,9 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "start": "node dist/index.js",
-    "update": "npx tsx db/update.ts",
     "seed": "npx tsx db/seed.ts",
-    "dev": "npm run seed && npm run update && npm run start"
+    "dev": "npm run seed && npm run build && npm run start"
   },
   "repository": {
     "type": "git",

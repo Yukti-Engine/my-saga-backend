@@ -4,6 +4,7 @@ import { archiveFile, deleteAdventureFiles, deleteKycFolder, uploadBadgeIcon, up
 import fs from "fs";
 import path from "path";
 import os from "os";
+import { execSync } from "child_process";
 import { generateBadgeRoadmap } from "../services/llmService.js";
 
 /* ─────────────────── MAINTENANCE (existing) ─────────────────── */
@@ -452,3 +453,59 @@ export const getSpaceCategories = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Failed to fetch space categories" });
   }
 };
+
+/* ─────────────────── CLONE MANAGEMENT ─────────────────── */
+
+const CLONE_INSTANCE = "my-saga-data-clone";
+const SOURCE_INSTANCE = "my-saga-data";
+
+/** Run a gcloud command synchronously; throws on non-zero exit. */
+function gcloud(args: string, timeoutMs = 180_000): string {
+  return execSync(`gcloud ${args}`, {
+    encoding: "utf8",
+    timeout: timeoutMs,
+    stdio: ["ignore", "pipe", "pipe"],
+  }).trim();
+}
+
+/**
+ * POST /admin/refresh-clone
+ * Deletes the existing Cloud SQL clone (if any), creates a fresh one from the
+ * primary instance, enables a public IP, and resets the dev user password.
+ * Long-running (~5–10 min) — intended for a Cloud Scheduler job, not interactive use.
+ */
+export const refreshClone = async (_req: Request, res: Response) => {
+  const log = (msg: string) => console.log(`[refreshClone] ${msg}`);
+  try {
+    // Step 1 — delete existing clone if present
+    try {
+      gcloud(`sql instances describe ${CLONE_INSTANCE} --format="value(name)"`);
+      log("Clone exists — deleting...");
+      gcloud(`sql instances delete ${CLONE_INSTANCE} --quiet`, 300_000);
+      log("Deleted.");
+    } catch {
+      log("No existing clone — skipping delete.");
+    }
+
+    // Step 2 — create fresh clone (~5–10 min)
+    log("Creating fresh clone...");
+    gcloud(`sql instances clone ${SOURCE_INSTANCE} ${CLONE_INSTANCE}`, 900_000);
+    log("Clone created.");
+
+    // Step 3 — assign public IP + open to all networks
+    log("Enabling public IP...");
+    gcloud(`sql instances patch ${CLONE_INSTANCE} --assign-ip --authorized-networks=0.0.0.0/0`, 300_000);
+    log("Public IP enabled.");
+
+    // Step 4 — reset dev password
+    log("Setting password...");
+    gcloud(`sql users set-password user1 --instance=${CLONE_INSTANCE} --password=Babycorn@11`);
+    log("Done.");
+
+    return res.json({ success: true, message: "Clone refreshed successfully" });
+  } catch (err: any) {
+    console.error("[refreshClone] Failed:", err.message);
+    return res.status(500).json({ error: "Clone refresh failed", detail: err.message });
+  }
+};
+

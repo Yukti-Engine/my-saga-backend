@@ -1,1 +1,0 @@
-DROP FUNCTION remove_pending_user;
