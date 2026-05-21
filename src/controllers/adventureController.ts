@@ -189,7 +189,7 @@ export async function getPoll(req: any, res: any) {
 
 
 export async function insertResult(req: Request, res: Response) {
-  const { id } = req.body;
+  const { bid } = req.body;
   const advV = validatePositiveInt(req.body.adventureId, "adventureId");
   if (!advV.ok) return res.status(400).json({ error: advV.error });
 
@@ -220,7 +220,7 @@ export async function insertResult(req: Request, res: Response) {
 
   const check = await pool.query(
     `SELECT is_related_to_adventure($1::int, 'boss', $2::int) AS ok`,
-    [id, advV.value]
+    [bid, advV.value]
   );
   if (!check.rows[0].ok) return res.status(403).json({ success: false });
 

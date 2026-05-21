@@ -12,7 +12,7 @@ router.post("/update-poll-add-vote", authAny, updatePollAddVote);
 router.post("/update-poll-remove-vote", authAny, updatePollRemoveVote);
 router.post("/get-poll", authAny, getPoll);
 router.post("/insert-result", authBoss, insertResult);
-router.post("/get-result", authBoss, getResult);
+router.post("/get-result", authAny, getResult);
 router.post("/upload-url", authAny, getUploadFileUrl);
 router.post("/download-url", authAny, getDownloadFileUrl);
 export default router;
