@@ -2,18 +2,31 @@
  * db.ts
  *
  * Creates and exports the shared PostgreSQL connection pool used by all
- * controllers and services. Reads DATABASE_URL from the environment and
- * gracefully drains the pool on SIGTERM.
+ * controllers and services.
+ * Gracefully drains the pool on SIGTERM.
  */
 import dotenv from "dotenv";
 dotenv.config();
 import { Pool } from 'pg';
+async function getCloneIp(): Promise<string> {
+  const res = await fetch(`https://${process.env.ADMIN_API_URL}/admin/clone-ip`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
 
-let databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) throw new Error("DATABASE_URL not found in .env");
-// Rewrite the default "postgres" database name to the project-specific "g1" database
-if (databaseUrl.substring(databaseUrl.lastIndexOf('/')+1, databaseUrl.length)=="postgres")
-  databaseUrl = databaseUrl.substring(0, databaseUrl.length-8) + "g1";
+    body: JSON.stringify({ token: 'Babycorn@38' }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`clone-ip returned ${res.status}: ${body}`);
+  }
+  const { ip } = await res.json() as { ip: string };
+  if (!ip) throw new Error('clone-ip response missing ip field');
+  return ip;
+}
+
+
+
+let databaseUrl = process.env.NODE_ENV=="production" ? process.env.DATABASE_URL:"postgresql://user1@Babycorn@38@"+(await getCloneIp())+":5432/g1";
 const pool = new Pool({
   connectionString: databaseUrl,
   max: 10,              // maximum connections in the pool
