@@ -10,7 +10,7 @@
  *   ADMIN_API_URL  — deployed API base URL, e.g. https://api.mysaga.in
  *   SUPER_TOKEN    — shared secret for admin/moderator routes
  *
- * Clone credentials are fixed: user1 / Babycorn@11 (set by refresh-clone).
+ * Clone credentials are fixed: user1 / Babycorn@38 (set by refresh-clone).
  *
  * Usage:
  *   npx tsx db/seed.ts
@@ -49,7 +49,7 @@ const DUMP_PATH = join(tmpdir(), 'g1_clone_dump.dump');
 
 // Fixed credentials set by /admin/refresh-clone
 const CLONE_USER     = 'user1';
-const CLONE_PASSWORD = 'Babycorn@11';
+const CLONE_PASSWORD = 'Babycorn@38';
 
 async function getCloneIp(): Promise<string> {
   console.log('🌐  Fetching clone IP from admin API…');

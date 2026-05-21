@@ -540,7 +540,7 @@ export const refreshClone = async (_req: Request, res: Response) => {
       project,
       instance: CLONE_INSTANCE,
       name: "user1",
-      requestBody: { password: "Babycorn@11" },
+      requestBody: { password: "Babycorn@38" },
     });
     log("Done.");
 
