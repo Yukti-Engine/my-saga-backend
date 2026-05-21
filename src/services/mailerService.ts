@@ -40,9 +40,6 @@ export async function sendEmail(to: string, subject: string, body: string) {
     },
   } as any);
 
-  // Prefix the subject in non-production environments for easy identification
-  subject = (process.env.NODE_ENV=="staging"?"(test) ":"")+subject
-
   await transporter.sendMail({
     from: process.env.GOOGLE_SENDER_EMAIL,
     to,

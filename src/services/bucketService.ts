@@ -8,45 +8,41 @@
  *   - KYC document management: signed upload/download URLs, file listing, folder deletion
  *   - Adventure file uploads/downloads and archiving
  *
- * Each bucket is automatically prefixed with "staging-" when NODE_ENV is "staging".
  */
 import { Storage } from "@google-cloud/storage";
 
 const storage = new Storage();
 // Separate GCS buckets per content type to allow independent access controls and lifecycle rules
-const bucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-adventures");
-const archiveBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-archive");
-const profilesBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-profiles");
-const kycBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-kyc");
-const badgeIconsBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-badge-icons");
-const categoryIconsBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-category-icons");
-const themeIconsBucket = storage.bucket((process.env.NODE_ENV=="staging"?"staging-":"")+"my-saga-theme-icons");
+const bucket = storage.bucket("my-saga-adventures");
+const archiveBucket = storage.bucket("my-saga-archive");
+const profilesBucket = storage.bucket("my-saga-profiles");
+const kycBucket = storage.bucket("my-saga-kyc");
+const badgeIconsBucket = storage.bucket("my-saga-badge-icons");
+const categoryIconsBucket = storage.bucket("my-saga-category-icons");
+const themeIconsBucket = storage.bucket("my-saga-theme-icons");
 
 /** Decodes a base64 PNG string and uploads it as the icon for the given badge. */
 export async function uploadBadgeIcon(base64: string, badgeId: number): Promise<string> {
   const buffer = Buffer.from(base64, "base64");
-  const prefix = process.env.NODE_ENV === "staging" ? "staging-" : "";
   const file = badgeIconsBucket.file(`${badgeId}`);
   await file.save(buffer, { contentType: "image/png", resumable: false });
-  return `https://storage.googleapis.com/${prefix}my-saga-badge-icons/${badgeId}`;
+  return `https://storage.googleapis.com/my-saga-badge-icons/${badgeId}`;
 }
 
 /** Decodes a base64 PNG string and uploads it as the icon for the given category. */
 export async function uploadCategoryIcon(base64: string, categoryId: number): Promise<string> {
   const buffer = Buffer.from(base64, "base64");
-  const prefix = process.env.NODE_ENV === "staging" ? "staging-" : "";
   const file = categoryIconsBucket.file(`${categoryId}`);
   await file.save(buffer, { contentType: "image/png", resumable: false });
-  return `https://storage.googleapis.com/${prefix}my-saga-category-icons/${categoryId}`;
+  return `https://storage.googleapis.com/my-saga-category-icons/${categoryId}`;
 }
 
 /** Decodes a base64 PNG string and uploads it as the icon for the given theme. */
 export async function uploadThemeIcon(base64: string, themeId: number): Promise<string> {
   const buffer = Buffer.from(base64, "base64");
-  const prefix = process.env.NODE_ENV === "staging" ? "staging-" : "";
   const file = themeIconsBucket.file(`${themeId}`);
   await file.save(buffer, { contentType: "image/png", resumable: false });
-  return `https://storage.googleapis.com/${prefix}my-saga-theme-icons/${themeId}`;
+  return `https://storage.googleapis.com/my-saga-theme-icons/${themeId}`;
 }
 
 /**
@@ -99,10 +95,9 @@ export async function deleteKycFolder(kycFolder: string): Promise<void> {
 /** Decodes a base64 JPEG string and uploads it as the profile icon for the given role+key. */
 export async function uploadProfileIcon(base64: string, role: string, key: string): Promise<string> {
   const buffer = Buffer.from(base64, "base64");
-  const prefix = process.env.NODE_ENV === "staging" ? "staging-" : "";
   const file = profilesBucket.file(`${role}/${key}`);
   await file.save(buffer, { contentType: "image/jpeg", resumable: false });
-  return `https://storage.googleapis.com/${prefix}my-saga-profiles/${role}/${key}`;
+  return `https://storage.googleapis.com/my-saga-profiles/${role}/${key}`;
 }
 
 export async function deleteProfileIcon(role: string, key: string): Promise<void> {

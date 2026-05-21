@@ -18,7 +18,7 @@ import { validateName, validatePhone, validateEmail, validateDob, validateGender
 import { fetchLegalVersions, type LegalApp } from "../legalVersions.js";
 
 // GCS bucket that hosts the versioned PDF files for T&C and Privacy Policy
-const LEGAL_BUCKET = process.env.NODE_ENV === "production" ? "my-saga-legal" : "staging-my-saga-legal";
+const LEGAL_BUCKET = "my-saga-legal";
 const LEGAL_BASE = `https://storage.googleapis.com/${LEGAL_BUCKET}`;
 
 
@@ -405,9 +405,8 @@ export const generateSignupLink = async (req: Request, res: Response) => {
 
   if (emailV.value) {
     // Derive the correct front-end base URL per role and environment
-    const isStaging = process.env.NODE_ENV !== "production";
-    const organizerBase = isStaging ? "http://localhost:3000" : "https://guide.mysaga.in";
-    const bossBase     = isStaging ? "http://localhost:3000" : "https://myguild.mysaga.in";
+    const organizerBase = "https://guide.mysaga.in";
+    const bossBase     = "https://myguild.mysaga.in";
     const signupUrl = role === "organizer"
       ? `${organizerBase}/join?token=${token}`
       : `${bossBase}/join?token=${token}`;

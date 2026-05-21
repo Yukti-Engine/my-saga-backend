@@ -2,8 +2,7 @@
  * index.ts — Application entry point
  *
  * Bootstraps the Express app and Socket.IO server.
- * Configures CORS (restricted to known origins in production),
- * per-route body-size limits, and mounts all route prefixes.
+ * Configures CORS, per-route body-size limits, and mounts all route prefixes.
  */
 import express from "express";
 import bodyParser from "body-parser";
@@ -35,12 +34,7 @@ app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Production CORS: restrict to known My Saga front-end origins
-app.use(cors(
-  process.env.NODE_ENV === 'production'
-    ? { origin: ['https://mysaga.in', 'https://www.mysaga.in', 'https://guide.mysaga.in', 'https://mod.mysaga.in', 'https://myguild.in', 'https://www.myguild.in'], credentials: true }
-    : { origin: '*' }
-));
+app.use(cors({ origin: '*' }));
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "..", "public");
