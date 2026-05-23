@@ -55,6 +55,7 @@ export const adminUiHtml = `<!DOCTYPE html>
   <button data-tab="badges">Badges</button>
   <button data-tab="themes">Themes</button>
   <button data-tab="spaces">Spaces</button>
+  <button data-tab="clone">Clone DB</button>
 </nav>
 
 <main>
@@ -163,6 +164,18 @@ export const adminUiHtml = `<!DOCTYPE html>
     <h3>All Spaces</h3>
     <button class="btn btn-secondary" onclick="loadSpaces()">Refresh</button>
     <div style="overflow-x:auto; margin-top:12px;"><table><thead><tr><th>Name</th><th>Link</th><th>Lat</th><th>Long</th><th>Actions</th></tr></thead><tbody id="space-table"></tbody></table></div>
+  </div>
+</div>
+
+<!-- CLONE DB -->
+<div class="section" id="clone">
+  <div class="card">
+    <h3>Clone DB IP</h3>
+    <div class="form-row">
+      <label>Token <input type="password" id="clone-token" placeholder="Enter clone token..." autocomplete="off"></label>
+    </div>
+    <button class="btn btn-primary" onclick="fetchCloneIp()">Get IP</button>
+    <div id="clone-result"></div>
   </div>
 </div>
 
@@ -456,6 +469,22 @@ async function manageSpaceCats(spaceId, name) {
     };
     document.getElementById('modal-overlay').style.display = 'flex';
   } catch(e) { alert(e.message); }
+}
+
+// Clone DB
+async function fetchCloneIp() {
+  var t = document.getElementById('clone-token').value;
+  if (!t) { show('clone-result', 'Enter the clone token first', false); return; }
+  try {
+    var res = await fetch(BASE + '/auth/clone-ip', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: t })
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
+    show('clone-result', 'IP: ' + data.ip, true);
+  } catch(e) { show('clone-result', e.message, false); }
 }
 
 // Helpers
