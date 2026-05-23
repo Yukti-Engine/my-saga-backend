@@ -26,7 +26,7 @@ async function getCloneIp(): Promise<string> {
 
 
 
-let databaseUrl = process.env.NODE_ENV=="production" ? process.env.DATABASE_URL:"postgresql://user1@Babycorn@38@"+(await getCloneIp())+":5432/g1";
+let databaseUrl = process.env.DATABASE_URL=="staging" ? process.env.DATABASE_URL:"postgresql://user1@Babycorn@38@"+(await getCloneIp())+":5432/g1";
 console.log(databaseUrl);
 const pool = new Pool({
   connectionString: databaseUrl,

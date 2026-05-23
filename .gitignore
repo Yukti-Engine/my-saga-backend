@@ -4,11 +4,6 @@ node_modules/
 # Build output
 dist/
 
-# Environment variables
-.env
-.env.*
-!.env.example
-
 # Google Cloud credentials
 feisty-audio-471914-d7-4ba42316eee6.json
 
