@@ -45,10 +45,7 @@ spec:
                   name: ANTHROPIC_API_KEY
                   key: latest
             - name: RECAPTCHA_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: RECAPTCHA_API_KEY
-                  key: latest
+              value: 6Lcb45AsAAAAAE1M68rsvTqAZfXlNaTEJt_cScLL
             - name: GOOGLE_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
