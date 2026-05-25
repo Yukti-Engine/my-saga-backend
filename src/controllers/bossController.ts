@@ -160,7 +160,7 @@ export const getBossQualifications = async (req: Request, res: Response) => {
   const { bid } = req.body;
 
 
-  const { rows } = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS badge_id`, [bid, "boss"]);
+  const { rows } = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS badge`, [bid, "boss"]);
 
   return res.json(rows);
 };

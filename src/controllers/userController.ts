@@ -87,7 +87,7 @@ export const getUserQualifications = async (req: Request, res: Response) => {
   const { uid } = req.body;
 
 
-  const { rows } = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS badge_id`, [uid, "user"]);
+  const { rows } = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS badge`, [uid, "user"]);
 
   return res.json(rows);
 };
