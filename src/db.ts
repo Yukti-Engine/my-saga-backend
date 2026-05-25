@@ -26,8 +26,12 @@ async function getCloneIp(): Promise<string> {
 
 
 
-let databaseUrl = process.env.DATABASE_URL=="staging" ? process.env.DATABASE_URL:"postgresql://user1@Babycorn@38@"+(await getCloneIp())+":5432/g1";
-console.log(databaseUrl);
+let databaseUrl;
+if (process.env.DATABASE_URL=="staging") 
+  databaseUrl=process.env.DATABASE_URL
+else
+  databaseUrl="postgresql://user1@Babycorn@38@"+(await getCloneIp())+":5432/g1";
+
 const pool = new Pool({
   connectionString: databaseUrl,
   max: 10,              // maximum connections in the pool

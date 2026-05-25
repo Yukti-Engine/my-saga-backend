@@ -73,8 +73,6 @@ spec:
                 secretKeyRef:
                   name: OB_RECIPIENT_SALT
                   key: latest
-            - name: ADMIN_API_URL
-              value: https://api.mysaga.in
           volumeMounts:
             - name: sqlsocket
               mountPath: /cloudsql
