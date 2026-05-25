@@ -33,7 +33,7 @@ export const getOrganizerQualifications = async (req: Request, res: Response) =>
   const { oid } = req.body;
 
 
-  const { rows } = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS category_id`, [oid, "organizer"]);
+  const { rows } = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS category`, [oid, "organizer"]);
 
   return res.json(rows);
 };

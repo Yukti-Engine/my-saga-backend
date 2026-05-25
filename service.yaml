@@ -44,8 +44,6 @@ spec:
                 secretKeyRef:
                   name: ANTHROPIC_API_KEY
                   key: latest
-            - name: PORT
-              value: '3000'
             - name: RECAPTCHA_API_KEY
               value: 6Lcb45AsAAAAAE1M68rsvTqAZfXlNaTEJt_cScLL
             - name: GOOGLE_CLIENT_SECRET
