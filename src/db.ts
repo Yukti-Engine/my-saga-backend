@@ -27,10 +27,10 @@ async function getCloneIp(): Promise<string> {
 
 
 let databaseUrl;
-if (process.env.DATABASE_URL=="staging") 
-  databaseUrl=process.env.DATABASE_URL
-else
+if (process.env.DATABASE_URL=="staging")
   databaseUrl="postgresql://user1@Babycorn@38@"+(await getCloneIp())+":5432/g1";
+else
+  databaseUrl=process.env.DATABASE_URL
 
 const pool = new Pool({
   connectionString: databaseUrl,
