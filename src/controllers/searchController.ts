@@ -141,8 +141,8 @@ export const findLobbies = async (req: Request, res: Response) => {
       if (!Number.isInteger(bid) || bid <= 0)
         return res.status(400).json({ error: "badgeIds must contain positive integers" });
     }
-    const quals = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS badge_id`, [id, "boss"]);
-    const qualifiedBadgeIds = new Set(quals.rows.map((r: any) => Number(r.badge_id)));
+    const quals = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS q`, [id, "boss"]);
+    const qualifiedBadgeIds = new Set(quals.rows.map((r: any) => Number(r.q?.badge_id)));
     for (const bid of badgeIds) {
       if (!qualifiedBadgeIds.has(bid))
         return res.status(403).json({ error: "Not qualified for one or more badges" });
