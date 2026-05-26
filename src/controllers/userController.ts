@@ -347,10 +347,12 @@ function stripStats(raw: string): string {
 
 export const startBook = async (req: Request, res: Response) => {
   const { uid } = req.body;
-  const titleV = validateBoundedText(req.body.title, "title", 1, 20);
-  if (!titleV.ok) return res.status(400).json({ error: titleV.error });
   const themeIdV = validatePositiveInt(req.body.themeId, "themeId");
   if (!themeIdV.ok) return res.status(400).json({ error: themeIdV.error });
+
+  if (typeof req.body.username !== "string" || req.body.username.trim().length === 0)
+    return res.status(400).json({ error: "username is required" });
+  const username: string = req.body.username.trim();
 
   const existing = await pool.query(`SELECT id FROM books WHERE user_id = $1`, [uid]);
   if (existing.rows.length > 0)
@@ -362,8 +364,8 @@ export const startBook = async (req: Request, res: Response) => {
   if (themeRow.rows.length === 0) return res.status(404).json({ error: "Theme not found" });
   const theme: Theme = { name: themeRow.rows[0]!.name, description: themeRow.rows[0]!.description };
 
-  const username = await getUsername(uid);
-  const bookTitle = titleV.value;
+  // books.title is varchar(20); truncate if username makes it longer
+  const bookTitle = `${username}'s Saga`.substring(0, 20);
 
   const bookInsert = await pool.query<{ id: number }>(
     `INSERT INTO books (title, user_id, theme_id, chapter) VALUES ($1, $2, $3, 0) RETURNING id`,
