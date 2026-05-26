@@ -41,8 +41,10 @@ router.post("/deactivate-completed-adventures", authSuperToken, async (req: Requ
 });
 
 router.post("/refresh-badge-roadmaps", authSuperToken, async (req: Request, res: Response) => {
-  const result = await refreshBadgeRoadmaps();
-  return res.json({ success: true, updated: result });
+  refreshBadgeRoadmaps().catch((err) =>
+    console.error("[refresh-badge-roadmaps] Failed:", err.message)
+  );
+  return res.json({ success: true, message: "Badge roadmap refresh initiated" });
 });
 
 router.post("/limit-more", authSuperToken, async (req: Request, res: Response) => {

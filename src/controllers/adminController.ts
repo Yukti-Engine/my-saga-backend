@@ -488,10 +488,13 @@ async function pollOperation(project: string, operationName: string): Promise<vo
  */
 export const refreshClone = async (_req: Request, res: Response) => {
   const log = (msg: string) => console.log(`[refreshClone] ${msg}`);
-  const { sql, auth } = getSqlAdmin();
-  const project = await auth.getProjectId();
+
+  res.json({ success: true, message: "Clone refresh initiated" });
 
   try {
+    const { sql, auth } = getSqlAdmin();
+    const project = await auth.getProjectId();
+
     // Step 1 — delete existing clone if present
     try {
       await sql.instances.get({ project, instance: CLONE_INSTANCE });
@@ -516,9 +519,9 @@ export const refreshClone = async (_req: Request, res: Response) => {
     });
     await pollOperation(project, cloneOp.name!);
     log("Clone created.");
-    await new Promise((r) => setTimeout(r, 10_000)); // let the instance settle before patching
+    await new Promise((r) => setTimeout(r, 10_000));
 
-    // Step 3 — add public IP on top of existing private network (private IP cannot be removed once set)
+    // Step 3 — add public IP on top of existing private network
     log("Enabling public IP...");
     const { data: patchOp } = await sql.instances.patch({
       project,
@@ -544,11 +547,8 @@ export const refreshClone = async (_req: Request, res: Response) => {
       requestBody: { password: "Babycorn@38" },
     });
     log("Done.");
-
-    return res.json({ success: true, message: "Clone refreshed successfully" });
   } catch (err: any) {
     console.error("[refreshClone] Failed:", err.message);
-    return res.status(500).json({ error: "Clone refresh failed", detail: err.message });
   }
 };
 
