@@ -224,6 +224,20 @@ export const reportOrganizer = async (req: Request, res: Response) => {
   return res.json({ ticketId: inserted.rows[0].id });
 };
 
+export const reportUser = async (req: Request, res: Response) => {
+  const { bid } = req.body;
+  const targetV = validatePositiveInt(req.body.userId, "userId");
+  if (!targetV.ok) return res.status(400).json({ error: targetV.error });
+  const reasonV = validateBoundedText(req.body.reason, "reason", 20, 1000, { allowNewlines: true });
+  if (!reasonV.ok) return res.status(400).json({ error: reasonV.error });
+
+  const inserted = await pool.query(
+    `SELECT create_ticket('report_user', $1::jsonb) AS id`,
+    [JSON.stringify({ reporterId: bid, reporterRole: "boss", userId: targetV.value, reason: reasonV.value })]
+  );
+  return res.json({ ticketId: inserted.rows[0].id });
+};
+
 export const acceptLegal = async (req: Request, res: Response) => {
   const { bid } = req.body;
   const { acceptTerms, acceptPrivacy } = req.body;
