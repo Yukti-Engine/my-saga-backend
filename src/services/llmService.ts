@@ -8,7 +8,7 @@ export async function generateBadgeRoadmap(badge: {
   description: string | null;
   league: number | null;
 }): Promise<string | null> {
-  const prompt = `You are designing a group activity roadmap for 4 to 20 people working together to earn the following badge:
+  const prompt = `You are designing a group activity roadmap for 5 to 20 people working together to earn the following badge:
 
 Title: ${badge.title}
 Description: ${badge.description ?? "N/A"}
@@ -133,21 +133,6 @@ export type StatChanges = SoftStatChanges & {
   adaptability: -1 | 0 | 1;
 };
 
-const ZERO_SOFT: SoftStatChanges = { intellect: 0, empathy: 0, creativity: 0 };
-
-function parseSoftStats(raw: string): SoftStatChanges {
-  try {
-    const parsed = JSON.parse(raw);
-    const clamp = (v: unknown): -1 | 0 | 1 => (v === 1 ? 1 : v === -1 ? -1 : 0);
-    return {
-      intellect:           clamp(parsed.intellect),
-      empathy: clamp(parsed.empathy),
-      creativity:          clamp(parsed.creativity),
-    };
-  } catch {
-    return ZERO_SOFT;
-  }
-}
 
 const STATS_PROMPT = `
 After the story paragraphs, on a new line write exactly:
@@ -165,7 +150,7 @@ export async function generateProceedChunk(params: {
   priorStory: string;
   events: EventSummary[];
   theme: Theme;
-}): Promise<{ story: string; softStats: SoftStatChanges } | null> {
+}): Promise<string | null> {
   const { username, bookTitle, chapter, priorStory, events, theme } = params;
 
   const prompt = `You are continuing Chapter ${chapter} of "${bookTitle}", the adventure chronicle of @${username}.
@@ -200,13 +185,7 @@ ${STATS_PROMPT}`;
   const content = message.content[0];
   if (!content || content.type !== "text") return null;
   const raw = content.text.trim();
-
-  const statsMarker = raw.lastIndexOf("\nSTATS:");
-  if (statsMarker === -1) return { story: raw, softStats: ZERO_SOFT };
-
-  const story = raw.slice(0, statsMarker).trim();
-  const statsJson = raw.slice(statsMarker + 7).trim();
-  return { story, softStats: parseSoftStats(statsJson) };
+  return raw;
 }
 
 export async function generateChapterConclusion(params: {
