@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Vegybin/my-saga-backend.git"
+    "url": "git+https://github.com/Yukti-Engine/my-saga-backend.git"
   },
   "keywords": [
     "adventure-app"
@@ -19,9 +19,9 @@
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Vegybin/my-saga-backend/issues"
+    "url": "https://github.com/Yukti-Engine/my-saga-backend/issues"
   },
-  "homepage": "https://github.com/Vegybin/my-saga-backend",
+  "homepage": "https://github.com/Yukti-Engine/my-saga-backend",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
     "@digitalcredentials/ed25519-signature-2020": "^7.0.0",

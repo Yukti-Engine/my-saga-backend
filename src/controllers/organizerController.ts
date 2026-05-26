@@ -190,8 +190,8 @@ export const requestMatch = async (req: Request, res: Response) => {
     return res.status(409).json({ error: "Already in an active lobby" });
 
   // Organizer must be qualified in the requested category before they can open a lobby
-  const quals = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS category_id`, [oid, "organizer"]);
-  const qualifiedCategoryIds = new Set(quals.rows.map((r: any) => Number(r.category_id)));
+  const quals = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS category`, [oid, "organizer"]);
+  const qualifiedCategoryIds = new Set(quals.rows.map((r: any) => Number(r.category.category_id)));
   if (!qualifiedCategoryIds.has(categoryIdV.value))
     return res.status(403).json({ error: "Not qualified for this category" });
 
