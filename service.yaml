@@ -73,9 +73,6 @@ spec:
                 secretKeyRef:
                   name: OB_RECIPIENT_SALT
                   key: latest
-          volumeMounts:
-            - name: sqlsocket
-              mountPath: /cloudsql
         - name: cloud-sql-proxy
           image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2
           args:
@@ -87,9 +84,3 @@ spec:
             limits:
               cpu: "0.5"
               memory: 128Mi
-          volumeMounts:
-            - name: sqlsocket
-              mountPath: /cloudsql
-      volumes:
-        - name: sqlsocket
-          emptyDir: {}

@@ -15,7 +15,7 @@ jobs:
     name: Type check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4.3.0
 
       - uses: actions/setup-node@v4.4.0
         with:
@@ -32,10 +32,10 @@ jobs:
     if: github.actor == 'venganese' && github.ref == 'refs/heads/main'
 
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4.3.0
 
       - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v2.1.10
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 

@@ -12,6 +12,7 @@ import { readFileSync } from "fs";
 import dotenv from "dotenv";
 import cors from "cors";
 import { adminUiHtml } from "./adminUi.js";
+import { VERSION, COMPATIBILITY_VERSION } from "./version.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import mailRoutes from "./routes/mailRoutes.js";
@@ -84,11 +85,8 @@ app.use("/ob", obRoutes);
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
-app.get('/min-frontend-version', (req, res) => {
-  res.status(200).json({ minVersion: '1.0.0' });
-});
 app.get('/', (req, res) => {
-  res.status(200).json({ name: 'my-saga-api', version: '1.0.0' });
+  res.status(200).json({ name: 'my-saga-api', version: VERSION, compatibilityVersion: COMPATIBILITY_VERSION });
 });
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
