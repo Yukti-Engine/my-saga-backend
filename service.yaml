@@ -80,6 +80,11 @@ spec:
                 secretKeyRef:
                   name: RAZORPAY_KEY_SECRET
                   key: latest
+            - name: RAZORPAY_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: RAZORPAY_WEBHOOK_SECRET
+                  key: latest
             - name: PLATFORM_TAX_RATE
               value: "0"
         - name: cloud-sql-proxy

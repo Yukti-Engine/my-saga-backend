@@ -28,6 +28,7 @@ import moderatorRoutes from "./routes/moderatorRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import obRoutes from "./routes/obRoutes.js";
 import walletRoutes from "./routes/walletRoutes.js";
+import { razorpayWebhook } from "./controllers/webhookController.js";
 dotenv.config();
 
 const app = express();
@@ -50,6 +51,13 @@ io.on("connection", (socket) => {
   roomSocket(io, socket);
   socket.on("disconnect", () => {  });
 });
+
+// Razorpay webhook — mounted before body parser so we capture the raw body for signature verification
+app.post("/razorpay/webhook",
+  express.raw({ type: "application/json" }),
+  (req, _res, next) => { (req as any).rawBody = req.body.toString(); req.body = {}; next(); },
+  razorpayWebhook
+);
 
 // Apply larger body-size limits only for routes that accept base64-encoded images
 app.use((req, res, next) => {

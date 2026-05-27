@@ -15,7 +15,7 @@ import { calculateAge } from "../utils.js";
 import { uploadProfileIcon, deleteProfileIcon } from "../services/bucketService.js";
 import { randomBytes } from "crypto";
 import { generateAdventureName as llmGenerateAdventureName } from "../services/llmService.js";
-import { createHeldTransfer } from "../services/razorpayService.js";
+import { createHeldTransfer, createLinkedAccount } from "../services/razorpayService.js";
 import {
   validateUsername, validateBio, validateBoolean,
   validateBoundedText,
@@ -415,5 +415,49 @@ export const acceptLegal = async (req: Request, res: Response) => {
     [oid, acceptTerms === true, acceptPrivacy === true, terms_version, privacy_version]
   );
   return res.json({ success: true });
+};
+
+export const linkBankAccount = async (req: Request, res: Response) => {
+  const { oid } = req.body;
+  const { ifsc, accountNumber, beneficiaryName } = req.body;
+
+  if (typeof ifsc !== "string" || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc))
+    return res.status(400).json({ error: "Invalid IFSC code" });
+  if (typeof accountNumber !== "string" || accountNumber.length < 5 || accountNumber.length > 20)
+    return res.status(400).json({ error: "Invalid account number" });
+  if (typeof beneficiaryName !== "string" || beneficiaryName.trim().length < 2)
+    return res.status(400).json({ error: "Invalid beneficiary name" });
+
+  const existing = await pool.query(
+    `SELECT razorpay_account_id FROM organizers WHERE id = $1`, [oid]
+  );
+  if (existing.rows[0]?.razorpay_account_id)
+    return res.status(409).json({ error: "Bank account already linked" });
+
+  const org = (await pool.query(
+    `SELECT name, email, phone FROM organizers WHERE id = $1`, [oid]
+  )).rows[0];
+
+  try {
+    const account = await createLinkedAccount({
+      name: org.name,
+      email: org.email,
+      phone: org.phone,
+      legalBusinessName: org.name,
+      ifsc,
+      accountNumber,
+      beneficiaryName: beneficiaryName.trim(),
+    });
+
+    await pool.query(
+      `UPDATE organizers SET razorpay_account_id = $1 WHERE id = $2`,
+      [account.id, oid]
+    );
+
+    return res.json({ success: true, accountId: account.id });
+  } catch (err: any) {
+    console.error("Razorpay linked account creation failed:", err);
+    return res.status(500).json({ error: "Failed to create linked account" });
+  }
 };
 

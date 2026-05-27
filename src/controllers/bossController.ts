@@ -14,6 +14,7 @@ import pool from "../db.js";
 import { calculateAge } from "../utils.js";
 import { uploadProfileIcon, deleteProfileIcon } from "../services/bucketService.js";
 import { randomBytes } from "crypto";
+import { createLinkedAccount } from "../services/razorpayService.js";
 import {
   validateUsername, validateBio, validateBoolean,
   validateBoundedText, validatePositiveInt, validateIntRange,
@@ -256,5 +257,49 @@ export const acceptLegal = async (req: Request, res: Response) => {
     [bid, acceptTerms === true, acceptPrivacy === true, terms_version, privacy_version]
   );
   return res.json({ success: true });
+};
+
+export const linkBankAccount = async (req: Request, res: Response) => {
+  const { bid } = req.body;
+  const { ifsc, accountNumber, beneficiaryName } = req.body;
+
+  if (typeof ifsc !== "string" || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc))
+    return res.status(400).json({ error: "Invalid IFSC code" });
+  if (typeof accountNumber !== "string" || accountNumber.length < 5 || accountNumber.length > 20)
+    return res.status(400).json({ error: "Invalid account number" });
+  if (typeof beneficiaryName !== "string" || beneficiaryName.trim().length < 2)
+    return res.status(400).json({ error: "Invalid beneficiary name" });
+
+  const existing = await pool.query(
+    `SELECT razorpay_account_id FROM bosses WHERE id = $1`, [bid]
+  );
+  if (existing.rows[0]?.razorpay_account_id)
+    return res.status(409).json({ error: "Bank account already linked" });
+
+  const boss = (await pool.query(
+    `SELECT name, email, phone FROM bosses WHERE id = $1`, [bid]
+  )).rows[0];
+
+  try {
+    const account = await createLinkedAccount({
+      name: boss.name,
+      email: boss.email,
+      phone: boss.phone,
+      legalBusinessName: boss.name,
+      ifsc,
+      accountNumber,
+      beneficiaryName: beneficiaryName.trim(),
+    });
+
+    await pool.query(
+      `UPDATE bosses SET razorpay_account_id = $1 WHERE id = $2`,
+      [account.id, bid]
+    );
+
+    return res.json({ success: true, accountId: account.id });
+  } catch (err: any) {
+    console.error("Razorpay linked account creation failed:", err);
+    return res.status(500).json({ error: "Failed to create linked account" });
+  }
 };
 
