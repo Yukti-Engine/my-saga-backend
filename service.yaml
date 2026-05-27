@@ -74,10 +74,7 @@ spec:
                   name: OB_RECIPIENT_SALT
                   key: latest
             - name: RAZORPAY_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: RAZORPAY_KEY_ID
-                  key: latest
+              value: rzp_live_SuMeBs6j7WQuyi
             - name: RAZORPAY_KEY_SECRET
               valueFrom:
                 secretKeyRef:
