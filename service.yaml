@@ -73,6 +73,18 @@ spec:
                 secretKeyRef:
                   name: OB_RECIPIENT_SALT
                   key: latest
+            - name: RAZORPAY_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: RAZORPAY_KEY_ID
+                  key: latest
+            - name: RAZORPAY_KEY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: RAZORPAY_KEY_SECRET
+                  key: latest
+            - name: PLATFORM_TAX_RATE
+              value: "0"
         - name: cloud-sql-proxy
           image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2
           args:

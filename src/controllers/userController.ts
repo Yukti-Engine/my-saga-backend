@@ -125,17 +125,53 @@ export const joinAdventure = async (req: Request, res: Response) => {
   if (existing.rows.length > 0)
     return res.status(409).json({ error: "Already in an active lobby" });
 
-  const matched = await pool.query(
-    `SELECT match_request($1::int, $2::text, $3::int, $4::int, $5::int, $6::int, $7::int, $8::int, $9::int, $10::int, $11::int, $12::float8, $13::boolean, $14::boolean) AS result`,
-    [uid, "user", ageRangeMin, ageRangeMax,
-     matchRequest.id, matchRequest.boss_id, matchRequest.org_id, matchRequest.category_id,
-     matchRequest.space_id, matchRequest.age_range_min, matchRequest.age_range_max,
-     matchRequest.pay_per_head, matchRequest.all_girls, matchRequest.half_girls]
+  const taxRate = parseFloat(process.env.PLATFORM_TAX_RATE || "0");
+  const costRupees = matchRequest.pay_per_head * 1.25 + 200
+                   + taxRate * matchRequest.pay_per_head * 0.25;
+  const costPaise = Math.round(costRupees * 100);
+
+  const walletRow = await pool.query(
+    `SELECT ensure_wallet($1::int) AS balance`, [uid]
   );
-  const result = matched.rows[0].result;
-  if (result.success)
-    return res.json({ success: true });
-  return res.json({ success: false, message: "Error" });
+  const balance = Number(walletRow.rows[0].balance);
+  if (balance < costPaise)
+    return res.status(402).json({ error: "Insufficient wallet balance", required: costPaise, balance });
+
+  await pool.query(`SELECT debit_wallet($1::int, $2::bigint)`, [uid, costPaise]);
+  await pool.query(
+    `INSERT INTO wallet_transactions (user_id, type, amount_paise, match_request_id, status)
+     VALUES ($1, 'lobby_debit', $2, $3, 'success')`,
+    [uid, costPaise, matchRequest.id]
+  );
+
+  try {
+    const matched = await pool.query(
+      `SELECT match_request($1::int, $2::text, $3::int, $4::int, $5::int, $6::int, $7::int, $8::int, $9::int, $10::int, $11::int, $12::float8, $13::boolean, $14::boolean) AS result`,
+      [uid, "user", ageRangeMin, ageRangeMax,
+       matchRequest.id, matchRequest.boss_id, matchRequest.org_id, matchRequest.category_id,
+       matchRequest.space_id, matchRequest.age_range_min, matchRequest.age_range_max,
+       matchRequest.pay_per_head, matchRequest.all_girls, matchRequest.half_girls]
+    );
+    const result = matched.rows[0].result;
+    if (result.success)
+      return res.json({ success: true, costPaise });
+
+    await pool.query(`SELECT credit_wallet($1::int, $2::bigint)`, [uid, costPaise]);
+    await pool.query(
+      `INSERT INTO wallet_transactions (user_id, type, amount_paise, match_request_id, status)
+       VALUES ($1, 'lobby_refund', $2, $3, 'success')`,
+      [uid, costPaise, matchRequest.id]
+    );
+    return res.json({ success: false, message: "Lobby changed, wallet refunded" });
+  } catch (err: any) {
+    await pool.query(`SELECT credit_wallet($1::int, $2::bigint)`, [uid, costPaise]);
+    await pool.query(
+      `INSERT INTO wallet_transactions (user_id, type, amount_paise, match_request_id, status)
+       VALUES ($1, 'lobby_refund', $2, $3, 'success')`,
+      [uid, costPaise, matchRequest.id]
+    );
+    throw err;
+  }
 };
 
 export const logOut = async (req: Request, res: Response) => {

@@ -15,6 +15,7 @@ import { calculateAge } from "../utils.js";
 import { uploadProfileIcon, deleteProfileIcon } from "../services/bucketService.js";
 import { randomBytes } from "crypto";
 import { generateAdventureName as llmGenerateAdventureName } from "../services/llmService.js";
+import { createHeldTransfer } from "../services/razorpayService.js";
 import {
   validateUsername, validateBio, validateBoolean,
   validateBoundedText,
@@ -279,10 +280,32 @@ export const getLimitation = async (req: Request, res: Response) => {
 
 export const dismissLobby = async (req: Request, res: Response) => {
   const { oid } = req.body;
-  const { rows } = await pool.query(`SELECT dismiss_match_request($1::int) AS id`, [oid]);
+  const { rows } = await pool.query(
+    `SELECT * FROM dismiss_match_request($1::int)`, [oid]
+  );
   if (rows.length === 0 || rows[0].id === null)
     return res.status(404).json({ error: "No active lobby" });
-  return res.json({ success: true, dismissedId: rows[0].id });
+
+  const dismissed = rows[0];
+  const userIds: number[] = dismissed.user_ids || [];
+  const payPerHead: number = dismissed.pay_per_head || 0;
+
+  if (userIds.length > 0 && payPerHead > 0) {
+    const taxRate = parseFloat(process.env.PLATFORM_TAX_RATE || "0");
+    const costRupees = payPerHead * 1.25 + 200 + taxRate * payPerHead * 0.25;
+    const costPaise = Math.round(costRupees * 100);
+
+    for (const userId of userIds) {
+      await pool.query(`SELECT credit_wallet($1::int, $2::bigint)`, [userId, costPaise]);
+      await pool.query(
+        `INSERT INTO wallet_transactions (user_id, type, amount_paise, match_request_id, status)
+         VALUES ($1, 'lobby_refund', $2, $3, 'success')`,
+        [userId, costPaise, dismissed.id]
+      );
+    }
+  }
+
+  return res.json({ success: true, dismissedId: dismissed.id, refundedUsers: userIds.length });
 };
 
 export const reportUser = async (req: Request, res: Response) => {
@@ -318,11 +341,57 @@ export const startAdventure = async (req: Request, res: Response) => {
 
   const lobby = (await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [oid, "organizer"])).rows[0];
   const matchId = lobby.id;
-  // An adventure can only start when a boss has joined and there are at least 4 users in the lobby
   if (lobby.boss_id && lobby.user_ids.length >= 4){
     const result = await pool.query(`SELECT * FROM complete_match($1::text, $2::int)`, [name, matchId]);
-    // Increment the organizer's team-size limitation counter after a successful start
     await pool.query(`SELECT bump_limitation($1::int)`, [oid]);
+
+    const adventureId = result.rows[0].id;
+    const n = lobby.user_ids.length;
+    const payPerHead = lobby.pay_per_head;
+    const taxRate = parseFloat(process.env.PLATFORM_TAX_RATE || "0");
+
+    const bossPayoutPaise = 200 * n * 100;
+    const guidePayoutPaise = payPerHead * n * 100;
+    const totalPerUser = payPerHead * 1.25 + 200 + taxRate * payPerHead * 0.25;
+    const platformPayoutPaise = Math.round(totalPerUser * n * 100) - bossPayoutPaise - guidePayoutPaise;
+
+    const holdUntil = new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString();
+
+    await pool.query(
+      `SELECT create_payout($1::int, 'boss'::payout_recipient, $2::int, $3::bigint, $4::timestamptz)`,
+      [adventureId, lobby.boss_id, bossPayoutPaise, holdUntil]
+    );
+    await pool.query(
+      `SELECT create_payout($1::int, 'organizer'::payout_recipient, $2::int, $3::bigint, $4::timestamptz)`,
+      [adventureId, oid, guidePayoutPaise, holdUntil]
+    );
+    if (platformPayoutPaise > 0) {
+      await pool.query(
+        `SELECT create_payout($1::int, 'platform'::payout_recipient, $2::int, $3::bigint, $4::timestamptz)`,
+        [adventureId, 0, platformPayoutPaise, holdUntil]
+      );
+    }
+
+    const bossAccount = (await pool.query(
+      `SELECT razorpay_account_id FROM bosses WHERE id = $1`, [lobby.boss_id]
+    )).rows[0]?.razorpay_account_id;
+    const orgAccount = (await pool.query(
+      `SELECT razorpay_account_id FROM organizers WHERE id = $1`, [oid]
+    )).rows[0]?.razorpay_account_id;
+
+    const holdUntilUnix = Math.floor((Date.now() + 28 * 24 * 60 * 60 * 1000) / 1000);
+
+    if (bossAccount) {
+      createHeldTransfer(bossAccount, bossPayoutPaise, holdUntilUnix).catch((e) =>
+        console.error("Boss transfer failed:", e)
+      );
+    }
+    if (orgAccount) {
+      createHeldTransfer(orgAccount, guidePayoutPaise, holdUntilUnix).catch((e) =>
+        console.error("Organizer transfer failed:", e)
+      );
+    }
+
     return res.json(result.rows[0]);
   }
   return res.json({success:false})
