@@ -181,8 +181,8 @@ export const joinAdventure = async (req: Request, res: Response) => {
     return res.status(409).json({ error: "Already in an active lobby" });
 
   // Boss must hold a qualification for the badge required by the lobby
-  const quals = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS badge_id`, [bid, "boss"]);
-  const qualifiedBadgeIds = new Set(quals.rows.map((r: any) => Number(r.badge_id)));
+  const quals = await pool.query(`SELECT get_qualifications($1::int, $2::text) AS badge`, [bid, "boss"]);
+  const qualifiedBadgeIds = new Set(quals.rows.map((r: any) => Number(r.badge.badge_id)));
   if (!qualifiedBadgeIds.has(matchRequest.badge_id))
     return res.status(403).json({ error: "Not qualified for this badge" });
 
