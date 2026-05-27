@@ -21,13 +21,23 @@ export const razorpayWebhook = async (req: Request, res: Response) => {
 
   const eventType: string = event.event;
 
-  if (eventType === "transfer.processed" || eventType === "transfer.settled") {
+  if (eventType === "transfer.processed") {
     const transfer = event.payload?.transfer?.entity;
     if (transfer?.id) {
-      const newStatus = eventType === "transfer.settled" ? "released" : "held";
       await pool.query(
-        `UPDATE payouts SET status = $1::payout_status WHERE razorpay_transfer_id = $2`,
-        [newStatus, transfer.id]
+        `UPDATE payouts SET status = 'held'::payout_status WHERE razorpay_transfer_id = $1`,
+        [transfer.id]
+      );
+    }
+  }
+
+  if (eventType === "settlement.processed") {
+    const settlement = event.payload?.settlement?.entity;
+    const transferId = event.payload?.transfer?.entity?.id;
+    if (transferId) {
+      await pool.query(
+        `UPDATE payouts SET status = 'released'::payout_status WHERE razorpay_transfer_id = $1`,
+        [transferId]
       );
     }
   }
