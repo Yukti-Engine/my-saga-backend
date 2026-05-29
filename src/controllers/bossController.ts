@@ -151,10 +151,15 @@ export const getBossDashboard = async (req: Request, res: Response) => {
   const { rows } = await pool.query(`SELECT * FROM get_boss($1::int)`, [bid]);
   const boss = rows[0];
 
+  const { rows: accountRows } = await pool.query(
+    `SELECT razorpay_account_id FROM bosses WHERE id = $1`, [bid]
+  );
+
   return res.json({
-    username: boss.username, gender: boss.gender, bio: boss.bio, credits: boss.credits,
+    username: boss.username, gender: boss.gender, bio: boss.bio,
     age: calculateAge(boss.dob), setting_1: boss.setting_1, setting_2: boss.setting_2,
-    icon_key: boss.icon_key ?? null
+    icon_key: boss.icon_key ?? null,
+    bankLinked: accountRows[0]?.razorpay_account_id != null
   });
 };
 export const getBossQualifications = async (req: Request, res: Response) => {

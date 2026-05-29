@@ -130,28 +130,6 @@ export const getBosses = async (req: Request, res: Response) => {
 };
 
 
-export const grantCredits = async (req: Request, res: Response) => {
-  const { id, role, credits } = req.body;
-
-  if (!id || !role || credits == null)
-    return res.status(400).json({ error: "id, role, and credits are required" });
-
-  if (role !== "organizer" && role !== "boss")
-    return res.status(400).json({ error: "role must be 'organizer' or 'boss'" });
-
-  try {
-    const { rows } = await pool.query(
-      `SELECT mod_grant_credits($1::int, $2::text, $3::int) AS credits`,
-      [id, role, credits]
-    );
-    if (rows[0].credits === null)
-      return res.status(404).json({ error: `${role} not found` });
-    return res.json({ message: "Credits granted", id, credits: rows[0].credits });
-  } catch (err) {
-    console.error("Error in grantCredits:", err);
-    return res.status(500).json({ error: "Failed to grant credits" });
-  }
-};
 
 export const getAdventures = async (req: Request, res: Response) => {
   const { isActive, limit, offset } = req.body;

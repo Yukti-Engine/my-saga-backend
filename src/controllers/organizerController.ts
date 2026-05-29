@@ -159,10 +159,15 @@ export const getOrganizerDashboard = async (req: Request, res: Response) => {
   const { oid } = req.body;
   const { rows } = await pool.query(`SELECT * FROM get_organizer($1::int)`, [oid]);
   const organizer = rows[0];
+  const { rows: accountRows } = await pool.query(
+    `SELECT razorpay_account_id FROM organizers WHERE id = $1`, [oid]
+  );
+
   return res.json({
-    username: organizer.username, bio: organizer.bio, gender: organizer.gender, credits: organizer.credits,
+    username: organizer.username, bio: organizer.bio, gender: organizer.gender,
     age: calculateAge(organizer.dob), setting_1: organizer.setting_1, setting_2: organizer.setting_2,
-    rating: organizer.rating, icon_key: organizer.icon_key ?? null
+    rating: organizer.rating, icon_key: organizer.icon_key ?? null,
+    bankLinked: accountRows[0]?.razorpay_account_id != null
   });
 };
 

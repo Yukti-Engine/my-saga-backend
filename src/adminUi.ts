@@ -48,14 +48,21 @@ export const adminUiHtml = `<!DOCTYPE html>
   <img src="/logo.png" alt="My Saga" style="height:36px;width:36px;">
   <h1>My Saga Admin</h1>
   <input type="password" id="tokenInput" placeholder="Enter superToken..." autocomplete="off">
+  <button onclick="document.getElementById('clone-modal').style.display=document.getElementById('clone-modal').style.display==='flex'?'none':'flex'" style="padding:8px 14px;border:none;border-radius:6px;background:#333;color:#fff;cursor:pointer;font-size:13px;white-space:nowrap;">Clone DB</button>
 </header>
+
+<div id="clone-modal" style="display:none;position:fixed;top:60px;right:24px;z-index:20;background:#fff;border-radius:8px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,0.15);flex-direction:column;gap:10px;min-width:280px;">
+  <h3 style="font-size:14px;margin:0;">Clone DB IP</h3>
+  <input type="password" id="clone-token" placeholder="Enter clone token..." autocomplete="off" style="padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;">
+  <button class="btn btn-primary" onclick="fetchCloneIp()">Get IP</button>
+  <div id="clone-result"></div>
+</div>
 
 <nav>
   <button class="active" data-tab="categories">Categories</button>
   <button data-tab="badges">Badges</button>
   <button data-tab="themes">Themes</button>
   <button data-tab="spaces">Spaces</button>
-  <button data-tab="clone">Clone DB</button>
 </nav>
 
 <main>
@@ -167,17 +174,6 @@ export const adminUiHtml = `<!DOCTYPE html>
   </div>
 </div>
 
-<!-- CLONE DB -->
-<div class="section" id="clone">
-  <div class="card">
-    <h3>Clone DB IP</h3>
-    <div class="form-row">
-      <label>Token <input type="password" id="clone-token" placeholder="Enter clone token..." autocomplete="off"></label>
-    </div>
-    <button class="btn btn-primary" onclick="fetchCloneIp()">Get IP</button>
-    <div id="clone-result"></div>
-  </div>
-</div>
 
 </main>
 
