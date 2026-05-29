@@ -42,6 +42,9 @@ export const refreshBadgeRoadmaps = async () => {
 
   if (badges.length === 0) return false;
 
+  // Generate all roadmaps first (LLM-heavy), then write to DB in one pass
+  const results: { id: number; roadmaps: string[] }[] = [];
+
   for (const badge of badges) {
     const roadmaps: string[] = [];
 
@@ -54,15 +57,27 @@ export const refreshBadgeRoadmaps = async () => {
       }
     }
 
-    if (roadmaps.length === 0) continue;
+    if (roadmaps.length > 0) results.push({ id: badge.id, roadmaps });
+  }
 
+  for (const { id, roadmaps } of results) {
     await pool.query(
       `SELECT update_badge_roadmaps($1::int, $2::varchar(10000)[])`,
-      [badge.id, roadmaps]
+      [id, roadmaps]
     );
   }
 
   return true;
+};
+
+export const getBadgeRoadmaps = async (req: Request, res: Response) => {
+  const { badgeId } = req.body;
+  if (!Number.isInteger(badgeId) || badgeId <= 0)
+    return res.status(400).json({ error: "badgeId must be a positive integer" });
+  const { rows } = await pool.query(
+    `SELECT get_badge_roadmaps($1::int) AS roadmaps`, [badgeId]
+  );
+  return res.json({ roadmaps: rows[0]?.roadmaps ?? [] });
 };
 
 export const limitMore = async () => {

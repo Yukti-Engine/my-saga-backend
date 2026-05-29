@@ -96,32 +96,47 @@ export const adminUiHtml = `<!DOCTYPE html>
 
 <!-- BADGES -->
 <div class="section" id="badges">
-  <div class="card">
-    <h3>Create Badge</h3>
-    <div class="form-row">
-      <label>Title <input id="badge-create-title"></label>
-      <label>Category <select id="badge-create-catid"><option value="">— select —</option></select></label>
-      <label>League <input type="number" id="badge-create-league" min="1" max="100"></label>
-    </div>
-    <div class="form-row">
-      <label>Description <textarea id="badge-create-desc"></textarea></label>
-    </div>
-    <button class="btn btn-primary" onclick="createBadge()">Create</button>
-    <div id="badge-create-result"></div>
+  <div style="display:flex;gap:0;border-bottom:1px solid #ddd;margin-bottom:16px;">
+    <button class="btn" onclick="switchBadgeTab('manage')" id="badge-tab-manage" style="border-bottom:2px solid #111;font-weight:600;border-radius:0;padding:10px 20px;">Manage</button>
+    <button class="btn" onclick="switchBadgeTab('roadmaps')" id="badge-tab-roadmaps" style="border-bottom:2px solid transparent;border-radius:0;padding:10px 20px;color:#666;">Roadmaps</button>
   </div>
-  <div class="card">
-    <h3>All Badges</h3>
-    <button class="btn btn-secondary" onclick="loadBadges()">Refresh</button>
-    <div style="overflow-x:auto; margin-top:12px;"><table><thead><tr><th>Title</th><th>Category</th><th>League</th><th>Actions</th></tr></thead><tbody id="badge-table"></tbody></table></div>
-  </div>
-  <div class="card">
-    <h3>Upload Badge Icon</h3>
-    <div class="form-row">
-      <label>Badge <select id="badge-icon-id"><option value="">— select —</option></select></label>
-      <label>Icon <input type="file" id="badge-icon-file" accept="image/*"></label>
+  <div id="badge-manage">
+    <div class="card">
+      <h3>Create Badge</h3>
+      <div class="form-row">
+        <label>Title <input id="badge-create-title"></label>
+        <label>Category <select id="badge-create-catid"><option value="">— select —</option></select></label>
+        <label>League <input type="number" id="badge-create-league" min="1" max="100"></label>
+      </div>
+      <div class="form-row">
+        <label>Description <textarea id="badge-create-desc"></textarea></label>
+      </div>
+      <button class="btn btn-primary" onclick="createBadge()">Create</button>
+      <div id="badge-create-result"></div>
     </div>
-    <button class="btn btn-primary" onclick="uploadBadgeIcon()">Upload</button>
-    <div id="badge-icon-result"></div>
+    <div class="card">
+      <h3>All Badges</h3>
+      <button class="btn btn-secondary" onclick="loadBadges()">Refresh</button>
+      <div style="overflow-x:auto; margin-top:12px;"><table><thead><tr><th>Title</th><th>Category</th><th>League</th><th>Actions</th></tr></thead><tbody id="badge-table"></tbody></table></div>
+    </div>
+    <div class="card">
+      <h3>Upload Badge Icon</h3>
+      <div class="form-row">
+        <label>Badge <select id="badge-icon-id"><option value="">— select —</option></select></label>
+        <label>Icon <input type="file" id="badge-icon-file" accept="image/*"></label>
+      </div>
+      <button class="btn btn-primary" onclick="uploadBadgeIcon()">Upload</button>
+      <div id="badge-icon-result"></div>
+    </div>
+  </div>
+  <div id="badge-roadmaps" style="display:none;">
+    <div class="card">
+      <h3>View Roadmaps</h3>
+      <div class="form-row">
+        <label>Badge <select id="roadmap-badge-id" onchange="loadRoadmapsForBadge()"><option value="">— select a badge —</option></select></label>
+      </div>
+      <div id="roadmap-list"></div>
+    </div>
   </div>
 </div>
 
@@ -345,6 +360,31 @@ async function delBadge(id, title) {
   if (!confirm('Delete badge "' + title + '"?')) return;
   try { await api('/admin/delete-badge', { id: id }); loadBadges(); } catch(e) { alert(e.message); }
 }
+function switchBadgeTab(tab) {
+  document.getElementById('badge-manage').style.display = tab === 'manage' ? 'block' : 'none';
+  document.getElementById('badge-roadmaps').style.display = tab === 'roadmaps' ? 'block' : 'none';
+  document.getElementById('badge-tab-manage').style.borderBottomColor = tab === 'manage' ? '#111' : 'transparent';
+  document.getElementById('badge-tab-manage').style.fontWeight = tab === 'manage' ? '600' : '400';
+  document.getElementById('badge-tab-manage').style.color = tab === 'manage' ? '#111' : '#666';
+  document.getElementById('badge-tab-roadmaps').style.borderBottomColor = tab === 'roadmaps' ? '#111' : 'transparent';
+  document.getElementById('badge-tab-roadmaps').style.fontWeight = tab === 'roadmaps' ? '600' : '400';
+  document.getElementById('badge-tab-roadmaps').style.color = tab === 'roadmaps' ? '#111' : '#666';
+  if (tab === 'roadmaps') fillSelect('roadmap-badge-id', badgeList, function(b) { return b.title; });
+}
+async function loadRoadmapsForBadge() {
+  var id = Number(document.getElementById('roadmap-badge-id').value);
+  var el = document.getElementById('roadmap-list');
+  if (!id) { el.innerHTML = ''; return; }
+  try {
+    var r = await api('/admin/badge-roadmaps', { badgeId: id });
+    var roadmaps = r.roadmaps || [];
+    if (roadmaps.length === 0) { el.innerHTML = '<p style="color:#666;font-size:13px;">No roadmaps generated yet.</p>'; return; }
+    el.innerHTML = roadmaps.map(function(rm, i) {
+      return '<div class="card" style="margin-top:10px;"><h3 style="font-size:13px;color:#888;">Roadmap ' + (i+1) + '</h3><pre style="white-space:pre-wrap;font-size:13px;margin-top:8px;">' + esc(rm) + '</pre></div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<p style="color:#dc3545;font-size:13px;">' + esc(e.message) + '</p>'; }
+}
+
 async function uploadBadgeIcon() {
   try {
     var id = Number(document.getElementById('badge-icon-id').value);

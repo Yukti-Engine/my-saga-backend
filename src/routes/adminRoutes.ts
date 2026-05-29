@@ -8,7 +8,7 @@ import {
   // Categories
   getCategories, createCategory, updateCategory, deleteCategory, uploadCategoryIconRoute,
   // Badges
-  getBadges, createNewBadge, updateBadge, deleteBadge, uploadBadgeIconRoute,
+  getBadges, createNewBadge, updateBadge, deleteBadge, uploadBadgeIconRoute, getBadgeRoadmaps,
   // Themes
   getThemes, createTheme, updateTheme, deleteTheme, uploadThemeIconRoute,
   // Spaces
@@ -80,6 +80,7 @@ router.post("/create-badge", authSuperToken, createNewBadge);
 router.post("/update-badge", authSuperToken, updateBadge);
 router.post("/delete-badge", authSuperToken, deleteBadge);
 router.post("/upload-badge-icon", authSuperToken, uploadBadgeIconRoute);
+router.post("/badge-roadmaps", authSuperToken, getBadgeRoadmaps);
 
 // ── Themes ──
 router.post("/themes", authSuperToken, getThemes);
