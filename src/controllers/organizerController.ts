@@ -419,7 +419,7 @@ export const acceptLegal = async (req: Request, res: Response) => {
 
 export const linkBankAccount = async (req: Request, res: Response) => {
   const { oid } = req.body;
-  const { ifsc, accountNumber, beneficiaryName } = req.body;
+  const { ifsc, accountNumber, beneficiaryName, street, city, state, pincode } = req.body;
 
   if (typeof ifsc !== "string" || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc))
     return res.status(400).json({ error: "Invalid IFSC code" });
@@ -427,6 +427,14 @@ export const linkBankAccount = async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Invalid account number" });
   if (typeof beneficiaryName !== "string" || beneficiaryName.trim().length < 2)
     return res.status(400).json({ error: "Invalid beneficiary name" });
+  if (typeof street !== "string" || street.trim().length < 2)
+    return res.status(400).json({ error: "Invalid street address" });
+  if (typeof city !== "string" || city.trim().length < 2)
+    return res.status(400).json({ error: "Invalid city" });
+  if (typeof state !== "string" || state.trim().length < 2)
+    return res.status(400).json({ error: "Invalid state" });
+  if (typeof pincode !== "string" || !/^\d{6}$/.test(pincode))
+    return res.status(400).json({ error: "Invalid pincode (must be 6 digits)" });
 
   const existing = await pool.query(
     `SELECT razorpay_account_id FROM organizers WHERE id = $1`, [oid]
@@ -447,6 +455,10 @@ export const linkBankAccount = async (req: Request, res: Response) => {
       ifsc,
       accountNumber,
       beneficiaryName: beneficiaryName.trim(),
+      street: street.trim(),
+      city: city.trim(),
+      state: state.trim(),
+      pincode,
     });
 
     await pool.query(

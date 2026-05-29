@@ -48,6 +48,10 @@ export async function createLinkedAccount(params: {
   ifsc: string;
   accountNumber: string;
   beneficiaryName: string;
+  street: string;
+  city: string;
+  state: string;
+  pincode: string;
 }) {
   const account = await razorpay.accounts.create({
     email: params.email,
@@ -59,6 +63,16 @@ export async function createLinkedAccount(params: {
     profile: {
       category: "education",
       subcategory: "college",
+      addresses: {
+        registered: {
+          street1: params.street,
+          street2: "",
+          city: params.city,
+          state: params.state,
+          postal_code: params.pincode,
+          country: "IN",
+        },
+      },
     },
   } as any);
 
