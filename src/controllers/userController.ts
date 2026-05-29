@@ -586,10 +586,16 @@ export const concludeChapter = async (req: Request, res: Response) => {
 
 export const regenerateStory = async (req: Request, res: Response) => {
   const { uid } = req.body;
+  const COST_PAISE = 700;
 
   const book = await getBookForUser(uid);
   if (!book) return res.status(404).json({ error: "No book found" });
   const theme: Theme = { name: book.theme_name, description: book.theme_description };
+
+  const walletRow = await pool.query(`SELECT ensure_wallet($1::int) AS balance`, [uid]);
+  const balance = Number(walletRow.rows[0].balance);
+  if (balance < COST_PAISE)
+    return res.status(402).json({ error: "Insufficient wallet balance", required: COST_PAISE, balance });
 
   const { rows: lastRows } = await pool.query<{
     id: number; chapter: number; seq: number; kind: string; event_id: number | null;
@@ -600,6 +606,8 @@ export const regenerateStory = async (req: Request, res: Response) => {
   );
   if (lastRows.length === 0) return res.status(404).json({ error: "No chunks to regenerate" });
   const last = lastRows[0]!;
+
+  await pool.query(`SELECT debit_wallet($1::int, $2::bigint)`, [uid, COST_PAISE]);
 
   const username = await getUsername(uid);
 
@@ -636,7 +644,10 @@ export const regenerateStory = async (req: Request, res: Response) => {
     });
   } else if (last.kind === "proceed" && last.event_id != null) {
     const eventSummary = await buildEventSummary(last.event_id, uid);
-    if (!eventSummary) return res.status(500).json({ error: "Event data not found for regeneration" });
+    if (!eventSummary) {
+      await pool.query(`SELECT credit_wallet($1::int, $2::bigint)`, [uid, COST_PAISE]);
+      return res.status(500).json({ error: "Event data not found for regeneration" });
+    }
     const rawText = await generateProceedChunk({
       username, bookTitle: book.title, chapter: last.chapter,
       priorStory, events: [eventSummary], theme,
@@ -644,7 +655,10 @@ export const regenerateStory = async (req: Request, res: Response) => {
     if (rawText) newContent = parseStoryAndStats(rawText).content;
   }
 
-  if (!newContent) return res.status(500).json({ error: "Failed to regenerate chunk" });
+  if (!newContent) {
+    await pool.query(`SELECT credit_wallet($1::int, $2::bigint)`, [uid, COST_PAISE]);
+    return res.status(500).json({ error: "Failed to regenerate chunk" });
+  }
 
   // Only swap after successful generation
   await pool.query(`DELETE FROM story_chunks WHERE id = $1`, [last.id]);
