@@ -200,17 +200,27 @@ export const getBook = async (req: Request, res: Response) => {
   const book = await getBookForUser(uid);
   if (!book) return res.status(404).json({ error: "no book found" });
 
-  const { rows: chunks } = await pool.query(
+  const { rows: rawChunks } = await pool.query(
     `SELECT id, chapter, seq, kind, content, event_id, created_at
      FROM story_chunks WHERE book_id = $1 ORDER BY chapter ASC, seq ASC`,
     [book.id]
   );
 
+  const chunks = rawChunks.map((c: any) => ({
+    id: c.id,
+    chapter: c.chapter,
+    seq: c.seq,
+    kind: c.kind,
+    content: c.content ?? "",
+    event_ids: c.event_id != null ? [c.event_id] : [],
+    created_at: c.created_at,
+  }));
+
   return res.json({
     id: book.id,
     title: book.title,
     chapter: book.chapter,
-    theme: { name: book.theme_name, description: book.theme_description },
+    theme: { name: book.theme_name, description: book.theme_description ?? "" },
     chunks,
   });
 };
