@@ -9,31 +9,35 @@
  */
 import express from "express";
 import { addBoss, addOrganizer, createTournament, verifyToken, getUsers, getOrganizers, getBosses, getAdventures, getTournaments, getLobbies, addCategoryQualification, removeCategoryQualification, listKyc, kycDownloadUrl, getTickets, resolveTicket, listPendingSignups, getPendingSignupKyc, pendingSignupKycDownloadUrl, approveSignup, rejectSignup } from "../controllers/moderatorController.js";
-import { authSuperToken } from "../middlewares/auth.js";
+import { loginModerator, authModeratorSession } from "../middlewares/auth.js";
 import { generateSignupLink } from "../controllers/authController.js";
 
 const router = express.Router();
 
-router.post("/verify-token", authSuperToken, verifyToken);
-router.post("/users", authSuperToken, getUsers);
-router.post("/organizers", authSuperToken, getOrganizers);
-router.post("/bosses", authSuperToken, getBosses);
-router.post("/adventures", authSuperToken, getAdventures);
-router.post("/tournaments", authSuperToken, getTournaments);
-router.post("/lobbies", authSuperToken, getLobbies);
-router.post("/add-category-qualification", authSuperToken, addCategoryQualification);
-router.post("/remove-category-qualification", authSuperToken, removeCategoryQualification);
-router.post("/add-boss", authSuperToken, addBoss);
-router.post("/add-organizer", authSuperToken, addOrganizer);
-router.post("/create-tournament", authSuperToken, createTournament);
-router.post("/generate-signup-link", authSuperToken, generateSignupLink);
-router.post("/list-kyc", authSuperToken, listKyc);
-router.post("/kyc-download-url", authSuperToken, kycDownloadUrl);
-router.post("/tickets", authSuperToken, getTickets);
-router.post("/resolve-ticket", authSuperToken, resolveTicket);
-router.post("/pending-signups", authSuperToken, listPendingSignups);
-router.post("/pending-signup-kyc", authSuperToken, getPendingSignupKyc);
-router.post("/pending-signup-kyc-download-url", authSuperToken, pendingSignupKycDownloadUrl);
-router.post("/approve-signup", authSuperToken, approveSignup);
-router.post("/reject-signup", authSuperToken, rejectSignup);
+router.post("/login", loginModerator);
+
+router.use(authModeratorSession);
+
+router.post("/verify-token", verifyToken);
+router.post("/users", getUsers);
+router.post("/organizers", getOrganizers);
+router.post("/bosses", getBosses);
+router.post("/adventures", getAdventures);
+router.post("/tournaments", getTournaments);
+router.post("/lobbies", getLobbies);
+router.post("/add-category-qualification", addCategoryQualification);
+router.post("/remove-category-qualification", removeCategoryQualification);
+router.post("/add-boss", addBoss);
+router.post("/add-organizer", addOrganizer);
+router.post("/create-tournament", createTournament);
+router.post("/generate-signup-link", generateSignupLink);
+router.post("/list-kyc", listKyc);
+router.post("/kyc-download-url", kycDownloadUrl);
+router.post("/tickets", getTickets);
+router.post("/resolve-ticket", resolveTicket);
+router.post("/pending-signups", listPendingSignups);
+router.post("/pending-signup-kyc", getPendingSignupKyc);
+router.post("/pending-signup-kyc-download-url", pendingSignupKycDownloadUrl);
+router.post("/approve-signup", approveSignup);
+router.post("/reject-signup", rejectSignup);
 export default router;

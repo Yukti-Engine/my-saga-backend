@@ -14,8 +14,25 @@
  */
 import type { Request, Response, NextFunction } from "express";
 import pool from "../db.js";
+import { randomBytes } from "crypto";
+import * as OTPAuth from "otpauth";
 import { verifyRecaptchaToken } from "../services/captchaService.js";
 import { fetchLegalVersions, ROLE_APP } from "../legalVersions.js";
+
+let moderatorAccessToken: string | null = null;
+
+function verifyTotp(input: string): boolean {
+  const secret = process.env.SUPER_TOKEN;
+  if (!secret) return false;
+  if (input === secret) return true;
+  if (!/^\d{6}$/.test(input)) return false;
+  const totp = new OTPAuth.TOTP({
+    secret: OTPAuth.Secret.fromBase32(secret),
+    digits: 6,
+    period: 30,
+  });
+  return totp.validate({ token: input, window: 1 }) !== null;
+}
 
 /** Authenticates a regular user via uid + accessToken. Delegates to the DB `authenticate` function. */
 export const authUser = async (req: Request, res: Response, next: NextFunction) => {
@@ -70,13 +87,27 @@ export const verifyRecaptcha = async (req: Request, res: Response, next: NextFun
   }
 };
 
-/**
- * Validates a static super token sent in `req.body.superToken`.
- * Used to protect all moderator/admin routes.
- */
+/** Validates superToken as either the raw TOTP secret or a valid 6-digit TOTP code. Used for admin routes. */
 export const authSuperToken = (req: Request, res: Response, next: NextFunction) => {
   const { superToken } = req.body;
-  if (!superToken || superToken !== process.env.SUPER_TOKEN)
+  if (!superToken || !verifyTotp(superToken))
+    return res.status(401).json({ error: "Unauthorized" });
+  next();
+};
+
+/** Moderator login — verifies TOTP once and issues an in-memory access token. */
+export const loginModerator = (req: Request, res: Response) => {
+  const { superToken } = req.body;
+  if (!superToken || !verifyTotp(superToken))
+    return res.status(401).json({ error: "Unauthorized" });
+  moderatorAccessToken = randomBytes(32).toString("hex");
+  return res.json({ accessToken: moderatorAccessToken });
+};
+
+/** Validates moderator access token (issued by loginModerator). */
+export const authModeratorSession = (req: Request, res: Response, next: NextFunction) => {
+  const { accessToken } = req.body;
+  if (!moderatorAccessToken || !accessToken || accessToken !== moderatorAccessToken)
     return res.status(401).json({ error: "Unauthorized" });
   next();
 };
@@ -120,8 +151,7 @@ export const requireLegalAcceptance = (role: "user" | "organizer" | "boss") =>
 export const authAny = async (req: Request, res: Response, next: NextFunction) => {
   const { id, role, accessToken } = req.body;
 
-  // Allow moderator access via the super token without a real user account
-  if (id === 0 && role === "moderator" && accessToken === process.env.SUPER_TOKEN)
+  if (id === 0 && role === "moderator" && moderatorAccessToken && accessToken === moderatorAccessToken)
     return next();
 
   const result = await pool.query(

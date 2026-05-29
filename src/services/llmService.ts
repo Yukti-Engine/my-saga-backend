@@ -39,7 +39,7 @@ Respond with ONLY the roadmap as plain text. No JSON, no lists, no extra formatt
 
   const message = await client.messages.create({
     model: MODEL,
-    max_tokens: 1024,
+    max_tokens: 512,
     messages: [{ role: "user", content: prompt }],
   });
 
@@ -74,7 +74,7 @@ Respond with ONLY the challenge as plain text. No JSON, no lists, no extra forma
 
   const message = await client.messages.create({
     model: MODEL,
-    max_tokens: 512,
+    max_tokens: 256,
     messages: [{ role: "user", content: prompt }],
   });
 
