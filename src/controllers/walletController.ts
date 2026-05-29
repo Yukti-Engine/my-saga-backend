@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
-import { createOrder, verifySignature } from "../services/razorpayService.js";
+import { createOrder, verifySignature, razorpay } from "../services/razorpayService.js";
 
 export const createTopup = async (req: Request, res: Response) => {
   const { uid, amount } = req.body;
@@ -25,15 +25,18 @@ export const createTopup = async (req: Request, res: Response) => {
 };
 
 export const verifyTopup = async (req: Request, res: Response) => {
-  const { uid, razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = req.body;
+  const { uid, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
     return res.status(400).json({ error: "Missing payment verification fields" });
-  if (!Number.isInteger(amount) || amount < 100)
-    return res.status(400).json({ error: "amount must be an integer >= 100 paise" });
 
   if (!verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature))
     return res.status(400).json({ error: "Signature mismatch" });
+
+  const order = await razorpay.orders.fetch(razorpay_order_id);
+  const amount = Number(order.amount);
+  if (!amount || amount < 100)
+    return res.status(400).json({ error: "Invalid order amount" });
 
   const client = await pool.connect();
   try {
