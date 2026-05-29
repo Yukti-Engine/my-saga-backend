@@ -34,6 +34,7 @@ Create a roadmap with exactly 4 to 5 checkpoints. Rules:
 - Write actionable instructions: what they build, what they solve, what the deliverable is, and how success is measured
 - Activities should build progressively towards earning the badge, each one harder than the last
 - Be specific and creative — no generic advice like "brainstorm ideas" or "reflect on learnings"
+- Keep each checkpoint to 2-3 sentences max. Be direct and dense — no filler, no elaboration
 
 Respond with ONLY the roadmap as plain text. No JSON, no lists, no extra formatting, no heading or title. Just write the roadmap directly.`;
 
@@ -69,6 +70,7 @@ Now design one final challenge that ties together everything they built in the r
 - Define clear success criteria — how do they know they passed?
 - It should be the hardest task on the roadmap, requiring skills from all previous checkpoints
 - No storytelling, no fictional premises, no "imagine you are..." setups — just the real challenge
+- Keep it to 3-5 sentences. Be direct and dense — no filler
 
 Respond with ONLY the challenge as plain text. No JSON, no lists, no extra formatting, no heading or title. Just write the challenge directly.`;
 
