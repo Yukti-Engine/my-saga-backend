@@ -48,7 +48,7 @@ export const adminUiHtml = `<!DOCTYPE html>
   <img src="/logo.png" alt="My Saga" style="height:36px;width:36px;">
   <h1>My Saga Admin</h1>
   <input type="password" id="tokenInput" placeholder="Enter superToken..." autocomplete="off">
-  <button onclick="document.getElementById('clone-modal').style.display=document.getElementById('clone-modal').style.display==='flex'?'none':'flex'" style="padding:8px 14px;border:none;border-radius:6px;background:#333;color:#fff;cursor:pointer;font-size:13px;white-space:nowrap;">Clone DB</button>
+  <button onclick="document.getElementById('clone-modal').style.display=document.getElementById('clone-modal').style.display==='flex'?'none':'flex'" style="margin-left:auto;padding:8px 14px;border:none;border-radius:6px;background:#333;color:#fff;cursor:pointer;font-size:13px;white-space:nowrap;">Clone DB</button>
 </header>
 
 <div id="clone-modal" style="display:none;position:fixed;top:60px;right:24px;z-index:20;background:#fff;border-radius:8px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,0.15);flex-direction:column;gap:10px;min-width:280px;">

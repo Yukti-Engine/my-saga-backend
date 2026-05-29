@@ -8,23 +8,66 @@ export async function generateBadgeRoadmap(badge: {
   description: string | null;
   league: number | null;
 }): Promise<string | null> {
+  const roadmap = await generateRoadmapCheckpoints(badge);
+  if (!roadmap) return null;
+
+  const challenge = await generateClimaticChallenge(badge, roadmap);
+  if (!challenge) return roadmap;
+
+  return roadmap + "\n\n---\n\n" + challenge;
+}
+
+async function generateRoadmapCheckpoints(badge: {
+  title: string;
+  description: string | null;
+  league: number | null;
+}): Promise<string | null> {
   const prompt = `You are designing a group activity roadmap for 5 to 20 people working together to earn the following badge:
 
 Title: ${badge.title}
 Description: ${badge.description ?? "N/A"}
 League (difficulty, 1=hardest, 100=easiest): ${badge.league ?? "N/A"}
 
-Create a roadmap with exactly 5 to 6 checkpoints. Rules:
+Create a roadmap with exactly 4 to 5 checkpoints. Rules:
 - Every checkpoint must be a group activity — something the whole group does together, not individually
 - Activities should build progressively towards earning the badge
-- The final checkpoint must be a climactic finale that represents earning the badge
 - Be specific and creative — no generic advice
 
-Respond with ONLY the roadmap as plain text. No JSON, no lists, no extra formatting. Just write the roadmap directly.`;
+Respond with ONLY the roadmap as plain text. No JSON, no lists, no extra formatting, no heading or title. Just write the roadmap directly.`;
 
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 1024,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const content = message.content[0];
+  if (!content || content.type !== "text") return null;
+  const text = content.text.trim();
+  return text.length > 0 ? text : null;
+}
+
+async function generateClimaticChallenge(badge: {
+  title: string;
+  description: string | null;
+  league: number | null;
+}, roadmap: string): Promise<string | null> {
+  const prompt = `You are designing the final climactic challenge for a group of 5 to 20 people who have been working through a roadmap to earn a badge.
+
+Badge: ${badge.title}
+Description: ${badge.description ?? "N/A"}
+League (difficulty, 1=hardest, 100=easiest): ${badge.league ?? "N/A"}
+
+Here is the roadmap they have completed so far:
+${roadmap}
+
+Now create the climactic finale checkpoint — one final group challenge that represents the culmination of everything they've built towards. It should feel like a grand test or celebration of their progress.
+
+Respond with ONLY the finale checkpoint as plain text. No JSON, no lists, no extra formatting, no heading or title. Just write the challenge directly.`;
+
+  const message = await client.messages.create({
+    model: MODEL,
+    max_tokens: 512,
     messages: [{ role: "user", content: prompt }],
   });
 
