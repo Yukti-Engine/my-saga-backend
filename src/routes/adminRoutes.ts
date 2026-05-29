@@ -16,6 +16,7 @@ import {
   // Clone management
   refreshClone,
 } from "../controllers/adminController.js";
+import { getCloneIp } from "../controllers/authController.js";
 
 const router = express.Router();
 
@@ -99,5 +100,6 @@ router.post("/get-space-categories", authSuperToken, getSpaceCategories);
 
 // ── Clone management ──
 router.post("/refresh-clone", authSuperToken, refreshClone);
+router.post("/clone-ip", authSuperToken, getCloneIp);
 
 export default router;

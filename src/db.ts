@@ -8,12 +8,24 @@
 import dotenv from "dotenv";
 dotenv.config();
 import { Pool } from 'pg';
+
+
+import * as readline from 'node:readline/promises';
+import { stdin as input, stdout as output } from 'node:process';
+
+
 async function getCloneIp(): Promise<string> {
-  const res = await fetch(`${process.env.ADMIN_API_URL}/auth/clone-ip`, {
+  const rl = readline.createInterface({ input, output });
+  
+  const superToken = await rl.question('Enter Super Token: ');
+  
+  rl.close();
+
+  const res = await fetch(`${process.env.ADMIN_API_URL}/admin/clone-ip`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
 
-    body: JSON.stringify({ token: 'Babycorn@38' }),
+    body: JSON.stringify({ superToken: superToken }),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -28,7 +40,7 @@ async function getCloneIp(): Promise<string> {
 
 let databaseUrl;
 if (process.env.DATABASE_URL=="staging")
-  databaseUrl="postgresql://user1@Babycorn@38@"+(await getCloneIp())+":5432/g1";
+  databaseUrl="postgresql://user1:password2@"+(await getCloneIp())+":5432/g1";
 else
   databaseUrl=process.env.DATABASE_URL
 

@@ -65,6 +65,7 @@ export const adminUiHtml = `<!DOCTYPE html>
   <button data-tab="badges">Badges</button>
   <button data-tab="themes">Themes</button>
   <button data-tab="spaces">Spaces</button>
+  <button data-tab="clonedb">Clone DB IP</button>
 </nav>
 
 <main>
@@ -191,6 +192,16 @@ export const adminUiHtml = `<!DOCTYPE html>
   </div>
 </div>
 
+<!-- CLONE DB IP -->
+<div class="section" id="clonedb">
+  <div class="card">
+    <h3>Clone DB IP</h3>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:12px;">
+      <span id="clone-ip-text" style="font-size:16px;font-family:monospace;color:#333;">—</span>
+      <button class="btn btn-secondary btn-sm" onclick="fetchCloneIp()">Refresh</button>
+    </div>
+  </div>
+</div>
 
 </main>
 
@@ -535,6 +546,14 @@ async function manageSpaceCats(spaceId, name) {
   } catch(e) { alert(e.message); }
 }
 
+// Clone DB IP
+async function fetchCloneIp() {
+  try {
+    var r = await api('/admin/clone-ip');
+    document.getElementById('clone-ip-text').textContent = r.ip;
+  } catch(e) { document.getElementById('clone-ip-text').textContent = 'Error: ' + e.message; }
+}
+
 // Helpers
 function fileToBase64(file) {
   return new Promise(function(resolve, reject) {
@@ -548,52 +567,3 @@ function fileToBase64(file) {
 </body>
 </html>`;
 
-export const cloneUiHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Clone DB</title>
-<link rel="icon" type="image/png" href="/favicon.png">
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-  .card { background: #fff; border-radius: 8px; padding: 28px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); width: 100%; max-width: 380px; }
-  .card h2 { font-size: 18px; margin-bottom: 16px; }
-  label { display: block; font-size: 13px; color: #555; margin-bottom: 4px; }
-  input { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; margin-bottom: 12px; }
-  button { width: 100%; padding: 10px; border: none; border-radius: 6px; background: #111; color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; }
-  button:hover { background: #333; }
-  .result { margin-top: 12px; padding: 10px; border-radius: 6px; font-size: 13px; word-break: break-all; }
-  .result.ok { background: #d4edda; color: #155724; }
-  .result.err { background: #f8d7da; color: #721c24; }
-</style>
-</head>
-<body>
-<div class="card">
-  <h2>Clone DB IP</h2>
-  <label>Clone Token</label>
-  <input type="password" id="clone-token" placeholder="Enter clone token..." autocomplete="off">
-  <button onclick="fetchCloneIp()">Get IP</button>
-  <div id="clone-result"></div>
-</div>
-<script>
-async function fetchCloneIp() {
-  var t = document.getElementById('clone-token').value;
-  var el = document.getElementById('clone-result');
-  if (!t) { el.className = 'result err'; el.textContent = 'Enter the clone token first'; return; }
-  try {
-    var res = await fetch(window.location.origin + '/auth/clone-ip', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: t })
-    });
-    var data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
-    el.className = 'result ok'; el.textContent = 'IP: ' + data.ip;
-  } catch(e) { el.className = 'result err'; el.textContent = e.message; }
-}
-document.getElementById('clone-token').addEventListener('keydown', function(e) { if (e.key === 'Enter') fetchCloneIp(); });
-</script>
-</body>
-</html>`;

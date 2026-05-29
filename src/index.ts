@@ -11,7 +11,7 @@ import { fileURLToPath } from "url";
 import { readFileSync } from "fs";
 import dotenv from "dotenv";
 import cors from "cors";
-import { adminUiHtml, cloneUiHtml } from "./adminUi.js";
+import { adminUiHtml } from "./adminUi.js";
 import { VERSION, COMPATIBILITY_VERSION } from "./version.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
@@ -78,7 +78,6 @@ app.use((req, res, next) => {
 
 // Serve the admin dashboard UI as inline HTML
 app.get("/admin-ui", (_req, res) => { res.type("html").send(adminUiHtml); });
-app.get("/clone-db", (_req, res) => { res.type("html").send(cloneUiHtml); });
 
 // Route mounting — each prefix maps to its dedicated router
 app.use("/auth", authRoutes);

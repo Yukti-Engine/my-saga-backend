@@ -495,10 +495,6 @@ export const signupViaLink = async (req: Request, res: Response) => {
 };
 
 export const getCloneIp = async (req: Request, res: Response) => {
-  const { token } = req.body;
-  if (token !== "Babycorn@38")
-    return res.status(401).json({ error: "Unauthorized" });
-
   try {
     const auth = new google.auth.GoogleAuth({
       scopes: ["https://www.googleapis.com/auth/cloud-platform"],
