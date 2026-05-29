@@ -66,7 +66,7 @@ export async function createLinkedAccount(params: {
       addresses: {
         registered: {
           street1: params.street,
-          street2: "",
+          street2: params.street,
           city: params.city,
           state: params.state,
           postal_code: params.pincode,
