@@ -246,15 +246,14 @@ export const getTickets = async (req: Request, res: Response) => {
 };
 
 export const resolveTicket = async (req: Request, res: Response) => {
-  const { ticketId, status } = req.body;
+  const { ticketId } = req.body;
   if (!Number.isInteger(ticketId) || ticketId <= 0)
     return res.status(400).json({ error: "ticketId must be a positive integer" });
-  if (!["approved", "rejected", "closed"].includes(status))
-    return res.status(400).json({ error: "status must be approved, rejected, or closed" });
+  
 
   const { rows } = await pool.query(
-    `SELECT * FROM mod_resolve_ticket($1::int, $2::text)`,
-    [ticketId, status]
+    `SELECT * FROM mod_resolve_ticket($1::int)`,
+    [ticketId]
   );
   if (rows.length === 0)
     return res.status(404).json({ error: "ticket not found" });
