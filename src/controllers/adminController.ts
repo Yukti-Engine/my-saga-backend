@@ -46,16 +46,13 @@ export const refreshBadgeRoadmaps = async () => {
   const results: { id: number; roadmaps: string[] }[] = [];
 
   for (const badge of badges) {
-    const roadmaps: string[] = [];
-
-    for (let i = 0; i < 10; i++) {
-      try {
-        const text = await generateBadgeRoadmap(badge);
-        if (text) roadmaps.push(text);
-      } catch {
-        continue;
-      }
-    }
+    const settled = await Promise.allSettled(
+      Array.from({ length: 10 }, () => generateBadgeRoadmap(badge))
+    );
+    const roadmaps = settled
+      .filter((r): r is PromiseFulfilledResult<string | null> => r.status === "fulfilled")
+      .map(r => r.value)
+      .filter((t): t is string => t != null);
 
     if (roadmaps.length > 0) results.push({ id: badge.id, roadmaps });
   }
