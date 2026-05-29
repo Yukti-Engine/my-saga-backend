@@ -39,8 +39,17 @@ export const razorpayWebhook = async (req: Request, res: Response) => {
     }
   }
 
+  if (eventType === "transfer.failed") {
+    const transfer = event.payload?.transfer?.entity;
+    if (transfer?.id) {
+      await pool.query(
+        `UPDATE payouts SET status = 'failed'::payout_status WHERE razorpay_transfer_id = $1`,
+        [transfer.id]
+      );
+    }
+  }
+
   if (eventType === "settlement.processed") {
-    const settlement = event.payload?.settlement?.entity;
     const transferId = event.payload?.transfer?.entity?.id;
     if (transferId) {
       await pool.query(
