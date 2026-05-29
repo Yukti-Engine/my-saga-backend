@@ -384,9 +384,17 @@ async function buildEventSummary(eventId: number, uid: number): Promise<EventSum
   };
 }
 
-function stripStats(raw: string): string {
+function parseStoryAndStats(raw: string): { content: string; statChanges: Record<string, number> | null } {
   const idx = raw.lastIndexOf("\nSTATS:");
-  return idx !== -1 ? raw.substring(0, idx).trim() : raw.trim();
+  if (idx === -1) return { content: raw.trim(), statChanges: null };
+  const content = raw.substring(0, idx).trim();
+  const statsStr = raw.substring(idx + "\nSTATS:".length).trim();
+  try {
+    const parsed = JSON.parse(statsStr);
+    return { content, statChanges: parsed };
+  } catch {
+    return { content, statChanges: null };
+  }
 }
 
 // ── Book routes ───────────────────────────────────────────────────────────────
@@ -449,13 +457,12 @@ export const startBook = async (req: Request, res: Response) => {
     );
 
     await pool.query(`UPDATE books SET chapter = 1 WHERE id = $1`, [bookId]);
+    return res.json({ success: true, bookId, introduction: introText, chapter1Opening: ch1Opening });
   } catch (err) {
     await pool.query(`DELETE FROM books WHERE id = $1`, [bookId]);
     console.error("startBook generation failed:", err);
     return res.status(500).json({ error: "Failed to generate introduction" });
   }
-
-  return res.json({ success: true, bookId });
 };
 
 export const renameBook = async (req: Request, res: Response) => {
@@ -514,7 +521,7 @@ export const proceedStory = async (req: Request, res: Response) => {
   });
   if (!rawText) return res.status(500).json({ error: "Failed to generate story chunk" });
 
-  const content = stripStats(rawText);
+  const { content, statChanges } = parseStoryAndStats(rawText);
 
   await pool.query(
     `INSERT INTO story_chunks (book_id, chapter, seq, kind, content, event_id)
@@ -522,7 +529,7 @@ export const proceedStory = async (req: Request, res: Response) => {
     [book.id, book.chapter, nextSeq, content, eventId]
   );
 
-  return res.json({ success: true, content });
+  return res.json({ success: true, chapter: book.chapter, seq: nextSeq, content, statChanges });
 };
 
 export const concludeChapter = async (req: Request, res: Response) => {
@@ -574,7 +581,7 @@ export const concludeChapter = async (req: Request, res: Response) => {
 
   await pool.query(`UPDATE books SET chapter = $1 WHERE id = $2`, [nextChapter, book.id]);
 
-  return res.json({ success: true, nextChapter });
+  return res.json({ success: true, concludedChapter: book.chapter, nextChapter, conclusion: conclusionText, opening: openingText });
 };
 
 export const regenerateStory = async (req: Request, res: Response) => {
@@ -634,7 +641,7 @@ export const regenerateStory = async (req: Request, res: Response) => {
       username, bookTitle: book.title, chapter: last.chapter,
       priorStory, events: [eventSummary], theme,
     });
-    if (rawText) newContent = stripStats(rawText);
+    if (rawText) newContent = parseStoryAndStats(rawText).content;
   }
 
   if (!newContent) return res.status(500).json({ error: "Failed to regenerate chunk" });
