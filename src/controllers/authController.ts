@@ -407,7 +407,7 @@ export const generateSignupLink = async (req: Request, res: Response) => {
   if (emailV.value) {
     // Derive the correct front-end base URL per role and environment
     const organizerBase = "https://guide.mysaga.in";
-    const bossBase     = "https://myguild.mysaga.in";
+    const bossBase     = "https://myguild.in";
     const signupUrl = role === "organizer"
       ? `${organizerBase}/join?token=${token}`
       : `${bossBase}/join?token=${token}`;

@@ -265,7 +265,7 @@ export const resolveTicket = async (req: Request, res: Response) => {
 
 function signupApprovalEmail(role: "organizer" | "boss", name: string) {
   const platform = role === "organizer" ? "My Saga" : "My Guild";
-  const loginUrl = role === "organizer"    ? "https://guide.mysaga.in" : "https://myguild.mysaga.in";
+  const loginUrl = role === "organizer"    ? "https://guide.mysaga.in" : "https://myguild.in";
   const roleLabel = role === "organizer" ? "Guide" : "Expert";
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
