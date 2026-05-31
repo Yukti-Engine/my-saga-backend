@@ -8,7 +8,7 @@
  * Category/badge/theme/space CRUD has moved to adminRoutes.
  */
 import express from "express";
-import { addBoss, addOrganizer, createTournament, verifyToken, getUsers, getOrganizers, getBosses, getAdventures, getTournaments, getLobbies, addCategoryQualification, removeCategoryQualification, addBadgeQualification, removeBadgeQualification, listKyc, kycDownloadUrl, getTickets, resolveTicket, listPendingSignups, getPendingSignupKyc, pendingSignupKycDownloadUrl, approveSignup, rejectSignup } from "../controllers/moderatorController.js";
+import { addBoss, addOrganizer, createTournament, verifyToken, getUsers, getOrganizers, getBosses, getBadges, getAdventures, getTournaments, getLobbies, addCategoryQualification, removeCategoryQualification, addBadgeQualification, removeBadgeQualification, listKyc, kycDownloadUrl, getTickets, resolveTicket, listPendingSignups, getPendingSignupKyc, pendingSignupKycDownloadUrl, approveSignup, rejectSignup } from "../controllers/moderatorController.js";
 import { loginModerator, authModeratorSession } from "../middlewares/auth.js";
 import { generateSignupLink } from "../controllers/authController.js";
 
@@ -27,6 +27,7 @@ router.post("/tournaments", getTournaments);
 router.post("/lobbies", getLobbies);
 router.post("/add-category-qualification", addCategoryQualification);
 router.post("/remove-category-qualification", removeCategoryQualification);
+router.post("/badges", getBadges);
 router.post("/add-badge-qualification", addBadgeQualification);
 router.post("/remove-badge-qualification", removeBadgeQualification);
 router.post("/add-boss", addBoss);

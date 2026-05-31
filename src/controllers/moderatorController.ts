@@ -203,6 +203,15 @@ export const removeCategoryQualification = async (req: Request, res: Response) =
   }
 };
 
+export const getBadges = async (req: Request, res: Response) => {
+  const { limit, offset } = req.body;
+  const { rows } = await pool.query(
+    `SELECT * FROM mod_list_badges($1::int, $2::int)`,
+    [limit ?? 50, offset ?? 0]
+  );
+  return res.json({ badges: rows });
+};
+
 export const addBadgeQualification = async (req: Request, res: Response) => {
   const { bossId, badgeId } = req.body;
 
