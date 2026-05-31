@@ -203,6 +203,54 @@ export const removeCategoryQualification = async (req: Request, res: Response) =
   }
 };
 
+export const addBadgeQualification = async (req: Request, res: Response) => {
+  const { bossId, badgeId } = req.body;
+
+  if (!Number.isInteger(bossId) || bossId <= 0)
+    return res.status(400).json({ error: "bossId must be a positive integer" });
+  if (!Number.isInteger(badgeId) || badgeId <= 0)
+    return res.status(400).json({ error: "badgeId must be a positive integer" });
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT mod_add_badge_qualification($1::int, $2::int) AS added`,
+      [bossId, badgeId]
+    );
+    return res.json({ message: rows[0].added ? "Badge qualification added" : "Badge qualification already present", bossId, badgeId });
+  } catch (err: any) {
+    if (typeof err?.message === "string" && err.message.includes("Boss not found"))
+      return res.status(404).json({ error: "Boss not found" });
+    if (typeof err?.message === "string" && err.message.includes("Badge not found"))
+      return res.status(404).json({ error: "Badge not found" });
+    console.error("Error in addBadgeQualification:", err);
+    return res.status(500).json({ error: "Failed to add badge qualification" });
+  }
+};
+
+export const removeBadgeQualification = async (req: Request, res: Response) => {
+  const { bossId, badgeId } = req.body;
+
+  if (!Number.isInteger(bossId) || bossId <= 0)
+    return res.status(400).json({ error: "bossId must be a positive integer" });
+  if (!Number.isInteger(badgeId) || badgeId <= 0)
+    return res.status(400).json({ error: "badgeId must be a positive integer" });
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT mod_remove_badge_qualification($1::int, $2::int) AS removed`,
+      [bossId, badgeId]
+    );
+    if (!rows[0].removed)
+      return res.status(404).json({ error: "Qualification not present" });
+    return res.json({ message: "Badge qualification removed", bossId, badgeId });
+  } catch (err: any) {
+    if (typeof err?.message === "string" && err.message.includes("Badge not found"))
+      return res.status(404).json({ error: "Badge not found" });
+    console.error("Error in removeBadgeQualification:", err);
+    return res.status(500).json({ error: "Failed to remove badge qualification" });
+  }
+};
+
 export const listKyc = async (req: Request, res: Response) => {
   const { role, id } = req.body;
   if (role !== "organizer" && role !== "boss")
@@ -295,7 +343,7 @@ function signupApprovalEmail(role: "organizer" | "boss", name: string) {
 }
 
 function signupRejectionEmail(role: "organizer" | "boss", name: string, reason?: string) {
-  const platform = role === "organizer" ? "My Saga" : "MyGuild";
+  const platform = role === "organizer" ? "My Saga" : "My Guild";
   const reasonBlock = reason
     ? `<p>Our team has shared the following note:</p>
        <blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #555; margin: 16px 0;">
