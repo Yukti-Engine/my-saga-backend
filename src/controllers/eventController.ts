@@ -26,11 +26,15 @@ export const summarizeEvent = async (req: Request, res: Response) => {
   if (typeof summary !== "string" || summary.trim().length === 0)
     return res.status(400).json({ error: "summary is required" });
 
-  const adventureRes = await pool.query(
-    `SELECT get_adventure_of($1::int) AS adventure_id`, [eventV.value]
+  const adventureRes = await pool.query<{ adventure_id: number; user_ids: number[] }>(
+    `SELECT a.id AS adventure_id, a.user_ids
+     FROM events e JOIN adventures a ON a.id = e.adventure_id
+     WHERE e.id = $1`,
+    [eventV.value]
   );
-  const adventureId = adventureRes.rows[0]?.adventure_id;
-  if (!adventureId) return res.status(404).json({ error: "Event not found" });
+  const adv = adventureRes.rows[0];
+  if (!adv) return res.status(404).json({ error: "Event not found" });
+  const adventureId = adv.adventure_id;
 
   const check = await pool.query(
     `SELECT is_related_to_adventure($1::int, 'organizer', $2::int) AS ok`,
@@ -38,10 +42,17 @@ export const summarizeEvent = async (req: Request, res: Response) => {
   );
   if (!check.rows[0].ok) return res.status(403).json({ error: "Forbidden" });
 
+  // Auto-append users the guide omitted from attendance with "0000-" (drive penalty).
+  // Drive sits at the last (index 4) position of the stat delta.
+  const attendedSet = new Set<number>(attendance);
+  const absentIds = (adv.user_ids ?? []).filter((id) => !attendedSet.has(id));
+  const fullAttendance = [...attendance, ...absentIds];
+  const fullDeltas = [...statsDelta, ...absentIds.map(() => "0000-")];
+
   try {
     await pool.query(
       `SELECT summarize_event($1::int, $2::int[], $3::varchar(5)[], $4::text)`,
-      [eventV.value, attendance, statsDelta, summary.trim()]
+      [eventV.value, fullAttendance, fullDeltas, summary.trim()]
     );
     return res.json({ success: true });
   } catch (err: any) {

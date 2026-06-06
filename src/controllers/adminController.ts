@@ -6,6 +6,7 @@ import path from "path";
 import os from "os";
 import { google } from "googleapis";
 import { generateBadgeRoadmap } from "../services/llmService.js";
+import { AUTO_SUMMARY_TEXT } from "./userController.js";
 
 /* ─────────────────── MAINTENANCE (existing) ─────────────────── */
 
@@ -83,7 +84,7 @@ export const limitMore = async () => {
 };
 
 export const autoSummarizeStaleEvents = async () => {
-  // Find all unsummarized events whose slot ended 24+ hours ago
+  // Find all unsummarized events whose slot ended 24+ hours ago, with adventure user_ids
   const { rows } = await pool.query<{ id: number; user_ids: number[] }>(
     `SELECT e.id, a.user_ids
      FROM events e
@@ -95,12 +96,14 @@ export const autoSummarizeStaleEvents = async () => {
   if (rows.length === 0) return 0;
 
   for (const ev of rows) {
+    // Pass all adventure members with "00000" — no stat penalty since the guide,
+    // not the user, failed to summarize. summarize_event rejects empty arrays.
     const uids = ev.user_ids ?? [];
-    // All members absent, all stats zero
+    if (uids.length === 0) continue;
     const deltas = uids.map(() => "00000");
     await pool.query(
       `SELECT summarize_event($1::int, $2::int[], $3::varchar(5)[], $4::text)`,
-      [ev.id, uids, deltas, "Event auto-closed (guide did not summarize within 24 hours)"]
+      [ev.id, uids, deltas, AUTO_SUMMARY_TEXT]
     );
   }
   return rows.length;

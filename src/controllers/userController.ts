@@ -291,6 +291,11 @@ export const myBadges = async (req: Request, res: Response) => {
   );
 };
 
+// Sentinel summary text used by auto-summarization (scheduler / inline 24h fallback).
+// Lets us tell guide-summarized "absent" from scheduler-summarized "absent" so we
+// only penalize drive when the guide actively marked the user absent.
+export const AUTO_SUMMARY_TEXT = "Event auto-closed (guide did not summarize within 24 hours)";
+
 // ── Book helpers ──────────────────────────────────────────────────────────────
 
 async function getBookForUser(uid: number) {
@@ -331,11 +336,11 @@ async function buildEventSummary(eventId: number, uid: number): Promise<EventSum
   const { rows } = await pool.query<{
     activity: string; summary: string | null; adventure_name: string;
     organizer_id: number; boss_id: number | null; user_ids: number[];
-    timing: Date | null;
+    attendance: number[] | null; stat_deltas: string[] | null; timing: Date | null;
   }>(
     `SELECT e.activity, e.summary, a.name AS adventure_name,
             a.organizer_id, a.boss_id, a.user_ids,
-            s.datetime AS timing
+            e.attendance, e.stat_deltas, s.datetime AS timing
      FROM events e
      JOIN adventures a ON a.id = e.adventure_id
      LEFT JOIN slots s ON s.id = e.slot_id
@@ -345,6 +350,12 @@ async function buildEventSummary(eventId: number, uid: number): Promise<EventSum
   if (rows.length === 0) return null;
   const event = rows[0]!;
 
+  // Attended unless: auto-closed event, OR guide marked the user absent (delta == "0000-")
+  const autoSummarized = event.summary === AUTO_SUMMARY_TEXT;
+  const idx = event.attendance?.indexOf(uid) ?? -1;
+  const userDelta = idx >= 0 ? (event.stat_deltas?.[idx] ?? null) : null;
+  const attended = !autoSummarized && idx >= 0 && userDelta !== "0000-";
+
   return {
     activity: event.activity,
     timing: event.timing ? new Date(event.timing) : new Date(),
@@ -352,7 +363,8 @@ async function buildEventSummary(eventId: number, uid: number): Promise<EventSum
     guideId: event.organizer_id,
     expertId: event.boss_id,
     otherUserIds: event.user_ids.filter((id) => id !== uid),
-    chatExcerpt: event.summary ?? null,
+    chatExcerpt: event.summary === AUTO_SUMMARY_TEXT ? null : (event.summary ?? null),
+    attended,
   };
 }
 
@@ -447,10 +459,12 @@ export const proceedStory = async (req: Request, res: Response) => {
 
   // Find the oldest event for this user that hasn't been turned into a story chunk yet
   const { rows: eventRows } = await pool.query<{
-    id: number; summarized: boolean; attendance: number[] | null;
-    stat_deltas: string[] | null; slot_end: Date | null;
+    id: number; summarized: boolean; summary: string | null;
+    attendance: number[] | null; stat_deltas: string[] | null;
+    user_ids: number[]; slot_end: Date | null;
   }>(
-    `SELECT e.id, e.summarized, e.attendance, e.stat_deltas,
+    `SELECT e.id, e.summarized, e.summary, e.attendance, e.stat_deltas,
+            a.user_ids,
             (s.datetime + s.duration * interval '1 hour') AS slot_end
      FROM events e
      JOIN adventures a ON a.id = e.adventure_id
@@ -470,26 +484,41 @@ export const proceedStory = async (req: Request, res: Response) => {
 
   const ev = eventRows[0]!;
 
-  // If not summarized, check whether 24h have passed since the event ended
+  // If not summarized: wait for guide, unless 24h have passed (then auto-close)
   if (!ev.summarized) {
     const endTime = ev.slot_end ? ev.slot_end.getTime() : 0;
     const hoursSinceEnd = (Date.now() - endTime) / (1000 * 60 * 60);
     if (hoursSinceEnd < 24)
       return res.status(202).json({ error: "Event not yet summarized by the guide" });
-    // 24h+ passed — auto-summarize: nobody attended, all stats zero
-    const userIds = [uid];
+
+    // 24h+ passed — auto-close: pass every adventure member with "00000" (no stat change).
+    // summarize_event doesn't accept empty arrays.
+    const allUserIds = ev.user_ids ?? [];
+    const autoDeltas = allUserIds.map(() => "00000");
     await pool.query(
       `SELECT summarize_event($1::int, $2::int[], $3::varchar(5)[], $4::text)`,
-      [ev.id, userIds, ["00000"], "Event auto-closed (guide did not summarize within 24 hours)"]
+      [ev.id, allUserIds, autoDeltas, AUTO_SUMMARY_TEXT]
     );
     ev.summarized = true;
-    ev.attendance = userIds;
-    ev.stat_deltas = ["00000"];
+    ev.summary = AUTO_SUMMARY_TEXT;
+    ev.attendance = allUserIds;
+    ev.stat_deltas = autoDeltas;
   }
 
-  // User must be in the attendance list
-  if (!ev.attendance || !ev.attendance.includes(uid))
-    return res.status(409).json({ error: "You were not marked as attending this event" });
+  // Everyone in the adventure is now in ev.attendance (either guide-marked attended,
+  // guide-marked absent via "0000-" appended in /event/summarize, or auto-closed "00000").
+  // summarize_event has already applied the deltas to user stats. Just read this user's.
+  const idx = ev.attendance?.indexOf(uid) ?? -1;
+  const delta = idx >= 0 ? (ev.stat_deltas?.[idx] ?? "00000") : "00000";
+  // Stat positions: 0=intellect, 1=adaptability, 2=empathy, 3=creativity, 4=drive
+  const sign = (c: string) => (c === "+" ? 1 : c === "-" ? -1 : 0);
+  const statChanges = {
+    intellect:    sign(delta[0]!),
+    adaptability: sign(delta[1]!),
+    empathy:      sign(delta[2]!),
+    creativity:   sign(delta[3]!),
+    drive:        sign(delta[4]!),
+  };
 
   const eventId = ev.id;
   const eventSummary = await buildEventSummary(eventId, uid);
@@ -513,17 +542,6 @@ export const proceedStory = async (req: Request, res: Response) => {
      VALUES ($1, $2, $3, 'proceed', $4, $5)`,
     [book.id, book.chapter, nextSeq, content, eventId]
   );
-
-  // Extract this user's stat delta from the parallel arrays
-  const idx = ev.attendance!.indexOf(uid);
-  const delta = ev.stat_deltas?.[idx] ?? "00000";
-  const statChanges = {
-    intellect:    delta[0] === "+" ? 1 : delta[0] === "-" ? -1 : 0,
-    drive:        delta[1] === "+" ? 1 : delta[1] === "-" ? -1 : 0,
-    adaptability: delta[2] === "+" ? 1 : delta[2] === "-" ? -1 : 0,
-    empathy:      delta[3] === "+" ? 1 : delta[3] === "-" ? -1 : 0,
-    creativity:   delta[4] === "+" ? 1 : delta[4] === "-" ? -1 : 0,
-  };
 
   return res.json({ success: true, chapter: book.chapter, seq: nextSeq, content, statChanges });
 };

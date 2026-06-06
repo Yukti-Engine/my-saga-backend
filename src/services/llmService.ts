@@ -89,9 +89,10 @@ export type EventSummary = {
   expertId: number | null;
   otherUserIds: number[];
   chatExcerpt: string | null;
+  attended: boolean;
 };
 
-function formatEvents(events: EventSummary[]): string {
+function formatEvents(uid: number, events: EventSummary[]): string {
   if (events.length === 0) return "No new events recorded.";
   return events.map((e) => {
     const date = e.timing.toDateString();
@@ -100,7 +101,10 @@ function formatEvents(events: EventSummary[]): string {
       : "No other adventurers";
     const expert = e.expertId ? `\n  Expert: @e${e.expertId}` : "";
     const chat = e.chatExcerpt ? `\n  Chat excerpt:\n${e.chatExcerpt.split("\n").map(l => `    ${l}`).join("\n")}` : "";
-    return `Adventure: "${e.adventureName}" (${date})\n  Guide: @g${e.guideId}${expert}\n  Activity: ${e.activity}\n  ${others}${chat}`;
+    const attendance = e.attended
+      ? `@u${uid} was present at this event`
+      : `@u${uid} was NOT present at this event — they missed out`;
+    return `Adventure: "${e.adventureName}" (${date})\n  Guide: @g${e.guideId}${expert}\n  Activity: ${e.activity}\n  ${attendance}\n  ${others}${chat}`;
   }).join("\n\n");
 }
 
@@ -172,13 +176,14 @@ ${priorStory}
 ---
 
 New events since the last entry (real-world data to be reinterpreted):
-${formatEvents(events)}
+${formatEvents(uid, events)}
 
 Continue the story in 2-3 paragraphs, weaving in these events naturally.
 
 Rules:
 - Refer to this adventurer as @u${uid}
 - ${TAGS} (these tags are already used in the event data above — keep them as-is)
+- If @u${uid} was NOT present at the event, write the story from their perspective hearing about it later — they missed out, the others went ahead without them
 - Third-person narrative style consistent with the ${theme.name} world
 - Reinterpret every real-world activity as a ${theme.name}-equivalent (e.g. a hackathon becomes a cyber-heist or arcane tournament depending on the world) — never use mundane real-world labels in the prose
 - Keep dates accurate; transform everything else through the ${theme.name} lens
