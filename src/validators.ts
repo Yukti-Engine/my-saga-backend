@@ -75,8 +75,8 @@ export function validateOtp(raw: unknown): ValidationResult<string> {
 export function validateUsername(raw: unknown): ValidationResult<string> {
   if (typeof raw !== "string") return { ok: false, error: "Invalid username" };
   const cleaned = raw.trim().toLowerCase();
-  if (cleaned.length < 8 || cleaned.length > 32)
-    return { ok: false, error: "Username must be 8-32 characters" };
+  if (cleaned.length < 4 || cleaned.length > 32)
+    return { ok: false, error: "Username must be 4-32 characters" };
   if (!/^[a-z0-9_]+$/.test(cleaned))
     return { ok: false, error: "Username may only contain lowercase letters, digits, and underscore" };
   return { ok: true, value: cleaned };
@@ -179,16 +179,16 @@ export function validatePassword(raw: unknown): ValidationResult<string> {
   if (typeof raw !== "string") return { ok: false, error: "Invalid password" };
   if (raw.trim().length === 0)
     return { ok: false, error: "Password must not be empty" };
-  if (raw.length < 8 || raw.length > 128)
-    return { ok: false, error: "Password must be 8-128 characters" };
+  if (raw.length < 6 || raw.length > 128)
+    return { ok: false, error: "Password must be 6-128 characters" };
   return { ok: true, value: raw };
 }
 
 export function validateReasonToJoin(raw: unknown): ValidationResult<string> {
   if (typeof raw !== "string") return { ok: false, error: "Invalid reasonToJoin" };
   const cleaned = raw.trim();
-  if (cleaned.length < 20 || cleaned.length > 2000)
-    return { ok: false, error: "reasonToJoin must be 20-2000 characters" };
+  if (cleaned.length < 5 || cleaned.length > 2000)
+    return { ok: false, error: "reasonToJoin must be 5-2000 characters" };
   return { ok: true, value: cleaned };
 }
 

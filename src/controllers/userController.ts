@@ -309,12 +309,6 @@ async function getBookForUser(uid: number) {
   return rows[0] ?? null;
 }
 
-async function getUsername(uid: number): Promise<string> {
-  const { rows } = await pool.query<{ username: string }>(
-    `SELECT username FROM users WHERE id = $1`, [uid]
-  );
-  return rows[0]?.username ?? "unknown";
-}
 
 async function getPriorStory(bookId: number): Promise<string> {
   const { rows } = await pool.query<{ content: string }>(
@@ -351,51 +345,17 @@ async function buildEventSummary(eventId: number, uid: number): Promise<EventSum
   if (rows.length === 0) return null;
   const event = rows[0]!;
 
-  const guideRow = await pool.query<{ username: string }>(
-    `SELECT username FROM organizers WHERE id = $1`, [event.organizer_id]
-  );
-  const guideUsername = guideRow.rows[0]?.username ?? "unknown";
-
-  let expertUsername: string | null = null;
-  if (event.boss_id) {
-    const expertRow = await pool.query<{ username: string }>(
-      `SELECT username FROM bosses WHERE id = $1`, [event.boss_id]
-    );
-    expertUsername = expertRow.rows[0]?.username ?? null;
-  }
-
-  const otherIds = event.user_ids.filter((id) => id !== uid);
-  let otherAdventurers: string[] = [];
-  if (otherIds.length > 0) {
-    const othersRow = await pool.query<{ username: string }>(
-      `SELECT username FROM users WHERE id = ANY($1::int[])`, [otherIds]
-    );
-    otherAdventurers = othersRow.rows.map((r) => r.username);
-  }
-
   return {
     activity: event.activity,
     timing: event.timing ? new Date(event.timing) : new Date(),
     adventureName: event.adventure_name,
-    guideUsername,
-    expertUsername,
-    otherAdventurers,
+    guideId: event.organizer_id,
+    expertId: event.boss_id,
+    otherUserIds: event.user_ids.filter((id) => id !== uid),
     chatExcerpt: event.summary ?? null,
   };
 }
 
-function parseStoryAndStats(raw: string): { content: string; statChanges: Record<string, number> | null } {
-  const idx = raw.lastIndexOf("\nSTATS:");
-  if (idx === -1) return { content: raw.trim(), statChanges: null };
-  const content = raw.substring(0, idx).trim();
-  const statsStr = raw.substring(idx + "\nSTATS:".length).trim();
-  try {
-    const parsed = JSON.parse(statsStr);
-    return { content, statChanges: parsed };
-  } catch {
-    return { content, statChanges: null };
-  }
-}
 
 // ── Book routes ───────────────────────────────────────────────────────────────
 
@@ -428,7 +388,7 @@ export const startBook = async (req: Request, res: Response) => {
   const bookId = bookInsert.rows[0]!.id;
 
   try {
-    const introText = await generateIntroduction(username, bookTitle, theme);
+    const introText = await generateIntroduction(uid, bookTitle, theme);
     if (!introText) throw new Error("generateIntroduction returned null");
 
     await pool.query(
@@ -437,7 +397,7 @@ export const startBook = async (req: Request, res: Response) => {
     );
 
     const conclusionText = await generateChapterConclusion({
-      username, bookTitle, chapter: 0, priorStory: introText, theme
+      uid, bookTitle, chapter: 0, priorStory: introText, theme
     });
     if (!conclusionText) throw new Error("generateChapterConclusion returned null");
 
@@ -447,7 +407,7 @@ export const startBook = async (req: Request, res: Response) => {
     );
 
     const ch1Opening = await generateChapterOpening({
-      username, bookTitle, chapter: 1, previousConclusion: conclusionText, theme
+      uid, bookTitle, chapter: 1, previousConclusion: conclusionText, theme
     });
     if (!ch1Opening) throw new Error("generateChapterOpening returned null");
 
@@ -485,14 +445,17 @@ export const proceedStory = async (req: Request, res: Response) => {
   if (!book) return res.status(404).json({ error: "No book found" });
   const theme: Theme = { name: book.theme_name, description: book.theme_description };
 
-  // Find the oldest attended summarized event with no proceed chunk in this book
-  const { rows: eventRows } = await pool.query<{ id: number }>(
-    `SELECT e.id
+  // Find the oldest event for this user that hasn't been turned into a story chunk yet
+  const { rows: eventRows } = await pool.query<{
+    id: number; summarized: boolean; attendance: number[] | null;
+    stat_deltas: string[] | null; slot_end: Date | null;
+  }>(
+    `SELECT e.id, e.summarized, e.attendance, e.stat_deltas,
+            (s.datetime + s.duration * interval '1 hour') AS slot_end
      FROM events e
      JOIN adventures a ON a.id = e.adventure_id
+     LEFT JOIN slots s ON s.id = e.slot_id
      WHERE $1 = ANY(a.user_ids)
-       AND e.summarized = TRUE
-       AND $1 = ANY(e.attendance)
        AND NOT EXISTS (
          SELECT 1 FROM story_chunks sc
          WHERE sc.book_id = $2 AND sc.event_id = e.id
@@ -505,29 +468,62 @@ export const proceedStory = async (req: Request, res: Response) => {
   if (eventRows.length === 0)
     return res.status(409).json({ error: "No pending events to process" });
 
-  const eventId = eventRows[0]!.id;
+  const ev = eventRows[0]!;
+
+  // If not summarized, check whether 24h have passed since the event ended
+  if (!ev.summarized) {
+    const endTime = ev.slot_end ? ev.slot_end.getTime() : 0;
+    const hoursSinceEnd = (Date.now() - endTime) / (1000 * 60 * 60);
+    if (hoursSinceEnd < 24)
+      return res.status(202).json({ error: "Event not yet summarized by the guide" });
+    // 24h+ passed — auto-summarize: nobody attended, all stats zero
+    const userIds = [uid];
+    await pool.query(
+      `SELECT summarize_event($1::int, $2::int[], $3::varchar(5)[], $4::text)`,
+      [ev.id, userIds, ["00000"], "Event auto-closed (guide did not summarize within 24 hours)"]
+    );
+    ev.summarized = true;
+    ev.attendance = userIds;
+    ev.stat_deltas = ["00000"];
+  }
+
+  // User must be in the attendance list
+  if (!ev.attendance || !ev.attendance.includes(uid))
+    return res.status(409).json({ error: "You were not marked as attending this event" });
+
+  const eventId = ev.id;
   const eventSummary = await buildEventSummary(eventId, uid);
   if (!eventSummary) return res.status(500).json({ error: "Event data not found" });
 
-  const [username, priorStory, nextSeq] = await Promise.all([
-    getUsername(uid),
+  const [priorStory, nextSeq] = await Promise.all([
     getPriorStory(book.id),
     getNextSeq(book.id, book.chapter),
   ]);
 
   const rawText = await generateProceedChunk({
-    username, bookTitle: book.title, chapter: book.chapter,
+    uid, bookTitle: book.title, chapter: book.chapter,
     priorStory, events: [eventSummary], theme,
   });
   if (!rawText) return res.status(500).json({ error: "Failed to generate story chunk" });
 
-  const { content, statChanges } = parseStoryAndStats(rawText);
+  const content = rawText.trim();
 
   await pool.query(
     `INSERT INTO story_chunks (book_id, chapter, seq, kind, content, event_id)
      VALUES ($1, $2, $3, 'proceed', $4, $5)`,
     [book.id, book.chapter, nextSeq, content, eventId]
   );
+
+  // Extract this user's stat delta from the parallel arrays
+  const idx = ev.attendance!.indexOf(uid);
+  const delta = ev.stat_deltas?.[idx] ?? "00000";
+  const statChanges = {
+    intellect:    delta[0] === "+" ? 1 : delta[0] === "-" ? -1 : 0,
+    drive:        delta[1] === "+" ? 1 : delta[1] === "-" ? -1 : 0,
+    adaptability: delta[2] === "+" ? 1 : delta[2] === "-" ? -1 : 0,
+    empathy:      delta[3] === "+" ? 1 : delta[3] === "-" ? -1 : 0,
+    creativity:   delta[4] === "+" ? 1 : delta[4] === "-" ? -1 : 0,
+  };
 
   return res.json({ success: true, chapter: book.chapter, seq: nextSeq, content, statChanges });
 };
@@ -549,14 +545,13 @@ export const concludeChapter = async (req: Request, res: Response) => {
   if (proceedRows.length === 0)
     return res.status(409).json({ error: "No proceed chunk in current chapter; write a proceed first" });
 
-  const [username, priorStory, conclusionSeq] = await Promise.all([
-    getUsername(uid),
+  const [priorStory, conclusionSeq] = await Promise.all([
     getPriorStory(book.id),
     getNextSeq(book.id, book.chapter),
   ]);
 
   const conclusionText = await generateChapterConclusion({
-    username, bookTitle: book.title, chapter: book.chapter, priorStory, theme,
+    uid, bookTitle: book.title, chapter: book.chapter, priorStory, theme,
   });
   if (!conclusionText) return res.status(500).json({ error: "Failed to generate chapter conclusion" });
 
@@ -569,7 +564,7 @@ export const concludeChapter = async (req: Request, res: Response) => {
   const nextChapter = book.chapter + 1;
 
   const openingText = await generateChapterOpening({
-    username, bookTitle: book.title, chapter: nextChapter,
+    uid, bookTitle: book.title, chapter: nextChapter,
     previousConclusion: conclusionText, theme,
   });
   if (!openingText) return res.status(500).json({ error: "Failed to generate next chapter opening" });
@@ -609,7 +604,6 @@ export const regenerateStory = async (req: Request, res: Response) => {
 
   await pool.query(`SELECT debit_wallet($1::int, $2::bigint)`, [uid, COST_PAISE]);
 
-  const username = await getUsername(uid);
 
   // Build prior story excluding the last chunk so context is correct for regeneration
   const { rows: priorRows } = await pool.query<{ content: string }>(
@@ -624,7 +618,7 @@ export const regenerateStory = async (req: Request, res: Response) => {
 
   if (last.kind === "open") {
     if (last.chapter === 0) {
-      newContent = await generateIntroduction(username, book.title, theme);
+      newContent = await generateIntroduction(uid, book.title, theme);
     } else {
       const { rows: prevCRows } = await pool.query<{ content: string }>(
         `SELECT content FROM story_chunks
@@ -634,13 +628,13 @@ export const regenerateStory = async (req: Request, res: Response) => {
       );
       const previousConclusion = prevCRows[0]?.content ?? priorStory;
       newContent = await generateChapterOpening({
-        username, bookTitle: book.title, chapter: last.chapter,
+        uid, bookTitle: book.title, chapter: last.chapter,
         previousConclusion, theme,
       });
     }
   } else if (last.kind === "conclusion") {
     newContent = await generateChapterConclusion({
-      username, bookTitle: book.title, chapter: last.chapter, priorStory, theme,
+      uid, bookTitle: book.title, chapter: last.chapter, priorStory, theme,
     });
   } else if (last.kind === "proceed" && last.event_id != null) {
     const eventSummary = await buildEventSummary(last.event_id, uid);
@@ -649,10 +643,10 @@ export const regenerateStory = async (req: Request, res: Response) => {
       return res.status(500).json({ error: "Event data not found for regeneration" });
     }
     const rawText = await generateProceedChunk({
-      username, bookTitle: book.title, chapter: last.chapter,
+      uid, bookTitle: book.title, chapter: last.chapter,
       priorStory, events: [eventSummary], theme,
     });
-    if (rawText) newContent = parseStoryAndStats(rawText).content;
+    if (rawText) newContent = rawText.trim();
   }
 
   if (!newContent) {

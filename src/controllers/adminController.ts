@@ -82,6 +82,30 @@ export const limitMore = async () => {
   return rows[0]?.affected ?? 0;
 };
 
+export const autoSummarizeStaleEvents = async () => {
+  // Find all unsummarized events whose slot ended 24+ hours ago
+  const { rows } = await pool.query<{ id: number; user_ids: number[] }>(
+    `SELECT e.id, a.user_ids
+     FROM events e
+     JOIN adventures a ON a.id = e.adventure_id
+     JOIN slots s ON s.id = e.slot_id
+     WHERE e.summarized = FALSE
+       AND (s.datetime + s.duration * interval '1 hour') < NOW() - interval '24 hours'`
+  );
+  if (rows.length === 0) return 0;
+
+  for (const ev of rows) {
+    const uids = ev.user_ids ?? [];
+    // All members absent, all stats zero
+    const deltas = uids.map(() => "00000");
+    await pool.query(
+      `SELECT summarize_event($1::int, $2::int[], $3::varchar(5)[], $4::text)`,
+      [ev.id, uids, deltas, "Event auto-closed (guide did not summarize within 24 hours)"]
+    );
+  }
+  return rows.length;
+};
+
 export const deactivateCompletedAdventures = async () => {
   const { rows } = await pool.query(`SELECT deactivate_completed_adventures();`);
   const ids: number[] = rows[0]?.deactivate_completed_adventures ?? [];

@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import { authSuperToken } from "../middlewares/auth.js";
 import {
   archiveMatchRequests, cleanupExpiredPendingUsers, logoutAbsentees,
-  deactivateCompletedAdventures, refreshBadgeRoadmaps, limitMore,
+  deactivateCompletedAdventures, refreshBadgeRoadmaps, limitMore, autoSummarizeStaleEvents,
   cleanupExpiredSignupLinks, cleanupStalePendingSignups, cleanupResolvedTickets,
   // Categories
   getCategories, createCategory, updateCategory, deleteCategory, uploadCategoryIconRoute,
@@ -66,6 +66,11 @@ router.post("/cleanup-stale-pending-signups", authSuperToken, async (req: Reques
 router.post("/cleanup-resolved-tickets", authSuperToken, async (req: Request, res: Response) => {
   const deleted = await cleanupResolvedTickets();
   return res.json({ success: true, deleted });
+});
+
+router.post("/auto-summarize-stale-events", authSuperToken, async (req: Request, res: Response) => {
+  const summarized = await autoSummarizeStaleEvents();
+  return res.json({ success: true, summarized });
 });
 
 // ── Categories ──
