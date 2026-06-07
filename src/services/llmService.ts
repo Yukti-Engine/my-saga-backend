@@ -148,7 +148,6 @@ Write the opening 2-3 sentences of Chapter ${chapter} — a fresh scene that flo
 
 Rules:
 - Refer to the adventurer as @u${uid}
-- ${TAGS}
 - Third-person narrative style consistent with the ${theme.name} world
 - ${TONE}
 - Only output the sentences, nothing else`, 200);
@@ -209,7 +208,6 @@ Write a single satisfying closing paragraph (3-5 sentences) that concludes Chapt
 
 Rules:
 - Refer to this adventurer as @u${uid}
-- ${TAGS} (keep any tags from the story as-is)
 - Third-person narrative style consistent with the ${theme.name} world
 - ${TONE}
 - Only output the paragraph, nothing else`, 250);
