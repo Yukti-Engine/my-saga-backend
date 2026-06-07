@@ -376,13 +376,25 @@ export const startBook = async (req: Request, res: Response) => {
   const themeIdV = validatePositiveInt(req.body.themeId, "themeId");
   if (!themeIdV.ok) return res.status(400).json({ error: themeIdV.error });
 
-  if (typeof req.body.username !== "string" || req.body.username.trim().length === 0)
-    return res.status(400).json({ error: "username is required" });
-  const username: string = req.body.username.trim();
+  const userV = validateUsername(req.body.username);
+  if (!userV.ok) return res.status(400).json({ error: userV.error });
+  const username = userV.value;
 
   const existing = await pool.query(`SELECT id FROM books WHERE user_id = $1`, [uid]);
   if (existing.rows.length > 0)
     return res.status(409).json({ error: "Book already exists" });
+
+  // Persist the chosen username on the user record (overrides any auto-generated one).
+  try {
+    await pool.query(
+      `SELECT update_user($1::int, $2::text, NULL::text, NULL::text, NULL::boolean, NULL::boolean, NULL::text)`,
+      [uid, username]
+    );
+  } catch (err: any) {
+    if (err?.code === "23505")
+      return res.status(409).json({ error: "Username already taken" });
+    throw err;
+  }
 
   const themeRow = await pool.query<{ name: string; description: string | null }>(
     `SELECT name::text, description::text FROM themes WHERE id = $1`, [themeIdV.value]
