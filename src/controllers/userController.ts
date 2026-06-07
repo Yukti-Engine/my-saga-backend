@@ -390,8 +390,8 @@ export const startBook = async (req: Request, res: Response) => {
   if (themeRow.rows.length === 0) return res.status(404).json({ error: "Theme not found" });
   const theme: Theme = { name: themeRow.rows[0]!.name, description: themeRow.rows[0]!.description };
 
-  // books.title is varchar(20); truncate if username makes it longer
-  const bookTitle = `${username}'s Saga`.substring(0, 20);
+  // books.title is varchar(40); truncate if username makes it longer
+  const bookTitle = `The tales of ${username}`.substring(0, 40);
 
   const bookInsert = await pool.query<{ id: number }>(
     `INSERT INTO books (title, user_id, theme_id, chapter) VALUES ($1, $2, $3, 0) RETURNING id`,
