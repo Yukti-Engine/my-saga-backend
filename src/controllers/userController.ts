@@ -412,7 +412,7 @@ export const startBook = async (req: Request, res: Response) => {
   const bookId = bookInsert.rows[0]!.id;
 
   try {
-    const introText = await generateIntroduction(uid, bookTitle, theme);
+    const introText = await generateIntroduction(uid, theme);
     if (!introText) throw new Error("generateIntroduction returned null");
 
     await pool.query(
@@ -648,7 +648,7 @@ export const regenerateStory = async (req: Request, res: Response) => {
 
   if (last.kind === "open") {
     if (last.chapter === 0) {
-      newContent = await generateIntroduction(uid, book.title, theme);
+      newContent = await generateIntroduction(uid, theme);
     } else {
       const { rows: prevCRows } = await pool.query<{ content: string }>(
         `SELECT content FROM story_chunks

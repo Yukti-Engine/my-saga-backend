@@ -113,8 +113,8 @@ export type Theme = { name: string; description: string | null };
 const TONE = "Write in simple, casual English — like you're telling a story to a 20-year-old. No fancy vocabulary, no poetic fluff";
 const TAGS = "Mention tags: @u{id} for adventurers, @g{id} for guides, @e{id} for experts";
 
-export async function generateIntroduction(uid: number, bookTitle: string, theme: Theme): Promise<string | null> {
-  return ask(`Write the introduction/prologue for an adventure chronicle titled "${bookTitle}", following the journey of @u${uid}.
+export async function generateIntroduction(uid: number, theme: Theme): Promise<string | null> {
+  return ask(`Write the introduction/prologue for an adventure chronicle following the journey of @u${uid}.
 
 World setting — ${theme.name}: ${theme.description ?? theme.name}
 
