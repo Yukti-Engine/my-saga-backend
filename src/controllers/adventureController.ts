@@ -1,9 +1,7 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
-import { randomUUID } from "crypto";
 import { generateDownloadUrl, generateUploadUrl } from "../services/bucketService.js";
 import { validatePositiveInt, validateIntRange, validateBoundedText } from "../validators.js";
-import { issueOpenBadge } from "../services/openBadgesService.js";
 
 
 export const count = async (req: Request, res: Response) => {
@@ -187,98 +185,6 @@ export async function getPoll(req: any, res: any) {
   return res.json(result.rows[0]);
 }
 
-
-export async function insertResult(req: Request, res: Response) {
-  const { bid } = req.body;
-  const advV = validatePositiveInt(req.body.adventureId, "adventureId");
-  if (!advV.ok) return res.status(400).json({ error: advV.error });
-
-  const { userIds, starScores, remarks } = req.body;
-  if (!Array.isArray(userIds) || !Array.isArray(starScores) || !Array.isArray(remarks))
-    return res.status(400).json({ error: "userIds, starScores, remarks must be arrays" });
-  const n = userIds.length;
-  if (n === 0) return res.status(400).json({ error: "userIds must be non-empty" });
-  if (n > 20) return res.status(400).json({ error: "arrays exceed max length 20" });
-  if (starScores.length !== n || remarks.length !== n)
-    return res.status(400).json({ error: "userIds, starScores, remarks must be same length" });
-
-  for (const uid of userIds) {
-    if (!Number.isInteger(uid) || uid <= 0)
-      return res.status(400).json({ error: "userIds must be positive integers" });
-  }
-  for (const s of starScores) {
-    if (!Number.isInteger(s) || s < 0 || s > 100)
-      return res.status(400).json({ error: "starScores must be integers 0-100" });
-  }
-  const trimmedRemarks: string[] = [];
-  for (const r of remarks) {
-    if (typeof r !== "string") return res.status(400).json({ error: "remarks must be strings" });
-    const t = r.trim();
-    if (t.length > 100) return res.status(400).json({ error: "each remark must be <= 100 chars" });
-    trimmedRemarks.push(t);
-  }
-
-  const check = await pool.query(
-    `SELECT is_related_to_adventure($1::int, 'boss', $2::int) AS ok`,
-    [bid, advV.value]
-  );
-  if (!check.rows[0].ok) return res.status(403).json({ success: false });
-
-  const resultQuery = await pool.query(
-    `SELECT insert_result($1::int, $2::int[], $3::int[], $4::text[]) AS result_number`,
-    [advV.value, userIds, starScores, trimmedRemarks]
-  );
-
-  // Issue Open Badge credentials for qualified users (fire-and-forget)
-  issueObCredentials(advV.value, userIds, starScores).catch(() => {});
-
-  return res.json({ resultNumber: resultQuery.rows[0].result_number });
-}
-
-async function issueObCredentials(adventureId: number, userIds: number[], starScores: number[]) {
-  const { rows: [badge] } = await pool.query(
-    `SELECT b.id, b.title::TEXT, b.description::TEXT, b.league
-     FROM adventures a JOIN badges b ON b.id = a.badge_id
-     WHERE a.id = $1`,
-    [adventureId]
-  );
-  if (!badge) return;
-
-  const threshold = 100 - (badge.league ?? 0);
-  const issuedOn = new Date();
-
-  for (let i = 0; i < userIds.length; i++) {
-    if ((starScores[i] ?? 0) < threshold) continue;
-
-    const { rows: [user] } = await pool.query(
-      `SELECT get_user_email($1::int) AS email`, [userIds[i]]
-    );
-    if (!user?.email) continue;
-
-    const assertionId = randomUUID();
-    const signedVC = await issueOpenBadge({
-      assertionId,
-      recipientEmail: user.email,
-      badgeId: badge.id,
-      badgeName: badge.title,
-      badgeDescription: badge.description,
-      issuedOn,
-    });
-
-    await pool.query(
-      `SELECT insert_ob_assertion($1::uuid, $2::int, $3::int, $4::int, $5::jsonb)`,
-      [assertionId, userIds[i], badge.id, adventureId, JSON.stringify(signedVC)]
-    );
-  }
-}
-export async function getResult(req: any, res: any) {
-  const advV = validatePositiveInt(req.body.adventureId, "adventureId");
-  if (!advV.ok) return res.status(400).json({ error: advV.error });
-  const resV = validatePositiveInt(req.body.resultNumber, "resultNumber");
-  if (!resV.ok) return res.status(400).json({ error: resV.error });
-  const result = await pool.query(`SELECT * FROM get_result($1::int, $2::int)`, [advV.value, resV.value]);
-  return res.json(result.rows[0]);
-}
 
 export const getUploadFileUrl = async (req: Request, res: Response) => {
   const { id, role } = req.body;

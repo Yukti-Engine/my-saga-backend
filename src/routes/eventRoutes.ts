@@ -1,8 +1,9 @@
 import express from "express";
-import { summarizeEvent } from "../controllers/eventController.js";
-import { authOrganizer } from "../middlewares/auth.js";
+import { summarizeEvent, markChallenge } from "../controllers/eventController.js";
+import { authOrganizer, authBoss } from "../middlewares/auth.js";
 
 const router = express.Router();
 
 router.post("/summarize", authOrganizer, summarizeEvent);
+router.post("/mark-challenge", authBoss, markChallenge);
 export default router;

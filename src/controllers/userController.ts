@@ -336,11 +336,11 @@ async function buildEventSummary(eventId: number, uid: number): Promise<EventSum
   const { rows } = await pool.query<{
     activity: string; summary: string | null; adventure_name: string;
     organizer_id: number; boss_id: number | null; user_ids: number[];
-    attendance: number[] | null; stat_deltas: string[] | null; timing: Date | null;
+    attendance: number[] | null; stats_delta: string[] | null; timing: Date | null;
   }>(
     `SELECT e.activity, e.summary, a.name AS adventure_name,
             a.organizer_id, a.boss_id, a.user_ids,
-            e.attendance, e.stat_deltas, s.datetime AS timing
+            e.attendance, e.stats_delta, s.datetime AS timing
      FROM events e
      JOIN adventures a ON a.id = e.adventure_id
      LEFT JOIN slots s ON s.id = e.slot_id
@@ -353,7 +353,7 @@ async function buildEventSummary(eventId: number, uid: number): Promise<EventSum
   // Attended unless: auto-closed event, OR guide marked the user absent (delta == "0000-")
   const autoSummarized = event.summary === AUTO_SUMMARY_TEXT;
   const idx = event.attendance?.indexOf(uid) ?? -1;
-  const userDelta = idx >= 0 ? (event.stat_deltas?.[idx] ?? null) : null;
+  const userDelta = idx >= 0 ? (event.stats_delta?.[idx] ?? null) : null;
   const attended = !autoSummarized && idx >= 0 && userDelta !== "0000-";
 
   return {
@@ -363,8 +363,8 @@ async function buildEventSummary(eventId: number, uid: number): Promise<EventSum
     guideId: event.organizer_id,
     expertId: event.boss_id,
     otherUserIds: event.user_ids.filter((id) => id !== uid),
-    chatExcerpt: event.summary === AUTO_SUMMARY_TEXT ? null : (event.summary ?? null),
     attended,
+    summary: autoSummarized ? null : (event.summary ?? null),
   };
 }
 
@@ -472,10 +472,10 @@ export const proceedStory = async (req: Request, res: Response) => {
   // Find the oldest event for this user that hasn't been turned into a story chunk yet
   const { rows: eventRows } = await pool.query<{
     id: number; summarized: boolean; summary: string | null;
-    attendance: number[] | null; stat_deltas: string[] | null;
+    attendance: number[] | null; stats_delta: string[] | null;
     user_ids: number[]; slot_end: Date | null;
   }>(
-    `SELECT e.id, e.summarized, e.summary, e.attendance, e.stat_deltas,
+    `SELECT e.id, e.summarized, e.summary, e.attendance, e.stats_delta,
             a.user_ids,
             (s.datetime + s.duration * interval '1 hour') AS slot_end
      FROM events e
@@ -514,14 +514,14 @@ export const proceedStory = async (req: Request, res: Response) => {
     ev.summarized = true;
     ev.summary = AUTO_SUMMARY_TEXT;
     ev.attendance = allUserIds;
-    ev.stat_deltas = autoDeltas;
+    ev.stats_delta = autoDeltas;
   }
 
   // Everyone in the adventure is now in ev.attendance (either guide-marked attended,
   // guide-marked absent via "0000-" appended in /event/summarize, or auto-closed "00000").
   // summarize_event has already applied the deltas to user stats. Just read this user's.
   const idx = ev.attendance?.indexOf(uid) ?? -1;
-  const delta = idx >= 0 ? (ev.stat_deltas?.[idx] ?? "00000") : "00000";
+  const delta = idx >= 0 ? (ev.stats_delta?.[idx] ?? "00000") : "00000";
   // Stat positions: 0=intellect, 1=adaptability, 2=empathy, 3=creativity, 4=drive
   const sign = (c: string) => (c === "+" ? 1 : c === "-" ? -1 : 0);
   const statChanges = {
@@ -543,7 +543,7 @@ export const proceedStory = async (req: Request, res: Response) => {
 
   const rawText = await generateProceedChunk({
     uid, bookTitle: book.title, chapter: book.chapter,
-    priorStory, events: [eventSummary], theme,
+    priorStory, event: eventSummary, theme,
   });
   if (!rawText) return res.status(500).json({ error: "Failed to generate story chunk" });
 
@@ -674,7 +674,7 @@ export const regenerateStory = async (req: Request, res: Response) => {
     }
     const rawText = await generateProceedChunk({
       uid, bookTitle: book.title, chapter: last.chapter,
-      priorStory, events: [eventSummary], theme,
+      priorStory, event: eventSummary, theme,
     });
     if (rawText) newContent = rawText.trim();
   }

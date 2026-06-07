@@ -88,24 +88,21 @@ export type EventSummary = {
   guideId: number;
   expertId: number | null;
   otherUserIds: number[];
-  chatExcerpt: string | null;
   attended: boolean;
+  summary: string | null;   // the guide's free-text recap of what actually happened
 };
 
-function formatEvents(uid: number, events: EventSummary[]): string {
-  if (events.length === 0) return "No new events recorded.";
-  return events.map((e) => {
-    const date = e.timing.toDateString();
-    const others = e.otherUserIds.length
-      ? `Other adventurers: ${e.otherUserIds.map((id) => `@u${id}`).join(", ")}`
-      : "No other adventurers";
-    const expert = e.expertId ? `\n  Expert: @e${e.expertId}` : "";
-    const chat = e.chatExcerpt ? `\n  Chat excerpt:\n${e.chatExcerpt.split("\n").map(l => `    ${l}`).join("\n")}` : "";
-    const attendance = e.attended
-      ? `@u${uid} was present at this event`
-      : `@u${uid} was NOT present at this event — they missed out`;
-    return `Adventure: "${e.adventureName}" (${date})\n  Guide: @g${e.guideId}${expert}\n  Activity: ${e.activity}\n  ${attendance}\n  ${others}${chat}`;
-  }).join("\n\n");
+function formatEvent(uid: number, e: EventSummary): string {
+  const date = e.timing.toDateString();
+  const others = e.otherUserIds.length
+    ? `Other adventurers: ${e.otherUserIds.map((id) => `@u${id}`).join(", ")}`
+    : "No other adventurers";
+  const expert = e.expertId ? `\n  Expert: @e${e.expertId}` : "";
+  const attendance = e.attended
+    ? `@u${uid} was present at this event`
+    : `@u${uid} was NOT present at this event — they missed out`;
+  const summary = e.summary ? `\n  Guide's recap: ${e.summary}` : "";
+  return `Adventure: "${e.adventureName}" (${date})\n  Guide: @g${e.guideId}${expert}\n  Activity: ${e.activity}\n  ${attendance}\n  ${others}${summary}`;
 }
 
 export type Theme = { name: string; description: string | null };
@@ -162,10 +159,10 @@ export async function generateProceedChunk(params: {
   bookTitle: string;
   chapter: number;
   priorStory: string;
-  events: EventSummary[];
+  event: EventSummary;
   theme: Theme;
 }): Promise<string | null> {
-  const { uid, bookTitle, chapter, priorStory, events, theme } = params;
+  const { uid, bookTitle, chapter, priorStory, event, theme } = params;
   return ask(`You are continuing Chapter ${chapter} of "${bookTitle}", the adventure chronicle of @u${uid}.
 
 World setting — ${theme.name}: ${theme.description ?? theme.name}
@@ -175,10 +172,10 @@ Story so far:
 ${priorStory}
 ---
 
-New events since the last entry (real-world data to be reinterpreted):
-${formatEvents(uid, events)}
+New event since the last entry (real-world data to be reinterpreted):
+${formatEvent(uid, event)}
 
-Continue the story in 2-3 paragraphs, weaving in these events naturally.
+Continue the story in 2-3 paragraphs, weaving in this event naturally.
 
 Rules:
 - Refer to this adventurer as @u${uid}
