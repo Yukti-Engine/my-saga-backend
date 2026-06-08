@@ -42,6 +42,11 @@ export const getMessages = async (req: Request, res: Response) => {
 };
 
 const ROOM_NAME_RE = /^[1-9][0-9]{0,8}_[1-9][0-9]{0,8}$/;
+const VALID_ROLES = new Set(["user", "organizer", "boss"]);
+
+// Per-socket rate limit: token bucket — 5 msg/sec sustained, burst of 10.
+const RATE_REFILL_PER_SEC = 5;
+const RATE_MAX_TOKENS = 10;
 
 function parseRoomName(name: unknown): number | null {
   if (typeof name !== "string" || !ROOM_NAME_RE.test(name)) return null;
@@ -55,61 +60,116 @@ function cleanMessage(raw: unknown): string | null {
   return cleaned;
 }
 
+function ack(cb: unknown, payload: any) {
+  if (typeof cb === "function") (cb as Function)(payload);
+}
+
+/** Refills the bucket based on elapsed time, returns true if a token could be consumed. */
+function takeRateToken(s: any): boolean {
+  const now = Date.now();
+  const data = s.data;
+  const elapsed = (now - (data.rateLastRefill ?? now)) / 1000;
+  const tokens = Math.min(RATE_MAX_TOKENS, (data.rateTokens ?? RATE_MAX_TOKENS) + elapsed * RATE_REFILL_PER_SEC);
+  data.rateLastRefill = now;
+  if (tokens < 1) {
+    data.rateTokens = tokens;
+    return false;
+  }
+  data.rateTokens = tokens - 1;
+  return true;
+}
+
 export default function roomSocket(io: any, socket: any) {
-  socket.on("join_room", async ({ roomName, id, role, accessToken }: any) => {
+  // Per-socket state
+  socket.data.rooms = new Map<number, string>();   // adventureId → roomName (authorised rooms)
+  socket.data.rateTokens = RATE_MAX_TOKENS;
+  socket.data.rateLastRefill = Date.now();
+
+  socket.on("join_room", async (payload: any, cb: unknown) => {
+    const { roomName, id, role, accessToken } = payload ?? {};
     const adventureId = parseRoomName(roomName);
-    if (adventureId === null) return;
+    if (adventureId === null) return ack(cb, { ok: false, error: "bad_room" });
+    if (!VALID_ROLES.has(role)) return ack(cb, { ok: false, error: "bad_role" });
+    if (!Number.isInteger(id) || id <= 0) return ack(cb, { ok: false, error: "bad_id" });
+    if (typeof accessToken !== "string" || accessToken.length === 0)
+      return ack(cb, { ok: false, error: "bad_token" });
 
-    const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-    if (!authResult.rows[0].is_authenticated)
-      return;
-    const roomOk = await pool.query(`SELECT room_available($1::text) AS ok`, [roomName]);
-    const related = await pool.query(
-      `SELECT is_related_to_adventure($1::int, $2::text, $3::int) AS ok`,
-      [id, role, adventureId]
-    );
-    if (roomOk.rows[0].ok && related.rows[0].ok) {
-      socket.join(roomName);
-    }
-  });
-
-  socket.on("send_message", async ({ room, senderId, senderType, accessToken, message }: any) => {
-    const adventureId = parseRoomName(room);
-    if (adventureId === null) return;
-    const cleaned = cleanMessage(message);
-    if (cleaned === null) return;
-
-    const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [senderId, senderType, accessToken]);
-    if (!authResult.rows[0].is_authenticated)
-      return;
-
-    const related = await pool.query(
-      `SELECT is_related_to_adventure($1::int, $2::text, $3::int) AS ok`,
-      [senderId, senderType, adventureId]
-    );
-    if (related.rows[0].ok) {
-      await pool.query(
-        `SELECT add_message($1::int, $2::text, $3::int, $4::text)`,
-        [senderId, senderType, adventureId, cleaned]
+    // Combined: authenticate + room_available + relation in a single round-trip
+    let row: any;
+    try {
+      const result = await pool.query(
+        `SELECT
+           authenticate($1::int, $2::text, $3::text)              AS authed,
+           room_available($4::text)                               AS room_ok,
+           is_related_to_adventure($1::int, $2::text, $5::int)    AS related`,
+        [id, role, accessToken, roomName, adventureId]
       );
+      row = result.rows[0];
+    } catch (err) {
+      console.error("join_room db error:", err);
+      return ack(cb, { ok: false, error: "server_error" });
+    }
+    if (!row.authed)  return ack(cb, { ok: false, error: "auth" });
+    if (!row.room_ok) return ack(cb, { ok: false, error: "room_unavailable" });
+    if (!row.related) return ack(cb, { ok: false, error: "forbidden" });
+
+    // Cache identity + authorised rooms on the socket so send_message skips per-message DB hits
+    socket.data.uid = id;
+    socket.data.role = role;
+    socket.data.rooms.set(adventureId, roomName);
+    socket.join(roomName);
+    ack(cb, { ok: true });
+  });
+
+  socket.on("send_message", async (payload: any, cb: unknown) => {
+    const { room, message, clientId } = payload ?? {};
+    const adventureId = parseRoomName(room);
+    if (adventureId === null) return ack(cb, { ok: false, error: "bad_room", clientId });
+
+    const cleaned = cleanMessage(message);
+    if (cleaned === null) return ack(cb, { ok: false, error: "bad_message", clientId });
+
+    // Auth-once check: this socket must have joined exactly this room
+    const cachedRoom = socket.data.rooms?.get(adventureId);
+    if (!cachedRoom || cachedRoom !== room)
+      return ack(cb, { ok: false, error: "not_in_room", clientId });
+
+    if (!takeRateToken(socket))
+      return ack(cb, { ok: false, error: "rate_limited", clientId });
+
+    try {
+      const { rows } = await pool.query(
+        `SELECT add_message($1::int, $2::text, $3::int, $4::text) AS message_id, NOW() AS created_at`,
+        [socket.data.uid, socket.data.role, adventureId, cleaned]
+      );
+      const stored = rows[0] ?? {};
+      const broadcast = {
+        id: stored.message_id ?? null,
+        adventureId,
+        senderId: socket.data.uid,
+        senderType: socket.data.role,
+        message: cleaned,
+        createdAt: stored.created_at,
+        clientId,
+      };
+      io.to(room).emit("new_message", broadcast);
+      ack(cb, { ok: true, id: stored.message_id ?? null, createdAt: stored.created_at, clientId });
+    } catch (err) {
+      console.error("send_message db error:", err);
+      ack(cb, { ok: false, error: "server_error", clientId });
     }
   });
 
-  socket.on("leave_room", async ({ roomName, id, role, accessToken }: any) => {
+  socket.on("leave_room", (payload: any, cb: unknown) => {
+    const { roomName } = payload ?? {};
     const adventureId = parseRoomName(roomName);
-    if (adventureId === null) return;
-
-    const authResult = await pool.query(`SELECT authenticate($1::int, $2::text, $3::text) AS is_authenticated`, [id, role, accessToken]);
-    if (!authResult.rows[0].is_authenticated)
-      return;
-
-    const related = await pool.query(
-      `SELECT is_related_to_adventure($1::int, $2::text, $3::int) AS ok`,
-      [id, role, adventureId]
-    );
-    if (related.rows[0].ok) {
+    if (adventureId === null) return ack(cb, { ok: false, error: "bad_room" });
+    // Trust the socket's own room registry — no DB call needed
+    if (socket.data.rooms?.has(adventureId)) {
+      socket.data.rooms.delete(adventureId);
       socket.leave(roomName);
     }
+    ack(cb, { ok: true });
   });
 }
 
