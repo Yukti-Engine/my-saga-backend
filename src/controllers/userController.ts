@@ -477,7 +477,7 @@ export const proceedStory = async (req: Request, res: Response) => {
   }>(
     `SELECT e.id, e.summarized, e.summary, e.attendance, e.stats_delta,
             a.user_ids,
-            (s.datetime + s.duration * interval '1 hour') AS slot_end
+            (s.datetime + s.duration_in_hours * interval '1 hour') AS slot_end
      FROM events e
      JOIN adventures a ON a.id = e.adventure_id
      LEFT JOIN slots s ON s.id = e.slot_id

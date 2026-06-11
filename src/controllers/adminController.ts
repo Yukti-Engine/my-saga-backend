@@ -91,7 +91,7 @@ export const autoSummarizeStaleEvents = async () => {
      JOIN adventures a ON a.id = e.adventure_id
      JOIN slots s ON s.id = e.slot_id
      WHERE e.summarized = FALSE
-       AND (s.datetime + s.duration * interval '1 hour') < NOW() - interval '24 hours'`
+       AND (s.datetime + s.duration_in_hours * interval '1 hour') < NOW() - interval '24 hours'`
   );
   if (rows.length === 0) return 0;
 
@@ -583,7 +583,7 @@ export const refreshClone = async (_req: Request, res: Response) => {
       project,
       instance: CLONE_INSTANCE,
       name: "user1",
-      requestBody: { password: "password2" },
+      requestBody: { password: "Password#2" },
     });
     log("Done.");
   } catch (err: any) {
