@@ -52,7 +52,7 @@ export const adminUiHtml = `<!DOCTYPE html>
 <div id="totp-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;justify-content:center;align-items:center;">
   <div style="background:#fff;border-radius:8px;padding:24px;box-shadow:0 4px 20px rgba(0,0,0,0.2);min-width:300px;">
     <h3 style="font-size:15px;margin:0 0 12px;">Confirm with TOTP</h3>
-    <input type="text" id="totp-input" placeholder="6-digit code or key" maxlength="64" autocomplete="off" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+    <input type="password" id="totp-input" placeholder="6-digit code or key" maxlength="64" autocomplete="off" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
     <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;">
       <button class="btn btn-secondary" onclick="cancelTotp()">Cancel</button>
       <button class="btn btn-primary" onclick="confirmTotp()">Confirm</button>
@@ -65,6 +65,7 @@ export const adminUiHtml = `<!DOCTYPE html>
   <button data-tab="badges">Badges</button>
   <button data-tab="themes">Themes</button>
   <button data-tab="spaces">Spaces</button>
+  <button data-tab="legal">Legal</button>
   <button data-tab="clonedb">Clone DB IP</button>
 </nav>
 
@@ -193,6 +194,36 @@ export const adminUiHtml = `<!DOCTYPE html>
 </div>
 
 <!-- CLONE DB IP -->
+<div class="section" id="legal">
+  <div class="card">
+    <h3>Current Legal Versions</h3>
+    <button class="btn btn-secondary" onclick="loadLegal()">Refresh</button>
+    <div style="overflow-x:auto; margin-top:12px;"><table><thead><tr><th>App</th><th>Terms &amp; Conditions</th><th>Privacy Policy</th></tr></thead><tbody id="legal-table"></tbody></table></div>
+  </div>
+  <div class="card">
+    <h3>Publish New Version</h3>
+    <p style="font-size:13px;color:#666;margin-bottom:12px;">Uploads a new PDF and increments the version. Users of that app will be required to re-accept on their next request. Takes effect within ~60 seconds (version cache).</p>
+    <div class="form-row">
+      <label>App
+        <select id="legal-app">
+          <option value="user">user (Adventurer)</option>
+          <option value="guide">guide (Organizer)</option>
+          <option value="expert">expert (Boss)</option>
+        </select>
+      </label>
+      <label>Document
+        <select id="legal-doctype">
+          <option value="terms">Terms &amp; Conditions</option>
+          <option value="privacy">Privacy Policy</option>
+        </select>
+      </label>
+      <label>PDF file <input type="file" id="legal-file" accept="application/pdf"></label>
+    </div>
+    <button class="btn btn-primary" onclick="publishLegalDoc()">Publish</button>
+    <div id="legal-result"></div>
+  </div>
+</div>
+
 <div class="section" id="clonedb">
   <div class="card">
     <h3>Clone DB IP</h3>
@@ -552,6 +583,33 @@ async function fetchCloneIp() {
     var r = await api('/admin/clone-ip');
     document.getElementById('clone-ip-text').textContent = r.ip;
   } catch(e) { document.getElementById('clone-ip-text').textContent = 'Error: ' + e.message; }
+}
+
+// Legal
+async function loadLegal() {
+  try {
+    var r = await api('/admin/legal-versions');
+    var tb = document.getElementById('legal-table');
+    tb.innerHTML = (r.legal || []).map(function(l) {
+      return '<tr><td>' + esc(l.app) + '</td>' +
+        '<td>v' + l.termsVersion + ' &nbsp;<a href="' + esc(l.termsUrl) + '" target="_blank">View PDF</a></td>' +
+        '<td>v' + l.privacyVersion + ' &nbsp;<a href="' + esc(l.privacyUrl) + '" target="_blank">View PDF</a></td></tr>';
+    }).join('');
+  } catch(e) { alert(e.message); }
+}
+async function publishLegalDoc() {
+  try {
+    var app = document.getElementById('legal-app').value;
+    var docType = document.getElementById('legal-doctype').value;
+    var file = document.getElementById('legal-file').files[0];
+    if (!file) throw new Error('Pick a PDF file');
+    if (file.type && file.type !== 'application/pdf') throw new Error('File must be a PDF');
+    var b64 = await fileToBase64(file);
+    var r = await api('/admin/publish-legal', { app: app, docType: docType, pdf: b64 });
+    show('legal-result', 'Published ' + r.app + ' ' + r.docType + ' as v' + r.version + '. Live within ~60s.', true);
+    document.getElementById('legal-file').value = '';
+    loadLegal();
+  } catch(e) { show('legal-result', e.message, false); }
 }
 
 // Helpers

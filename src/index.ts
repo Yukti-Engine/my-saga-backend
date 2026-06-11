@@ -62,6 +62,9 @@ app.post("/razorpay/webhook",
 // Apply larger body-size limits only for routes that accept base64-encoded images
 app.use((req, res, next) => {
   const url = req.url;
+  if (url.includes("/publish-legal")) {
+    return bodyParser.json({ limit: "10mb" })(req, res, next);
+  }
   if (url.includes("/upload-theme-icon")) {
     return bodyParser.json({ limit: "5mb" })(req, res, next);
   }

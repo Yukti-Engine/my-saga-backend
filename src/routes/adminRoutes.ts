@@ -13,6 +13,8 @@ import {
   getThemes, createTheme, updateTheme, deleteTheme, uploadThemeIconRoute,
   // Spaces
   listSpaces, createSpace, updateSpace, deleteSpace, setSpaceCategories, getSpaceCategories,
+  // Legal documents
+  getLegalVersions, publishLegal,
   // Clone management
   refreshClone,
 } from "../controllers/adminController.js";
@@ -102,6 +104,10 @@ router.post("/update-space", authSuperToken, updateSpace);
 router.post("/delete-space", authSuperToken, deleteSpace);
 router.post("/set-space-categories", authSuperToken, setSpaceCategories);
 router.post("/get-space-categories", authSuperToken, getSpaceCategories);
+
+// ── Legal documents ──
+router.post("/legal-versions", authSuperToken, getLegalVersions);
+router.post("/publish-legal", authSuperToken, publishLegal);
 
 // ── Clone management ──
 router.post("/refresh-clone", authSuperToken, refreshClone);

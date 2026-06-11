@@ -20,6 +20,7 @@ const kycBucket = storage.bucket("my-saga-kyc");
 const badgeIconsBucket = storage.bucket("my-saga-badge-icons");
 const categoryIconsBucket = storage.bucket("my-saga-category-icons");
 const themeIconsBucket = storage.bucket("my-saga-theme-icons");
+const legalBucket = storage.bucket("my-saga-legal");
 
 /** Decodes a base64 PNG string and uploads it as the icon for the given badge. */
 export async function uploadBadgeIcon(base64: string, badgeId: number): Promise<string> {
@@ -43,6 +44,23 @@ export async function uploadThemeIcon(base64: string, themeId: number): Promise<
   const file = themeIconsBucket.file(`${themeId}`);
   await file.save(buffer, { contentType: "image/png", resumable: false });
   return `https://storage.googleapis.com/my-saga-theme-icons/${themeId}`;
+}
+
+/**
+ * Decodes a base64 PDF and uploads it as a versioned legal document.
+ * `docType` is the bucket sub-path ("terms-and-conditions" | "privacy-policy").
+ * Path matches what authController serves to clients: <app>/<docType>/<version>.pdf
+ */
+export async function uploadLegalPdf(
+  base64: string,
+  app: string,
+  docType: string,
+  version: number,
+): Promise<string> {
+  const buffer = Buffer.from(base64, "base64");
+  const file = legalBucket.file(`${app}/${docType}/${version}.pdf`);
+  await file.save(buffer, { contentType: "application/pdf", resumable: false });
+  return `https://storage.googleapis.com/my-saga-legal/${app}/${docType}/${version}.pdf`;
 }
 
 /**

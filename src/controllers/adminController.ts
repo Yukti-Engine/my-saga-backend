@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
-import { archiveFile, deleteAdventureFiles, deleteKycFolder, uploadBadgeIcon, uploadCategoryIcon, uploadThemeIcon } from "../services/bucketService.js";
+import { archiveFile, deleteAdventureFiles, deleteKycFolder, uploadBadgeIcon, uploadCategoryIcon, uploadThemeIcon, uploadLegalPdf } from "../services/bucketService.js";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -490,6 +490,77 @@ export const getSpaceCategories = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Error in getSpaceCategories:", err);
     return res.status(500).json({ error: "Failed to fetch space categories" });
+  }
+};
+
+/* ─────────────────── LEGAL DOCUMENTS ─────────────────── */
+// The `legal_versions` table holds one row per app (user/guide/expert) with the
+// current terms & privacy version numbers. The matching PDFs live in the
+// `my-saga-legal` GCS bucket at <app>/<docType>/<version>.pdf. Publishing a new
+// document uploads the next-version PDF first, then bumps the row — the bump is
+// what makes it live (and forces re-acceptance via requireLegalAcceptance).
+// Cached for 60s in legalVersions.ts, so changes take effect within ~1 minute.
+
+const LEGAL_BASE = "https://storage.googleapis.com/my-saga-legal";
+// docType (API) → bucket sub-path
+const LEGAL_DOC_PATH: Record<string, string> = {
+  terms: "terms-and-conditions",
+  privacy: "privacy-policy",
+};
+// docType (API) → legal_versions column. Whitelisted — never interpolate raw input.
+const LEGAL_DOC_COLUMN: Record<string, string> = {
+  terms: "terms_version",
+  privacy: "privacy_version",
+};
+
+export const getLegalVersions = async (_req: Request, res: Response) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT app, terms_version, privacy_version FROM legal_versions ORDER BY app`
+    );
+    const legal = rows.map((r: any) => ({
+      app: r.app,
+      termsVersion: r.terms_version,
+      termsUrl: `${LEGAL_BASE}/${r.app}/terms-and-conditions/${r.terms_version}.pdf`,
+      privacyVersion: r.privacy_version,
+      privacyUrl: `${LEGAL_BASE}/${r.app}/privacy-policy/${r.privacy_version}.pdf`,
+    }));
+    return res.json({ legal });
+  } catch (err) {
+    console.error("Error in getLegalVersions:", err);
+    return res.status(500).json({ error: "Failed to fetch legal versions" });
+  }
+};
+
+export const publishLegal = async (req: Request, res: Response) => {
+  const { app, docType, pdf } = req.body;
+  if (app !== "user" && app !== "guide" && app !== "expert")
+    return res.status(400).json({ error: "app must be user, guide, or expert" });
+  if (docType !== "terms" && docType !== "privacy")
+    return res.status(400).json({ error: "docType must be terms or privacy" });
+  if (typeof pdf !== "string" || pdf.length === 0)
+    return res.status(400).json({ error: "pdf must be a base64 string" });
+
+  const column = LEGAL_DOC_COLUMN[docType]!;
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT ${column} AS version FROM legal_versions WHERE app = $1`, [app]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: "Unknown app" });
+    const nextVersion: number = rows[0].version + 1;
+
+    // Upload the new PDF before bumping; if the upload fails the version stays put.
+    await uploadLegalPdf(pdf, app, LEGAL_DOC_PATH[docType]!, nextVersion);
+
+    await pool.query(
+      `UPDATE legal_versions SET ${column} = $1 WHERE app = $2`, [nextVersion, app]
+    );
+
+    return res.json({ message: "Published", app, docType, version: nextVersion });
+  } catch (err) {
+    console.error("Error in publishLegal:", err);
+    return res.status(500).json({ error: "Failed to publish legal document" });
   }
 };
 
