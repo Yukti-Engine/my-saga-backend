@@ -181,6 +181,53 @@ export const logOut = async (req: Request, res: Response) => {
   return res.json(result.rows[0]);
 };
 
+/**
+ * Soft-deletes the calling user's account: anonymizes PII in place (keeping the
+ * row so shared adventures, wallet/transaction, and OB records stay intact) and
+ * clears credentials so the account can no longer log in. Blocked while the user
+ * is in an active lobby or adventure. Idempotent.
+ */
+export const deleteAccount = async (req: Request, res: Response) => {
+  const { uid } = req.body;
+
+  const lobby = await pool.query(`SELECT 1 FROM current_match_request($1::int, $2::text) LIMIT 1`, [uid, "user"]);
+  if (lobby.rows.length > 0)
+    return res.status(409).json({ error: "Leave your active lobby before deleting your account" });
+  const adv = await pool.query(`SELECT count(*)::int AS c FROM get_active_adventures($1::int, $2::text)`, [uid, "user"]);
+  if (adv.rows[0].c > 0)
+    return res.status(409).json({ error: "You are in an active adventure; it must conclude before you can delete your account" });
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query(`SELECT icon_key, deleted_at FROM users WHERE id = $1 FOR UPDATE`, [uid]);
+    if (rows.length === 0) { await client.query("ROLLBACK"); return res.status(404).json({ error: "Account not found" }); }
+    if (rows[0].deleted_at) { await client.query("ROLLBACK"); return res.json({ success: true }); }
+    const oldIcon: string | null = rows[0].icon_key;
+
+    // phone/email freed (NULL) for potential re-signup; username scrubbed to a
+    // unique placeholder to satisfy the NOT NULL + UNIQUE constraint.
+    await client.query(
+      `UPDATE users SET
+         name = 'Deleted User', email = NULL, phone = NULL,
+         username = 'deleted_' || id, bio = NULL, dob = NULL, gender = NULL,
+         icon_key = NULL, access_token = NULL, request_id = NULL,
+         deleted_at = NOW()
+       WHERE id = $1`,
+      [uid]
+    );
+    await client.query("COMMIT");
+
+    if (oldIcon) deleteProfileIcon("user", oldIcon).catch((e) => console.error("deleteProfileIcon failed:", e));
+    return res.json({ success: true });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
 export const currentLobby = async (req: Request, res: Response) => {
   const { uid, } = req.body;
 

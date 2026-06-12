@@ -6,7 +6,7 @@
  */
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { updateOrganizerProfile, getOrganizerDashboard, requestMatch, logOut, currentLobby, startAdventure, getAdventures, getPastAdventures, organizeEvent, bookSlot, retrieveRoadmap, generateAdventureName, getOrganizerQualifications, getLimitation, reportUser, reportBoss, dismissLobby, acceptLegal, linkBankAccount } from "../controllers/organizerController.js";
+import { updateOrganizerProfile, getOrganizerDashboard, requestMatch, logOut, currentLobby, startAdventure, getAdventures, getPastAdventures, organizeEvent, bookSlot, retrieveRoadmap, generateAdventureName, getOrganizerQualifications, getLimitation, reportUser, reportBoss, dismissLobby, acceptLegal, linkBankAccount, deleteAccount } from "../controllers/organizerController.js";
 import { authOrganizer, requireLegalAcceptance } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -15,6 +15,9 @@ router.use(authOrganizer);
 // accept-legal is registered BEFORE requireLegalAcceptance so organizers can accept updated
 // legal documents without being blocked by the very gate they are trying to clear
 router.post("/accept-legal", acceptLegal);
+// delete-account is also registered before the gate: an account behind on legal
+// acceptance must still be able to delete itself.
+router.post("/delete-account", deleteAccount);
 // All subsequent routes require up-to-date legal acceptance
 router.use(requireLegalAcceptance("organizer"));
 

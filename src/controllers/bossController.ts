@@ -12,7 +12,7 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
 import { calculateAge } from "../utils.js";
-import { uploadProfileIcon, deleteProfileIcon } from "../services/bucketService.js";
+import { uploadProfileIcon, deleteProfileIcon, deleteKycFolder } from "../services/bucketService.js";
 import { randomBytes } from "crypto";
 import { createLinkedAccount } from "../services/razorpayService.js";
 import {
@@ -207,6 +207,57 @@ export const logOut = async (req: Request, res: Response) => {
 
   const result = await pool.query(`SELECT logout($1::int, $2::text) AS success`, [bid, "boss"]);
   return res.json({ success: result.rows[0].success });
+};
+
+/**
+ * Soft-deletes the calling boss's account: anonymizes PII in place (keeping the
+ * row so adventures and payout records stay intact) and clears credentials so the
+ * account can no longer log in. Blocked while in an active lobby or adventure.
+ * razorpay_account_id is retained so any in-flight held payouts can still settle.
+ * Idempotent.
+ */
+export const deleteAccount = async (req: Request, res: Response) => {
+  const { bid } = req.body;
+
+  const lobby = await pool.query(`SELECT 1 FROM current_match_request($1::int, $2::text) LIMIT 1`, [bid, "boss"]);
+  if (lobby.rows.length > 0)
+    return res.status(409).json({ error: "Leave your active lobby before deleting your account" });
+  const adv = await pool.query(`SELECT count(*)::int AS c FROM get_active_adventures($1::int, $2::text)`, [bid, "boss"]);
+  if (adv.rows[0].c > 0)
+    return res.status(409).json({ error: "You are in an active adventure; it must conclude before you can delete your account" });
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query(`SELECT icon_key, kyc_folder, deleted_at FROM bosses WHERE id = $1 FOR UPDATE`, [bid]);
+    if (rows.length === 0) { await client.query("ROLLBACK"); return res.status(404).json({ error: "Account not found" }); }
+    if (rows[0].deleted_at) { await client.query("ROLLBACK"); return res.json({ success: true }); }
+    const oldIcon: string | null = rows[0].icon_key;
+    const oldKyc: string | null = rows[0].kyc_folder;
+
+    // email is NOT NULL + UNIQUE and password is NOT NULL — scrub to safe placeholders.
+    await client.query(
+      `UPDATE bosses SET
+         name = 'Deleted Expert',
+         email = 'deleted_' || id || '@deleted.invalid',
+         phone = NULL, username = 'deleted_' || id, password = '',
+         bio = NULL, dob = NULL, gender = NULL,
+         icon_key = NULL, kyc_folder = NULL, access_token = NULL,
+         deleted_at = NOW()
+       WHERE id = $1`,
+      [bid]
+    );
+    await client.query("COMMIT");
+
+    if (oldIcon) deleteProfileIcon("boss", oldIcon).catch((e) => console.error("deleteProfileIcon failed:", e));
+    if (oldKyc) deleteKycFolder(oldKyc).catch((e) => console.error("deleteKycFolder failed:", e));
+    return res.json({ success: true });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 };
 
 export const currentLobby = async (req: Request, res: Response) => {

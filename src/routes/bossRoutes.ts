@@ -5,7 +5,7 @@
  * All routes require a valid boss access token via authBoss.
  */
 import express from "express";
-import { updateBossProfile, getBossDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, organizeExam, bookSlot, getBossQualifications, reportOrganizer, reportUser, acceptLegal, linkBankAccount } from "../controllers/bossController.js";
+import { updateBossProfile, getBossDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, organizeExam, bookSlot, getBossQualifications, reportOrganizer, reportUser, acceptLegal, linkBankAccount, deleteAccount } from "../controllers/bossController.js";
 import { authBoss, requireLegalAcceptance } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -14,6 +14,9 @@ router.use(authBoss);
 // accept-legal must come before requireLegalAcceptance for the same reason as user/organizer routes:
 // bosses need a way to accept new legal documents before the gate blocks them
 router.post("/accept-legal", acceptLegal);
+// delete-account is also registered before the gate: an account behind on legal
+// acceptance must still be able to delete itself.
+router.post("/delete-account", deleteAccount);
 // All subsequent routes require up-to-date legal acceptance
 router.use(requireLegalAcceptance("boss"));
 

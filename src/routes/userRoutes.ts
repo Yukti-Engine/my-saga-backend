@@ -5,7 +5,7 @@
  * All routes require a valid user access token via authUser.
  */
 import express from "express";
-import { updateUserProfile, getUserDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, getUserQualifications, rateOrganizer, reportOrganizer, startBook, renameBook, proceedStory, regenerateStory, concludeChapter, getThemes, getBook, acceptLegal, myBadges } from "../controllers/userController.js";
+import { updateUserProfile, getUserDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, getUserQualifications, rateOrganizer, reportOrganizer, startBook, renameBook, proceedStory, regenerateStory, concludeChapter, getThemes, getBook, acceptLegal, myBadges, deleteAccount } from "../controllers/userController.js";
 import { authUser, requireLegalAcceptance } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -14,6 +14,9 @@ router.use(authUser);
 // accept-legal is registered BEFORE requireLegalAcceptance so users can accept new legal
 // versions without being blocked by the very check they are trying to satisfy
 router.post("/accept-legal", acceptLegal);
+// delete-account is also registered before the gate: an account behind on legal
+// acceptance must still be able to delete itself.
+router.post("/delete-account", deleteAccount);
 // All subsequent routes require up-to-date legal acceptance
 router.use(requireLegalAcceptance("user"));
 
