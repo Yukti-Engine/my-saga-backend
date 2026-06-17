@@ -89,7 +89,7 @@ export const getTransactions = async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Invalid pagination: a and b must be integers with a < b" });
 
   const result = await pool.query(
-    `SELECT id, type, amount_paise, razorpay_order_id, match_request_id, status, created_at
+    `SELECT id, type, amount_paise, razorpay_order_id, match_request_id, status, promo_code, discount_paise, created_at
      FROM wallet_transactions
      WHERE user_id = $1 AND status = 'success'
      ORDER BY created_at DESC

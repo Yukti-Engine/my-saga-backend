@@ -316,6 +316,25 @@ export const updatePromoCode = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * POST /admin/cleanup-expired-promo-codes
+ * Optional housekeeping: removes codes that expired more than 90 days ago
+ * (cascades their redemption history). Expiry itself is enforced live at
+ * redemption time, so this is purely to keep the table tidy — not required for
+ * correctness. Safe to wire to a Cloud Scheduler job.
+ */
+export const cleanupExpiredPromoCodes = async (_req: Request, res: Response) => {
+  try {
+    const { rowCount } = await pool.query(
+      `DELETE FROM promo_codes WHERE expires_at IS NOT NULL AND expires_at < NOW() - INTERVAL '90 days'`
+    );
+    return res.json({ success: true, deleted: rowCount });
+  } catch (err) {
+    console.error("Error in cleanupExpiredPromoCodes:", err);
+    return res.status(500).json({ error: "Failed to clean up promo codes" });
+  }
+};
+
 export const deletePromoCode = async (req: Request, res: Response) => {
   const { id } = req.body;
   if (!Number.isInteger(id) || id <= 0)

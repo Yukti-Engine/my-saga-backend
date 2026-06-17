@@ -409,7 +409,16 @@ export const startAdventure = async (req: Request, res: Response) => {
     const bossPayoutPaise = 200 * n * 100;
     const guidePayoutPaise = payPerHead * n * 100;
     const totalPerUser = payPerHead * 1.25 + 200 + taxRate * payPerHead * 0.25;
-    const platformPayoutPaise = Math.round(totalPerUser * n * 100) - bossPayoutPaise - guidePayoutPaise;
+    // Promo discounts are absorbed entirely by the platform — boss and guide are
+    // paid in full. Subtract the discounts granted on this lobby so the platform
+    // payout reflects what was actually collected.
+    const discountRow = await pool.query(
+      `SELECT COALESCE(SUM(discount_paise), 0)::bigint AS total
+       FROM promo_code_redemptions WHERE match_request_id = $1`,
+      [matchId]
+    );
+    const totalDiscountPaise = Number(discountRow.rows[0].total);
+    const platformPayoutPaise = Math.round(totalPerUser * n * 100) - bossPayoutPaise - guidePayoutPaise - totalDiscountPaise;
 
     const holdUntil = new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString();
 

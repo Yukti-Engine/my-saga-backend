@@ -19,7 +19,7 @@ import {
   refreshClone,
 } from "../controllers/adminController.js";
 import {
-  listPromoCodes, createPromoCode, updatePromoCode, deletePromoCode,
+  listPromoCodes, createPromoCode, updatePromoCode, deletePromoCode, cleanupExpiredPromoCodes,
 } from "../controllers/promoController.js";
 import { getCloneIp } from "../controllers/authController.js";
 
@@ -117,6 +117,7 @@ router.post("/promo-codes", authSuperToken, listPromoCodes);
 router.post("/create-promo-code", authSuperToken, createPromoCode);
 router.post("/update-promo-code", authSuperToken, updatePromoCode);
 router.post("/delete-promo-code", authSuperToken, deletePromoCode);
+router.post("/cleanup-expired-promo-codes", authSuperToken, cleanupExpiredPromoCodes);
 
 // ── Clone management ──
 router.post("/refresh-clone", authSuperToken, refreshClone);

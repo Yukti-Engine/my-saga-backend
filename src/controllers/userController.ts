@@ -130,14 +130,14 @@ export const joinAdventure = async (req: Request, res: Response) => {
 
   // Apply an optional promo code. The reservation is held (used_count bumped)
   // until the join resolves: confirmed on success, released on refund/error.
-  let promo: { promoCodeId: number; discountPaise: number } | null = null;
+  let promo: { promoCodeId: number; code: string; discountPaise: number } | null = null;
   let discountPaise = 0;
   if (promoCode != null && promoCode !== "") {
     const codeV = validatePromoCode(promoCode);
     if (!codeV.ok) return res.status(400).json({ error: codeV.error });
     const reserved = await reservePromoCode(codeV.value, uid, baseCostPaise);
     if (!reserved.ok) return res.status(400).json({ error: reserved.error });
-    promo = { promoCodeId: reserved.promoCodeId, discountPaise: reserved.discountPaise };
+    promo = { promoCodeId: reserved.promoCodeId, code: reserved.code, discountPaise: reserved.discountPaise };
     discountPaise = reserved.discountPaise;
   }
 
@@ -154,9 +154,9 @@ export const joinAdventure = async (req: Request, res: Response) => {
 
   await pool.query(`SELECT debit_wallet($1::int, $2::bigint)`, [uid, costPaise]);
   await pool.query(
-    `INSERT INTO wallet_transactions (user_id, type, amount_paise, match_request_id, status)
-     VALUES ($1, 'lobby_debit', $2, $3, 'success')`,
-    [uid, costPaise, matchRequest.id]
+    `INSERT INTO wallet_transactions (user_id, type, amount_paise, match_request_id, status, promo_code, discount_paise)
+     VALUES ($1, 'lobby_debit', $2, $3, 'success', $4, $5)`,
+    [uid, costPaise, matchRequest.id, promo ? promo.code : null, promo ? discountPaise : null]
   );
 
   const refund = async () => {
@@ -697,7 +697,20 @@ export const regenerateStory = async (req: Request, res: Response) => {
   const last = lastRows[0]!;
 
   await pool.query(`SELECT debit_wallet($1::int, $2::bigint)`, [uid, COST_PAISE]);
+  await pool.query(
+    `INSERT INTO wallet_transactions (user_id, type, amount_paise, status)
+     VALUES ($1, 'story_regen', $2, 'success')`,
+    [uid, COST_PAISE]
+  );
 
+  const refundRegen = async () => {
+    await pool.query(`SELECT credit_wallet($1::int, $2::bigint)`, [uid, COST_PAISE]);
+    await pool.query(
+      `INSERT INTO wallet_transactions (user_id, type, amount_paise, status)
+       VALUES ($1, 'story_regen_refund', $2, 'success')`,
+      [uid, COST_PAISE]
+    );
+  };
 
   // Build prior story excluding the last chunk so context is correct for regeneration
   const { rows: priorRows } = await pool.query<{ content: string }>(
@@ -733,7 +746,7 @@ export const regenerateStory = async (req: Request, res: Response) => {
   } else if (last.kind === "proceed" && last.event_id != null) {
     const eventSummary = await buildEventSummary(last.event_id, uid);
     if (!eventSummary) {
-      await pool.query(`SELECT credit_wallet($1::int, $2::bigint)`, [uid, COST_PAISE]);
+      await refundRegen();
       return res.status(500).json({ error: "Event data not found for regeneration" });
     }
     const rawText = await generateProceedChunk({
@@ -744,7 +757,7 @@ export const regenerateStory = async (req: Request, res: Response) => {
   }
 
   if (!newContent) {
-    await pool.query(`SELECT credit_wallet($1::int, $2::bigint)`, [uid, COST_PAISE]);
+    await refundRegen();
     return res.status(500).json({ error: "Failed to regenerate chunk" });
   }
 

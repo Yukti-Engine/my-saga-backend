@@ -42,3 +42,8 @@ CREATE TABLE IF NOT EXISTS promo_code_redemptions (
 
 CREATE INDEX IF NOT EXISTS idx_promo_redemptions_code_user
   ON promo_code_redemptions (promo_code_id, user_id);
+
+-- Annotate the lobby-join debit row with the promo that was applied, so the
+-- discount is visible directly in a user's wallet history (getTransactions).
+ALTER TABLE wallet_transactions ADD COLUMN IF NOT EXISTS promo_code     TEXT;
+ALTER TABLE wallet_transactions ADD COLUMN IF NOT EXISTS discount_paise BIGINT;
