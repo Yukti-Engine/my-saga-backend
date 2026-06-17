@@ -184,6 +184,30 @@ export const previewPromoCode = async (req: Request, res: Response) => {
   return res.json(out);
 };
 
+/**
+ * POST /auth/promo-usage  { promoCode }
+ * Public. For a valid existing code, returns how many distinct users have
+ * redeemed it. 404 if the code does not exist.
+ */
+export const getPromoUserCount = async (req: Request, res: Response) => {
+  const codeV = validatePromoCode(req.body.promoCode ?? req.body.promo_code);
+  if (!codeV.ok) return res.status(400).json({ error: codeV.error });
+
+  const { rows } = await pool.query<{ user_count: number; used_count: number }>(
+    `SELECT pc.used_count,
+            COUNT(DISTINCT r.user_id)::int AS user_count
+     FROM promo_codes pc
+     LEFT JOIN promo_code_redemptions r ON r.promo_code_id = pc.id
+     WHERE pc.code = $1
+     GROUP BY pc.id`,
+    [codeV.value]
+  );
+  if (rows.length === 0)
+    return res.status(404).json({ error: "Invalid promo code" });
+
+  return res.json({ code: codeV.value, userCount: rows[0]!.user_count });
+};
+
 /* ─────────────────── ADMIN: CRUD ─────────────────── */
 
 export const listPromoCodes = async (_req: Request, res: Response) => {

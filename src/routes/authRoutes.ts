@@ -9,6 +9,7 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
 import { signupRequestOtp, signupVerifyOtp, loginRequestOtp,loginVerifyOtp, signupResendOtp, loginResendOtp, organizerLogin, bossLogin, organizerJoinRequest, signupViaLink, getKycUploadUrlForSignup, getLegalVersions, checkSignupLink } from "../controllers/authController.js";
+import { getPromoUserCount } from "../controllers/promoController.js";
 import { verifyRecaptcha } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -61,5 +62,14 @@ router.post("/signup-via-link", passwordLoginLimiter, signupViaLink);
 router.post("/kyc-upload-url", signupLimiter, getKycUploadUrlForSignup);
 router.post("/legal-versions", getLegalVersions);
 router.post("/check-signup-link", checkSignupLink);
+
+// 30 req / 15 min — public promo usage lookup (rate-limited to deter enumeration)
+const promoLookupLimiter = rateLimit({
+  ...limiterOpts,
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: "Too many promo lookups, please try again later." },
+});
+router.post("/promo-usage", promoLookupLimiter, getPromoUserCount);
 
 export default router;
