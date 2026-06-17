@@ -66,6 +66,7 @@ export const adminUiHtml = `<!DOCTYPE html>
   <button data-tab="themes">Themes</button>
   <button data-tab="spaces">Spaces</button>
   <button data-tab="legal">Legal</button>
+  <button data-tab="promos">Promo Codes</button>
   <button data-tab="clonedb">Clone DB IP</button>
 </nav>
 
@@ -221,6 +222,40 @@ export const adminUiHtml = `<!DOCTYPE html>
     </div>
     <button class="btn btn-primary" onclick="publishLegalDoc()">Publish</button>
     <div id="legal-result"></div>
+  </div>
+</div>
+
+<!-- PROMO CODES -->
+<div class="section" id="promos">
+  <div class="card">
+    <h3>Create Promo Code</h3>
+    <p style="font-size:13px;color:#666;margin-bottom:12px;">Applies to the cost a user pays to join a lobby. Flat codes take a fixed rupee amount off; percent codes take a percentage off (optionally capped).</p>
+    <div class="form-row">
+      <label>Code <input id="promo-code" placeholder="WELCOME50" maxlength="32"></label>
+      <label>Type
+        <select id="promo-type" onchange="onPromoTypeChange()">
+          <option value="flat">Flat (₹ off)</option>
+          <option value="percent">Percent (% off)</option>
+        </select>
+      </label>
+    </div>
+    <div class="form-row">
+      <label id="promo-flat-wrap">Flat off (₹) <input type="number" id="promo-flat" min="1" step="1"></label>
+      <label id="promo-percent-wrap" style="display:none;">Percent off (%) <input type="number" id="promo-percent" min="1" max="100" step="0.01"></label>
+      <label id="promo-maxdisc-wrap" style="display:none;">Max discount (₹, optional) <input type="number" id="promo-maxdisc" min="1" step="1"></label>
+    </div>
+    <div class="form-row">
+      <label>Expires at (optional) <input type="datetime-local" id="promo-expires"></label>
+      <label>Total usage limit (optional) <input type="number" id="promo-usage" min="1" step="1"></label>
+      <label>Per-user limit <input type="number" id="promo-peruser" min="1" step="1" value="1"></label>
+    </div>
+    <button class="btn btn-primary" onclick="createPromo()">Create</button>
+    <div id="promo-create-result"></div>
+  </div>
+  <div class="card">
+    <h3>All Promo Codes</h3>
+    <button class="btn btn-secondary" onclick="loadPromos()">Refresh</button>
+    <div style="overflow-x:auto; margin-top:12px;"><table><thead><tr><th>Code</th><th>Discount</th><th>Expires</th><th>Used</th><th>Status</th><th>Actions</th></tr></thead><tbody id="promo-table"></tbody></table></div>
   </div>
 </div>
 
@@ -610,6 +645,80 @@ async function publishLegalDoc() {
     document.getElementById('legal-file').value = '';
     loadLegal();
   } catch(e) { show('legal-result', e.message, false); }
+}
+
+// Promo codes
+function onPromoTypeChange() {
+  var t = document.getElementById('promo-type').value;
+  document.getElementById('promo-flat-wrap').style.display = t === 'flat' ? 'flex' : 'none';
+  document.getElementById('promo-percent-wrap').style.display = t === 'percent' ? 'flex' : 'none';
+  document.getElementById('promo-maxdisc-wrap').style.display = t === 'percent' ? 'flex' : 'none';
+}
+function promoDiscountText(p) {
+  if (p.discount_type === 'flat') return '₹' + (Number(p.flat_off_paise) / 100) + ' off';
+  var s = p.percent_off + '% off';
+  if (p.max_discount_paise != null) s += ' (max ₹' + (Number(p.max_discount_paise) / 100) + ')';
+  return s;
+}
+function promoExpiryText(p) {
+  if (!p.expires_at) return 'Never';
+  var d = new Date(p.expires_at);
+  return d.toLocaleString();
+}
+function promoUsedText(p) {
+  return p.used_count + (p.usage_limit != null ? ' / ' + p.usage_limit : '');
+}
+async function loadPromos() {
+  try {
+    var r = await api('/admin/promo-codes');
+    var list = r.promoCodes || [];
+    var tb = document.getElementById('promo-table');
+    var now = Date.now();
+    tb.innerHTML = list.map(function(p) {
+      var expired = p.expires_at && new Date(p.expires_at).getTime() <= now;
+      var status = !p.active ? 'Disabled' : (expired ? 'Expired' : 'Active');
+      var color = status === 'Active' ? '#155724' : '#721c24';
+      return '<tr><td><b>' + esc(p.code) + '</b></td><td>' + esc(promoDiscountText(p)) + '</td><td>' + esc(promoExpiryText(p)) + '</td><td>' + esc(promoUsedText(p)) + '</td>' +
+        '<td style="color:' + color + ';font-weight:600;">' + status + '</td><td class="actions">' +
+        '<button class="btn btn-secondary btn-sm" onclick="togglePromo(' + p.id + ',' + (p.active ? 'false' : 'true') + ')">' + (p.active ? 'Disable' : 'Enable') + '</button> ' +
+        '<button class="btn btn-secondary btn-sm" onclick="editPromoExpiry(' + p.id + ',\\'' + (p.expires_at || '') + '\\')">Expiry</button> ' +
+        '<button class="btn btn-danger btn-sm" onclick="delPromo(' + p.id + ',\\'' + esc(p.code).replace(/'/g,"\\\\'") + '\\')">Delete</button></td></tr>';
+    }).join('');
+  } catch(e) { alert(e.message); }
+}
+async function createPromo() {
+  try {
+    var type = document.getElementById('promo-type').value;
+    var body = {
+      code: document.getElementById('promo-code').value,
+      discountType: type,
+      expiresAt: document.getElementById('promo-expires').value || null,
+      usageLimit: Number(document.getElementById('promo-usage').value) || null,
+      perUserLimit: Number(document.getElementById('promo-peruser').value) || 1
+    };
+    if (type === 'flat') {
+      body.flatOffRupees = Number(document.getElementById('promo-flat').value) || null;
+    } else {
+      body.percentOff = Number(document.getElementById('promo-percent').value) || null;
+      body.maxDiscountRupees = Number(document.getElementById('promo-maxdisc').value) || null;
+    }
+    var r = await api('/admin/create-promo-code', body);
+    show('promo-create-result', 'Created ' + r.code, true);
+    document.getElementById('promo-code').value = '';
+    loadPromos();
+  } catch(e) { show('promo-create-result', e.message, false); }
+}
+async function togglePromo(id, active) {
+  try { await api('/admin/update-promo-code', { id: id, active: active }); loadPromos(); } catch(e) { alert(e.message); }
+}
+function editPromoExpiry(id, current) {
+  openModal('Edit Expiry (blank = never)', [
+    { key: 'expiresAt', label: 'Expires at (ISO or YYYY-MM-DDTHH:MM)', value: current }
+  ], function(vals) { return api('/admin/update-promo-code', { id: id, expiresAt: vals.expiresAt }).then(function(r) { loadPromos(); return r; }); });
+}
+async function delPromo(id, code) {
+  if (!confirm('Delete promo code "' + code + '"? This also removes its redemption history.')) return;
+  try { await api('/admin/delete-promo-code', { id: id }); loadPromos(); } catch(e) { alert(e.message); }
 }
 
 // Helpers

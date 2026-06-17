@@ -192,6 +192,16 @@ export function validateReasonToJoin(raw: unknown): ValidationResult<string> {
   return { ok: true, value: cleaned };
 }
 
+export function validatePromoCode(raw: unknown): ValidationResult<string> {
+  if (typeof raw !== "string") return { ok: false, error: "Invalid promo code" };
+  const cleaned = raw.trim().toUpperCase();
+  if (cleaned.length < 3 || cleaned.length > 32)
+    return { ok: false, error: "Promo code must be 3-32 characters" };
+  if (!/^[A-Z0-9_-]+$/.test(cleaned))
+    return { ok: false, error: "Promo code may only contain letters, digits, hyphen, and underscore" };
+  return { ok: true, value: cleaned };
+}
+
 export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")

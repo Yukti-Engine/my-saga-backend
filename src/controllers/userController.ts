@@ -1,9 +1,10 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
-import { calculateAge } from "../utils.js";
+import { calculateAge, lobbyCostPaise } from "../utils.js";
 import { uploadProfileIcon, deleteProfileIcon } from "../services/bucketService.js";
 import { randomBytes } from "crypto";
-import { validateUsername, validateBio, validateEmail, validateBoolean, validatePositiveInt, validateBoundedText, validateIntRange } from "../validators.js";
+import { validateUsername, validateBio, validateEmail, validateBoolean, validatePositiveInt, validateBoundedText, validateIntRange, validatePromoCode } from "../validators.js";
+import { reservePromoCode, releasePromoCode, recordRedemption } from "./promoController.js";
 import { generateChapterConclusion, generateProceedChunk, generateIntroduction, generateChapterOpening, type EventSummary, type Theme } from "../services/llmService.js";
 
 export const updateUserProfile = async (req: Request, res: Response) => {
@@ -115,7 +116,7 @@ export const getPastAdventures = async (req: Request, res: Response) => {
 };
 
 export const joinAdventure = async (req: Request, res: Response) => {
-  const { uid,  matchRequest, ageRangeMin, ageRangeMax } = req.body;
+  const { uid,  matchRequest, ageRangeMin, ageRangeMax, promoCode } = req.body;
 
   if (!Number.isInteger(ageRangeMin) || !Number.isInteger(ageRangeMax)
       || ageRangeMin < 18 || ageRangeMax > 100 || ageRangeMin > ageRangeMax)
@@ -125,17 +126,31 @@ export const joinAdventure = async (req: Request, res: Response) => {
   if (existing.rows.length > 0)
     return res.status(409).json({ error: "Already in an active lobby" });
 
-  const taxRate = parseFloat(process.env.PLATFORM_TAX_RATE || "0");
-  const costRupees = matchRequest.pay_per_head * 1.25 + 200
-                   + taxRate * matchRequest.pay_per_head * 0.25;
-  const costPaise = Math.round(costRupees * 100);
+  const baseCostPaise = lobbyCostPaise(matchRequest.pay_per_head);
+
+  // Apply an optional promo code. The reservation is held (used_count bumped)
+  // until the join resolves: confirmed on success, released on refund/error.
+  let promo: { promoCodeId: number; discountPaise: number } | null = null;
+  let discountPaise = 0;
+  if (promoCode != null && promoCode !== "") {
+    const codeV = validatePromoCode(promoCode);
+    if (!codeV.ok) return res.status(400).json({ error: codeV.error });
+    const reserved = await reservePromoCode(codeV.value, uid, baseCostPaise);
+    if (!reserved.ok) return res.status(400).json({ error: reserved.error });
+    promo = { promoCodeId: reserved.promoCodeId, discountPaise: reserved.discountPaise };
+    discountPaise = reserved.discountPaise;
+  }
+
+  const costPaise = baseCostPaise - discountPaise;
 
   const walletRow = await pool.query(
     `SELECT ensure_wallet($1::int) AS balance`, [uid]
   );
   const balance = Number(walletRow.rows[0].balance);
-  if (balance < costPaise)
+  if (balance < costPaise) {
+    if (promo) await releasePromoCode(promo.promoCodeId);
     return res.status(402).json({ error: "Insufficient wallet balance", required: costPaise, balance });
+  }
 
   await pool.query(`SELECT debit_wallet($1::int, $2::bigint)`, [uid, costPaise]);
   await pool.query(
@@ -143,6 +158,16 @@ export const joinAdventure = async (req: Request, res: Response) => {
      VALUES ($1, 'lobby_debit', $2, $3, 'success')`,
     [uid, costPaise, matchRequest.id]
   );
+
+  const refund = async () => {
+    await pool.query(`SELECT credit_wallet($1::int, $2::bigint)`, [uid, costPaise]);
+    await pool.query(
+      `INSERT INTO wallet_transactions (user_id, type, amount_paise, match_request_id, status)
+       VALUES ($1, 'lobby_refund', $2, $3, 'success')`,
+      [uid, costPaise, matchRequest.id]
+    );
+    if (promo) await releasePromoCode(promo.promoCodeId);
+  };
 
   try {
     const matched = await pool.query(
@@ -153,23 +178,15 @@ export const joinAdventure = async (req: Request, res: Response) => {
        matchRequest.pay_per_head, matchRequest.all_girls, matchRequest.half_girls]
     );
     const result = matched.rows[0].result;
-    if (result.success)
-      return res.json({ success: true, costPaise });
+    if (result.success) {
+      if (promo) await recordRedemption(promo.promoCodeId, uid, matchRequest.id, discountPaise);
+      return res.json({ success: true, costPaise, baseCostPaise, discountPaise });
+    }
 
-    await pool.query(`SELECT credit_wallet($1::int, $2::bigint)`, [uid, costPaise]);
-    await pool.query(
-      `INSERT INTO wallet_transactions (user_id, type, amount_paise, match_request_id, status)
-       VALUES ($1, 'lobby_refund', $2, $3, 'success')`,
-      [uid, costPaise, matchRequest.id]
-    );
+    await refund();
     return res.json({ success: false, message: "Lobby changed, wallet refunded" });
   } catch (err: any) {
-    await pool.query(`SELECT credit_wallet($1::int, $2::bigint)`, [uid, costPaise]);
-    await pool.query(
-      `INSERT INTO wallet_transactions (user_id, type, amount_paise, match_request_id, status)
-       VALUES ($1, 'lobby_refund', $2, $3, 'success')`,
-      [uid, costPaise, matchRequest.id]
-    );
+    await refund();
     throw err;
   }
 };

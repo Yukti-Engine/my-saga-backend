@@ -18,6 +18,9 @@ import {
   // Clone management
   refreshClone,
 } from "../controllers/adminController.js";
+import {
+  listPromoCodes, createPromoCode, updatePromoCode, deletePromoCode,
+} from "../controllers/promoController.js";
 import { getCloneIp } from "../controllers/authController.js";
 
 const router = express.Router();
@@ -108,6 +111,12 @@ router.post("/get-space-categories", authSuperToken, getSpaceCategories);
 // ── Legal documents ──
 router.post("/legal-versions", authSuperToken, getLegalVersions);
 router.post("/publish-legal", authSuperToken, publishLegal);
+
+// ── Promo codes ──
+router.post("/promo-codes", authSuperToken, listPromoCodes);
+router.post("/create-promo-code", authSuperToken, createPromoCode);
+router.post("/update-promo-code", authSuperToken, updatePromoCode);
+router.post("/delete-promo-code", authSuperToken, deletePromoCode);
 
 // ── Clone management ──
 router.post("/refresh-clone", authSuperToken, refreshClone);

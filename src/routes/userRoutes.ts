@@ -6,6 +6,7 @@
  */
 import express from "express";
 import { updateUserProfile, getUserDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, getUserQualifications, rateOrganizer, reportOrganizer, startBook, renameBook, proceedStory, regenerateStory, concludeChapter, getThemes, getBook, acceptLegal, myBadges, deleteAccount } from "../controllers/userController.js";
+import { previewPromoCode } from "../controllers/promoController.js";
 import { authUser, requireLegalAcceptance } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -22,6 +23,7 @@ router.use(requireLegalAcceptance("user"));
 
 router.post("/update-profile", updateUserProfile);
 router.post("/dashboard", getUserDashboard);
+router.post("/validate-promo", previewPromoCode);
 router.post("/match", joinAdventure);
 router.post("/logout", logOut);
 router.post("/lobby", currentLobby);
