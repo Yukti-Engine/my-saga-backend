@@ -18,7 +18,7 @@ import { createLinkedAccount } from "../services/razorpayService.js";
 import {
   validateUsername, validateBio, validateBoolean,
   validateBoundedText, validatePositiveInt, validateIntRange,
-  validateFutureTimestamp
+  validateFutureTimestamp, validateNonNegativeInt
 } from "../validators.js";
 
 export const getAdventures = async (req: Request, res: Response) => {
@@ -265,6 +265,22 @@ export const currentLobby = async (req: Request, res: Response) => {
 
   const result = await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [bid, "boss"]);
   return res.json(result.rows);
+};
+
+/**
+ * Marks notifications read up to `readTill` (notifications 1..readTill seen).
+ * Only ever advances — a stale/out-of-order value never rolls the marker back.
+ */
+export const notifiedTill = async (req: Request, res: Response) => {
+  const { bid } = req.body;
+  const v = validateNonNegativeInt(req.body.readTill, "readTill");
+  if (!v.ok) return res.status(400).json({ error: v.error });
+
+  const { rows } = await pool.query(
+    `UPDATE bosses SET read_till = GREATEST(read_till, $1) WHERE id = $2 RETURNING read_till`,
+    [v.value, bid]
+  );
+  return res.json({ success: true, readTill: rows[0].read_till });
 };
 
 export const reportOrganizer = async (req: Request, res: Response) => {

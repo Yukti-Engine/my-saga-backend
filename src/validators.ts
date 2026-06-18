@@ -144,6 +144,12 @@ export function validatePositiveInt(raw: unknown, field: string): ValidationResu
   return { ok: true, value: raw as number };
 }
 
+export function validateNonNegativeInt(raw: unknown, field: string): ValidationResult<number> {
+  if (!Number.isInteger(raw) || (raw as number) < 0)
+    return { ok: false, error: `${field} must be a non-negative integer` };
+  return { ok: true, value: raw as number };
+}
+
 export function validateIntRange(raw: unknown, field: string, min: number, max: number): ValidationResult<number> {
   if (!Number.isInteger(raw) || (raw as number) < min || (raw as number) > max)
     return { ok: false, error: `${field} must be an integer between ${min} and ${max}` };

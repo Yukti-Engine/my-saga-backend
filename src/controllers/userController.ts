@@ -3,7 +3,7 @@ import pool from "../db.js";
 import { calculateAge, lobbyCostPaise } from "../utils.js";
 import { uploadProfileIcon, deleteProfileIcon } from "../services/bucketService.js";
 import { randomBytes } from "crypto";
-import { validateUsername, validateBio, validateEmail, validateBoolean, validatePositiveInt, validateBoundedText, validateIntRange, validatePromoCode } from "../validators.js";
+import { validateUsername, validateBio, validateEmail, validateBoolean, validatePositiveInt, validateBoundedText, validateIntRange, validatePromoCode, validateNonNegativeInt } from "../validators.js";
 import { reservePromoCode, releasePromoCode, recordRedemption } from "./promoController.js";
 import { generateChapterConclusion, generateProceedChunk, generateIntroduction, generateChapterOpening, type EventSummary, type Theme } from "../services/llmService.js";
 
@@ -250,6 +250,22 @@ export const currentLobby = async (req: Request, res: Response) => {
 
   const result = await pool.query(`SELECT * FROM current_match_request($1::int, $2::text)`, [uid, "user"]);
   return res.json(result.rows);
+};
+
+/**
+ * Marks notifications read up to `readTill` (notifications 1..readTill seen).
+ * Only ever advances — a stale/out-of-order value never rolls the marker back.
+ */
+export const notifiedTill = async (req: Request, res: Response) => {
+  const { uid } = req.body;
+  const v = validateNonNegativeInt(req.body.readTill, "readTill");
+  if (!v.ok) return res.status(400).json({ error: v.error });
+
+  const { rows } = await pool.query(
+    `UPDATE users SET read_till = GREATEST(read_till, $1) WHERE id = $2 RETURNING read_till`,
+    [v.value, uid]
+  );
+  return res.json({ success: true, readTill: rows[0].read_till });
 };
 
 
