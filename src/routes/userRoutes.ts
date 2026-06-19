@@ -5,7 +5,8 @@
  * All routes require a valid user access token via authUser.
  */
 import express from "express";
-import { updateUserProfile, getUserDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, getUserQualifications, rateOrganizer, reportOrganizer, startBook, renameBook, proceedStory, regenerateStory, concludeChapter, getThemes, getBook, acceptLegal, myBadges, deleteAccount, notifiedTill } from "../controllers/userController.js";
+import rateLimit from "express-rate-limit";
+import { updateUserProfile, getUserDashboard, joinAdventure, logOut, currentLobby, getAdventures, getPastAdventures, getUserQualifications, rateOrganizer, reportOrganizer, startBook, renameBook, proceedStory, regenerateStory, concludeChapter, getThemes, getBook, acceptLegal, myBadges, deleteAccount, notifiedTill, suggestCategory } from "../controllers/userController.js";
 import { previewPromoCode } from "../controllers/promoController.js";
 import { authUser, requireLegalAcceptance } from "../middlewares/auth.js";
 
@@ -41,4 +42,14 @@ router.post("/conclude-chapter", concludeChapter);
 router.post("/themes", getThemes);
 router.post("/book", getBook);
 router.post("/my-badges", myBadges);
+
+// Cap category suggestions per IP so the dev inbox can't be flooded
+const suggestCategoryLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: "Too many suggestions, please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+router.post("/suggest-category", suggestCategoryLimiter, suggestCategory);
 export default router;

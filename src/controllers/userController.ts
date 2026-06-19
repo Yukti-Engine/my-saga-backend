@@ -3,8 +3,9 @@ import pool from "../db.js";
 import { calculateAge, lobbyCostPaise } from "../utils.js";
 import { uploadProfileIcon, deleteProfileIcon } from "../services/bucketService.js";
 import { randomBytes } from "crypto";
-import { validateUsername, validateBio, validateEmail, validateBoolean, validatePositiveInt, validateBoundedText, validateIntRange, validatePromoCode, validateNonNegativeInt } from "../validators.js";
+import { validateUsername, validateBio, validateEmail, validateBoolean, validatePositiveInt, validateBoundedText, validateIntRange, validatePromoCode, validateNonNegativeInt, escapeHtml } from "../validators.js";
 import { reservePromoCode, releasePromoCode, recordRedemption } from "./promoController.js";
+import { sendEmail } from "../services/mailerService.js";
 import { generateChapterConclusion, generateProceedChunk, generateIntroduction, generateChapterOpening, type EventSummary, type Theme } from "../services/llmService.js";
 
 export const updateUserProfile = async (req: Request, res: Response) => {
@@ -268,6 +269,42 @@ export const notifiedTill = async (req: Request, res: Response) => {
   return res.json({ success: true, readTill: rows[0].read_till });
 };
 
+
+// Where category suggestions are emailed.
+const CATEGORY_SUGGESTION_EMAIL = "dev@yuktiengine.com";
+
+/**
+ * Lets a user suggest a category they'd like adventures for. Emails the dev
+ * team — nothing is persisted.
+ */
+export const suggestCategory = async (req: Request, res: Response) => {
+  const { uid } = req.body;
+  const categoryV = validateBoundedText(req.body.category, "category", 2, 100);
+  if (!categoryV.ok) return res.status(400).json({ error: categoryV.error });
+
+  let details = "";
+  if (req.body.details != null && req.body.details !== "") {
+    const detailsV = validateBoundedText(req.body.details, "details", 1, 1000, { allowNewlines: true });
+    if (!detailsV.ok) return res.status(400).json({ error: detailsV.error });
+    details = detailsV.value;
+  }
+
+  const subject = `Category suggestion: ${categoryV.value}`;
+  const html = `
+    <p>A user has suggested a category they'd like adventures for.</p>
+    <p><strong>Suggested category:</strong> ${escapeHtml(categoryV.value)}</p>
+    ${details ? `<p><strong>Details:</strong></p><blockquote style="border-left:3px solid #ccc;padding-left:12px;color:#555;margin:16px 0;">${escapeHtml(details)}</blockquote>` : ""}
+    <p style="color:#888;font-size:12px;">Suggested by user #${uid}</p>
+  `;
+
+  try {
+    await sendEmail(CATEGORY_SUGGESTION_EMAIL, subject, html);
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("suggestCategory email failed:", err);
+    return res.status(500).json({ error: "Failed to send suggestion" });
+  }
+};
 
 export const getThemes = async (_req: Request, res: Response) => {
   const { rows } = await pool.query(`SELECT * FROM get_all_themes()`);
