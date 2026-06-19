@@ -174,14 +174,14 @@ export const getCategories = async (req: Request, res: Response) => {
 };
 
 export const createCategory = async (req: Request, res: Response) => {
-  const { category, subCategory, word2s } = req.body;
+  const { category, subCategory} = req.body;
   if (!category)
     return res.status(400).json({ error: "category is required" });
 
   try {
     const { rows } = await pool.query(
       `SELECT create_category($1::text, $2::text, $3::text[])`,
-      [category, subCategory ?? null, word2s ?? null]
+      [category, subCategory ?? null]
     );
     return res.json({ message: "Category created", id: rows[0].create_category });
   } catch (err) {
