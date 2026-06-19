@@ -9,9 +9,34 @@
  *   - Adventure file uploads/downloads and archiving
  *
  */
-import { Storage } from "@google-cloud/storage";
+import { Storage, type File, type GetSignedUrlConfig } from "@google-cloud/storage";
 
 const storage = new Storage();
+
+/**
+ * V4 signed URLs are signed via the IAM credentials `signBlob` API whenever the
+ * runtime has no local private key (e.g. Cloud Run's default compute service
+ * account). That network call occasionally fails with a transient
+ * "Premature close" / 5xx, so retry a few times with small backoff before
+ * giving up. Signing itself is idempotent, so retrying is safe.
+ */
+async function getSignedUrlWithRetry(
+  file: File,
+  options: GetSignedUrlConfig,
+  attempts = 3,
+): Promise<string> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const [url] = await file.getSignedUrl(options);
+      return url;
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 200 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
 // Separate GCS buckets per content type to allow independent access controls and lifecycle rules
 const bucket = storage.bucket("my-saga-adventures");
 const archiveBucket = storage.bucket("my-saga-archive");
@@ -73,7 +98,7 @@ export async function generateKycUploadUrl(
   contentType: string,
 ) {
   const file = kycBucket.file(`${kycFolder}/${fileName}`);
-  const [url] = await file.getSignedUrl({
+  const url = await getSignedUrlWithRetry(file, {
     version: "v4",
     action: "write",
     expires: Date.now() + 10 * 60 * 1000, // 10 minutes
@@ -91,7 +116,7 @@ export async function generateKycDownloadUrl(
   fileName: string,
 ) {
   const file = kycBucket.file(`${kycFolder}/${fileName}`);
-  const [url] = await file.getSignedUrl({
+  const url = await getSignedUrlWithRetry(file, {
     version: "v4",
     action: "read",
     expires: Date.now() + 5 * 60 * 1000, // 5 minutes
@@ -129,7 +154,7 @@ export async function generateUploadUrl(
 ) {
   const file = bucket.file(`files/${adventureId}/${fileNumber}/${fileName}`);
 
-  const [url] = await file.getSignedUrl({
+  const url = await getSignedUrlWithRetry(file, {
     version: "v4",
     action: "write",
     expires: Date.now() + 15 * 60 * 1000, // 15 minutes
@@ -149,13 +174,13 @@ export async function generateDownloadUrl(
 ) {
   const file = bucket.file(`files/${adventureId}/${fileNumber}/${fileName}`);
 
-  const [url] = await file.getSignedUrl({
+  const url = await getSignedUrlWithRetry(file, {
     version: "v4",
     action: "read",
     expires: Date.now() + 5 * 60 * 1000,
     responseDisposition: `attachment; filename="${fileName}"`
   });
-  
+
   return url;
 }
 
