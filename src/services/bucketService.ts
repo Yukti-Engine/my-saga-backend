@@ -11,19 +11,33 @@
  */
 import { Storage, type File, type GetSignedUrlConfig } from "@google-cloud/storage";
 
-const storage = new Storage();
+// V4 signing needs a private key. Cloud Run's default compute service account
+// has none locally, so the client signs via the IAM `signBlob` API over the
+// network — which intermittently fails with "Premature close". If a dedicated
+// signer key is provided (GCS_SIGNER_CLIENT_EMAIL + GCS_SIGNER_PRIVATE_KEY,
+// e.g. from Secret Manager), use it so signing happens in-process with no
+// network call, eliminating the error entirely. Otherwise fall back to the
+// keyless default and lean on getSignedUrlWithRetry below.
+const signerEmail = process.env.GCS_SIGNER_CLIENT_EMAIL;
+// Secret Manager / env vars store newlines escaped as "\n"; restore them.
+const signerKey = process.env.GCS_SIGNER_PRIVATE_KEY?.replace(/\\n/g, "\n");
+const storage =
+  signerEmail && signerKey
+    ? new Storage({ credentials: { client_email: signerEmail, private_key: signerKey } })
+    : new Storage();
+const localSigning = Boolean(signerEmail && signerKey);
 
 /**
- * V4 signed URLs are signed via the IAM credentials `signBlob` API whenever the
- * runtime has no local private key (e.g. Cloud Run's default compute service
- * account). That network call occasionally fails with a transient
- * "Premature close" / 5xx, so retry a few times with small backoff before
- * giving up. Signing itself is idempotent, so retrying is safe.
+ * Generates a V4 signed URL. When signing happens over the network (keyless
+ * default service account) the IAM `signBlob` call can fail transiently with a
+ * "Premature close" / 5xx, so retry with exponential backoff before giving up.
+ * Signing is idempotent, so retrying is safe. With a local signer key
+ * (localSigning) there is no network call, so a single attempt is enough.
  */
 async function getSignedUrlWithRetry(
   file: File,
   options: GetSignedUrlConfig,
-  attempts = 3,
+  attempts = localSigning ? 1 : 5,
 ): Promise<string> {
   let lastErr: unknown;
   for (let i = 0; i < attempts; i++) {
@@ -32,7 +46,11 @@ async function getSignedUrlWithRetry(
       return url;
     } catch (err) {
       lastErr = err;
-      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 200 * (i + 1)));
+      if (i < attempts - 1) {
+        console.warn(`getSignedUrl attempt ${i + 1}/${attempts} failed, retrying:`, (err as Error)?.message);
+        // 300ms, 600ms, 1.2s, 2.4s — spreads retries beyond a brief signBlob outage
+        await new Promise((r) => setTimeout(r, 300 * 2 ** i));
+      }
     }
   }
   throw lastErr;
