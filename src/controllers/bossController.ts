@@ -382,8 +382,9 @@ export const linkBankAccount = async (req: Request, res: Response) => {
 
     return res.json({ success: true, accountId: account.id });
   } catch (err: any) {
-    console.error("Razorpay linked account creation failed:", err);
-    return res.status(500).json({ error: "Failed to create linked account" });
+    const detail = err?.error?.description || err?.message || "Unknown error";
+    console.error("Razorpay linked account creation failed:", JSON.stringify(err?.error ?? { message: err?.message }));
+    return res.status(502).json({ error: "Failed to create linked account", detail });
   }
 };
 
