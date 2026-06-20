@@ -28,32 +28,52 @@ const storage =
 const localSigning = Boolean(signerEmail && signerKey);
 
 /**
- * Generates a V4 signed URL. When signing happens over the network (keyless
- * default service account) the IAM `signBlob` call can fail transiently with a
- * "Premature close" / 5xx, so retry with exponential backoff before giving up.
- * Signing is idempotent, so retrying is safe. With a local signer key
- * (localSigning) there is no network call, so a single attempt is enough.
+ * Runs `fn`, retrying transient GCS failures with exponential backoff
+ * (300ms, 600ms, 1.2s, 2.4s). Used to ride out the intermittent IAM `signBlob`
+ * "Premature close" errors. The operations here are idempotent, so retry is safe.
  */
-async function getSignedUrlWithRetry(
-  file: File,
-  options: GetSignedUrlConfig,
-  attempts = localSigning ? 1 : 5,
-): Promise<string> {
+async function withRetry<T>(label: string, fn: () => Promise<T>, attempts = 5): Promise<T> {
   let lastErr: unknown;
   for (let i = 0; i < attempts; i++) {
     try {
-      const [url] = await file.getSignedUrl(options);
-      return url;
+      return await fn();
     } catch (err) {
       lastErr = err;
       if (i < attempts - 1) {
-        console.warn(`getSignedUrl attempt ${i + 1}/${attempts} failed, retrying:`, (err as Error)?.message);
-        // 300ms, 600ms, 1.2s, 2.4s — spreads retries beyond a brief signBlob outage
+        console.warn(`${label} attempt ${i + 1}/${attempts} failed, retrying:`, (err as Error)?.message);
         await new Promise((r) => setTimeout(r, 300 * 2 ** i));
       }
     }
   }
   throw lastErr;
+}
+
+/**
+ * Generates a V4 signed URL (used for downloads). When signing happens over the
+ * network (keyless default service account) the IAM `signBlob` call can fail
+ * transiently, so retry. With a local signer key there is no network call, so a
+ * single attempt is enough.
+ */
+async function getSignedUrlWithRetry(file: File, options: GetSignedUrlConfig): Promise<string> {
+  return withRetry("getSignedUrl", async () => {
+    const [url] = await file.getSignedUrl(options);
+    return url;
+  }, localSigning ? 1 : 5);
+}
+
+/**
+ * Creates a resumable upload session URI for direct client upload. Unlike a
+ * signed write URL this is authenticated with the runtime's OAuth token (the
+ * metadata server on Cloud Run) — there is NO `signBlob` call and no private
+ * key needed, so it sidesteps the "Premature close" failure entirely. The
+ * client uploads by issuing a single PUT of the file bytes to this URI with the
+ * matching Content-Type (no Authorization header). Sessions are valid ~7 days.
+ */
+async function createUploadSession(file: File, contentType: string): Promise<string> {
+  return withRetry("createResumableUpload", async () => {
+    const [uri] = await file.createResumableUpload({ metadata: { contentType } });
+    return uri;
+  });
 }
 // Separate GCS buckets per content type to allow independent access controls and lifecycle rules
 const bucket = storage.bucket("my-saga-adventures");
@@ -107,8 +127,8 @@ export async function uploadLegalPdf(
 }
 
 /**
- * Generates a short-lived (10 min) signed PUT URL so a client can upload
- * a KYC document directly to GCS without proxying through the API server.
+ * Returns a resumable upload session URI so a client can upload a KYC document
+ * directly to GCS without proxying through the API server. Keyless (no signBlob).
  */
 export async function generateKycUploadUrl(
   kycFolder: string,
@@ -116,13 +136,8 @@ export async function generateKycUploadUrl(
   contentType: string,
 ) {
   const file = kycBucket.file(`${kycFolder}/${fileName}`);
-  const url = await getSignedUrlWithRetry(file, {
-    version: "v4",
-    action: "write",
-    expires: Date.now() + 10 * 60 * 1000, // 10 minutes
-    contentType,
-  });
-  return { uploadUrl: url, filePath: file.name };
+  const uploadUrl = await createUploadSession(file, contentType);
+  return { uploadUrl, filePath: file.name };
 }
 
 /**
@@ -172,15 +187,10 @@ export async function generateUploadUrl(
 ) {
   const file = bucket.file(`files/${adventureId}/${fileNumber}/${fileName}`);
 
-  const url = await getSignedUrlWithRetry(file, {
-    version: "v4",
-    action: "write",
-    expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-    contentType,
-  });
+  const uploadUrl = await createUploadSession(file, contentType);
 
   return {
-    uploadUrl: url,
+    uploadUrl,
     filePath: file.name,
     fileNumber: fileNumber
   };
