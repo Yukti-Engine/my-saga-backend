@@ -448,7 +448,7 @@ export const getKycUploadUrlForSignup = async (req: Request, res: Response) => {
   const folder: string | null = rows[0]?.folder ?? null;
   if (!folder) return res.status(400).json({ error: "Invalid, expired, or used link" });
 
-  const data = await generateKycUploadUrl(folder, fileNameV.value, contentTypeV.value);
+  const data = await generateKycUploadUrl(folder, fileNameV.value, contentTypeV.value, req.headers.origin as string | undefined);
   return res.json(data);
 };
 

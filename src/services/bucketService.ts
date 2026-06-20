@@ -68,10 +68,15 @@ async function getSignedUrlWithRetry(file: File, options: GetSignedUrlConfig): P
  * key needed, so it sidesteps the "Premature close" failure entirely. The
  * client uploads by issuing a single PUT of the file bytes to this URI with the
  * matching Content-Type (no Authorization header). Sessions are valid ~7 days.
+ *
+ * `origin` MUST be the browser's origin: a resumable session is bound to the
+ * Origin sent at initiation, and GCS only returns Access-Control-Allow-Origin
+ * for the browser's upload PUT when it matches — otherwise the upload is blocked
+ * by CORS even when the bucket's CORS config is correct.
  */
-async function createUploadSession(file: File, contentType: string): Promise<string> {
+async function createUploadSession(file: File, contentType: string, origin?: string): Promise<string> {
   return withRetry("createResumableUpload", async () => {
-    const [uri] = await file.createResumableUpload({ metadata: { contentType } });
+    const [uri] = await file.createResumableUpload({ origin, metadata: { contentType } });
     return uri;
   });
 }
@@ -134,9 +139,10 @@ export async function generateKycUploadUrl(
   kycFolder: string,
   fileName: string,
   contentType: string,
+  origin?: string,
 ) {
   const file = kycBucket.file(`${kycFolder}/${fileName}`);
-  const uploadUrl = await createUploadSession(file, contentType);
+  const uploadUrl = await createUploadSession(file, contentType, origin);
   return { uploadUrl, filePath: file.name };
 }
 
@@ -184,10 +190,11 @@ export async function generateUploadUrl(
   contentType: string,
   adventureId: number,
   fileNumber: number,
+  origin?: string,
 ) {
   const file = bucket.file(`files/${adventureId}/${fileNumber}/${fileName}`);
 
-  const uploadUrl = await createUploadSession(file, contentType);
+  const uploadUrl = await createUploadSession(file, contentType, origin);
 
   return {
     uploadUrl,

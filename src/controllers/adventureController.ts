@@ -262,7 +262,7 @@ export const getUploadFileUrl = async (req: Request, res: Response) => {
   if (!check.rows[0].ok) return res.status(403).json({ success: false });
 
   const countRes = await pool.query(`SELECT file_count($1::int) AS count`, [advV.value]);
-  const data = await generateUploadUrl(fileNameV.value, contentTypeV.value, advV.value, Number(countRes.rows[0].count) + 1);
+  const data = await generateUploadUrl(fileNameV.value, contentTypeV.value, advV.value, Number(countRes.rows[0].count) + 1, req.headers.origin as string | undefined);
   return res.json(data);
 };
 
