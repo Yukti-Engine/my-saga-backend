@@ -53,6 +53,7 @@ export async function createLinkedAccount(params: {
   state: string;
   pincode: string;
 }) {
+  // 1. Create the Route linked account (sub-merchant). Returns an `acc_…` id.
   const account = await razorpay.accounts.create({
     email: params.email,
     phone: params.phone,
@@ -76,16 +77,32 @@ export async function createLinkedAccount(params: {
     },
   } as any);
 
-  // Add bank account via Fund Account API
-  await razorpay.fundAccount.create({
-    contact_id: account.id,
-    account_type: "bank_account",
-    bank_account: {
-      name: params.beneficiaryName,
-      ifsc: params.ifsc,
+  // The Route APIs below are not in the SDK's typings; cast to reach them.
+  const rzp = razorpay as any;
+
+  // 2. A stakeholder is a prerequisite for configuring the route product.
+  await rzp.stakeholders.create(account.id, {
+    name: params.name,
+    email: params.email,
+  });
+
+  // 3. Request the `route` product configuration for this account.
+  const product = await rzp.products.requestProductConfiguration(account.id, {
+    product_name: "route",
+    tnc_accepted: true,
+  });
+
+  // 4. Submit the settlement bank account on the route product. This is how a
+  //    Route linked account receives transfers — NOT the RazorpayX Fund Account
+  //    API (which expects a `cont_…` contact id, not an `acc_…` account id).
+  await rzp.products.edit(account.id, product.id, {
+    settlements: {
       account_number: params.accountNumber,
+      ifsc_code: params.ifsc,
+      beneficiary_name: params.beneficiaryName,
     },
-  } as any);
+    tnc_accepted: true,
+  });
 
   return account;
 }
