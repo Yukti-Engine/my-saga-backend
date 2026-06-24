@@ -186,7 +186,7 @@ export const requestMatch = async (req: Request, res: Response) => {
   if (!ageMaxV.ok) return res.status(400).json({ error: ageMaxV.error });
   if (ageMinV.value > ageMaxV.value)
     return res.status(400).json({ error: "ageRangeMin must be <= ageRangeMax" });
-  const payV = validateIntRange(req.body.payPerHead, "payPerHead", 500, 3000);
+  const payV = validateIntRange(req.body.payPerHead, "payPerHead", 350, 3000);
   if (!payV.ok) return res.status(400).json({ error: payV.error });
   const roadmapV = validateBoundedText(req.body.roadmap, "roadmap", 1, 5000, { allowNewlines: true });
   if (!roadmapV.ok) return res.status(400).json({ error: roadmapV.error });
